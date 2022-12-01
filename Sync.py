@@ -1052,9 +1052,8 @@ def notion_event_sample(num=1):
                 print("\n")
             
 def gcal_event_sample(name=DEFAULT_CALENDAR_NAME, num=1):
-    calendarID = "9gt5g9oercvcd9liaeq320vhnc@group.calendar.google.com"
+    calendarID = ""
     eventID=""
-    #eventID="41p615vp8cue3oub9hplqenmkm"
     events = service.events().list(calendarId=calendarID).execute()
     if eventID != "":
         for i, el in enumerate(events['items']):
@@ -1063,6 +1062,3 @@ def gcal_event_sample(name=DEFAULT_CALENDAR_NAME, num=1):
                 break
     else:
         print(events['items'][num])
-# with the location information
-# reminder 30 mins
-# {'kind': 'calendar#event', 'etag': '"3335125664609000"', 'id': '_88o3ge9g712jcb9n70p3ab9k8p246b9p6krj2ba260p3eh238kp3gda688', 'status': 'confirmed', 'htmlLink': 'https://www.google.com/calendar/event?eid=Xzg4bzNnZTlnNzEyamNiOW43MHAzYWI5azhwMjQ2YjlwNmtyajJiYTI2MHAzZWgyMzhrcDNnZGE2ODggOWd0NWc5b2VyY3ZjZDlsaWFlcTMyMHZobmNAZw', 'created': '2022-11-04T11:53:52.000Z', 'updated': '2022-11-04T11:53:52.354Z', 'summary': 'Emotional Resilience Art Workshop', 'location': 'University Hall\n130 Winthrop Avenue, Crawley, WA 6009', 'creator': {'email': 'anguesin@gmail.com'}, 'organizer': {'email': '9gt5g9oercvcd9liaeq320vhnc@group.calendar.google.com', 'displayName': 'Registered Event', 'self': True}, 'start': {'dateTime': '2022-11-05T17:30:00+08:00', 'timeZone': 'Australia/Perth'}, 'end': {'dateTime': '2022-11-05T19:30:00+08:00', 'timeZone': 'Australia/Perth'}, 'iCalUID': 'B08908E6-7825-4FDC-9571-B027DCE285FB', 'sequence': 0, 'reminders': {'useDefault': False, 'overrides': [{'method': 'popup', 'minutes': 30}]}, 'eventType': 'default'}
