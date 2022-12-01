@@ -104,7 +104,7 @@ Inspired by [akarri2001/Notion-and-Google-Calendar-2-Way-Sync](https://github.co
         - "Delete_Notion_Name": "Done?",
         - "Status_Notion_Name": "Status",
         - "Page_ID_Notion_Name": "PageID",
-        - "CompleteIcon_Notion_Name": "CompleteIcon"}]
+        - "CompleteIcon_Notion_Name": "CompleteIcon"
     You can change the column name without modifying the main code zone as long as you alter this section and notion columns consistently.
 
 - Create a google token, and make sure your scope include google calendar
@@ -156,40 +156,40 @@ Congraduations! All settings are done! Let's run the program.
 
 - Update from notion to google
 
-```bash
-python3 main.py
-```
+    ```bash
+    python3 main.py
+    ```
 
-At the first time, the page will be redirected to `Choose an account` page, and then click or log in your account. Just click `Continue`, and then `Continue`. Finally, close the authentication window. Go back to the terminal, you will see:
-<img src="./assets/refresh.png" width="600" height="auto">
+    At the first time, the page will be redirected to `Choose an account` page, and then click or log in your account. Just click `Continue`, and then `Continue`. Finally, close the authentication window. Go back to the terminal, you will see:
+    <img src="./assets/refresh.png" width="600" height="auto">
 
-Type this again
+    Type this again
 
-```bash
-python3 main.py
-```
+    ```bash
+    python3 main.py
+    ```
 
 - Update from google time which is in Notion, and create google new events which is not in Notion
 
-```bash
-python3 main.py -gt
-```
+    ```bash
+    python3 main.py -gt
+    ```
 
 - Create google new events only
 
-```bash
-python3 main.py -gc
-```
+    ```bash
+    python3 main.py -gc
+    ```
 
 - Replace all content of google event
 (I don't recommend using this function since my most contents are made by Notion tasks. However, it is still needed sometimes such as downloading events into notion at the first time)
 
-```bash
-python3 main.py -ga
-```
+    ```bash
+    python3 main.py -ga
+    ```
 
 - Delete google events which is ticked in Notion
 
-```bash
-python3 main.py -r
-```
+    ```bash
+    python3 main.py -r
+    ```
