@@ -1,7 +1,7 @@
 {
     "notion_token": "",
-    "database_id": "",
     "urlroot": "",
+    "database_id": "",
     "timecode": "+08:00",
     "timezone": "Australia/Perth",
     "goback_days": 1,
@@ -13,8 +13,10 @@
     "gcal_default_name": "",
     "gcal_default_id": "",
     "gcal_dic": [{
-        "School": "",
-        "Life": ""
+        "": ""
+    }],
+    "gcal_dic_key_to_value": [{
+        "": ""
     }],
     "page_property": [{"Task_Notion_Name": "Task Name", 
         "Date_Notion_Name": "Date",
