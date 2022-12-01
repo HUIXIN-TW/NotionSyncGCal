@@ -193,3 +193,5 @@ python3 main.py -ga
 ```bash
 python3 main.py -r
 ```
+
+<img src="./assets/secrets.png" width="800" height="auto">
