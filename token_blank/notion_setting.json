@@ -1,0 +1,33 @@
+{
+    "notion_token": "",
+    "database_id": "",
+    "urlroot": "",
+    "timecode": "+08:00",
+    "timezone": "Australia/Perth",
+    "goback_days": 1,
+    "goforward_days": 7,
+    "delete_option": 0,
+    "event_length": 60,
+    "start_time": 8,
+    "allday_option": 0,
+    "gcal_default_name": "",
+    "gcal_default_id": "",
+    "gcal_dic": [{
+        "School": "",
+        "Life": ""
+    }],
+    "page_property": [{"Task_Notion_Name": "Task Name", 
+        "Date_Notion_Name": "Date",
+        "Initiative_Notion_Name": "Initiative",
+        "ExtraInfo_Notion_Name": "Extra Info",
+        "On_GCal_Notion_Name": "On GCal?",
+        "NeedGCalUpdate_Notion_Name": "NeedGCalUpdate",
+        "GCalEventId_Notion_Name": "GCal Event Id",
+        "LastUpdatedTime_Notion_Name" : "Last Updated Time",
+        "Calendar_Notion_Name": "Calendar",
+        "Current_Calendar_Id_Notion_Name": "Current Calendar Id",
+        "Delete_Notion_Name": "Done?",
+        "Status_Notion_Name": "Status",
+        "Page_ID_Notion_Name": "PageID",
+        "CompleteIcon_Notion_Name": "CompleteIcon"}]
+}
