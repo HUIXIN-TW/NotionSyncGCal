@@ -25,7 +25,7 @@ Inspired by [akarri2001/Notion-and-Google-Calendar-2-Way-Sync](https://github.co
 
     1. In the top-right corner of the page, click Fork.
 
-    <img src="./assets/fork.png" width="800" height="auto">
+    <img src="./assets/fork.png" width="600" height="auto">
 
     2. Select an owner for the forked repository.
 
@@ -35,7 +35,7 @@ Inspired by [akarri2001/Notion-and-Google-Calendar-2-Way-Sync](https://github.co
 
     5. Clone your forked repository
 
-    <img src="./assets/code.png" width="800" height="auto">
+    <img src="./assets/code.png" width="600" height="auto">
 
     6. Open the terminal, and type:
 
@@ -55,22 +55,22 @@ Inspired by [akarri2001/Notion-and-Google-Calendar-2-Way-Sync](https://github.co
 - Notion Connection Setting
 
     1. Open your Notion and click `Settings and members`, and then click here
-    <img src="./assets/connection.png" width="800" height="auto">
+    <img src="./assets/connection.png" width="600" height="auto">
 
     2. Create `New integration` and then `Submit`
-    <img src="./assets/newintegration.png" width="800" height="auto">
+    <img src="./assets/newintegration.png" width="600" height="auto">
 
     3. Open the template page, click `...`, then click `Add connection`. (Select what you name your connection)
-    <img src="./assets/notionconnect.png" width="800" height="auto">
+    <img src="./assets/notionconnect.png" width="600" height="auto">
 
 - Complete the `notion_setting.json` in the `token_blank` folder, and then rename the folder `token_blank` with `token` (.gitignore will exclude files in this `token` folder to protect your sensitive information)
 
     - "notion_token": "Paste your Internal Integration Token which starts with `secret_...`",
-    <img src="./assets/secrets.png" width="800" height="auto">
+    <img src="./assets/secrets.png" width="600" height="auto">
 
     - "urlroot": "https://www.notion.so/{YOURNOTIONNAME}/{databaseID}?XXXXX",
     - "database_id": "look the same link, only paste databaseID",
-    <img src="./assets/copylink.png" width="800" height="auto">
+    <img src="./assets/copylink.png" width="600" height="auto">
 
     - the following items is up to you
         - "timecode": "+08:00",
@@ -111,42 +111,42 @@ Inspired by [akarri2001/Notion-and-Google-Calendar-2-Way-Sync](https://github.co
     1. Go to [google developers](https://console.developers.google.com/) 
 
     2. Create a New Project, and select it
-    <img src="./assets/library.png" width="800" height="auto">
-    <img src="./assets/newproject.png" width="800" height="auto">
-    <img src="./assets/selectproject.png" width="800" height="auto">
+    <img src="./assets/library.png" width="600" height="auto">
+    <img src="./assets/newproject.png" width="600" height="auto">
+    <img src="./assets/selectproject.png" width="600" height="auto">
 
     3. Clikc `+ ENABLE APIS AND SERVICES` to enable google calendar API, and then add your email
-    <img src="./assets/library.png" width="800" height="auto">
-    <img src="./assets/searchapi.png" width="800" height="auto">
+    <img src="./assets/library.png" width="600" height="auto">
+    <img src="./assets/searchapi.png" width="600" height="auto">
 
     4. You enabled google calendar API successfully if you see this
-    <img src="./assets/enabled.png" width="800" height="auto">
+    <img src="./assets/enabled.png" width="600" height="auto">
 
     5. Click `+ CREATE CREDENTIALS`
-    <img src="./assets/OAuthID.png" width="800" height="auto">
+    <img src="./assets/OAuthID.png" width="600" height="auto">
     
     6. Click `CONFIGURE CONSENT SCREEN`, and then select `External` and click `CREATE`
     
     7. Name whatever you want, and select your email as `User support email`. Next, type your email to `Developer contect information`, and then click `SAVE & CONTINUE`
 
     8. Click `ADD OR REMOVE SCOPES`, and then Select the scope as belows. Scroll down and click `UPDATE` 
-    <img src="./assets/addscope.png" width="800" height="auto">
-    <img src="./assets/searchscope.png" width="800" height="auto">
-    <img src="./assets/googleapi.png" width="800" height="auto">
+    <img src="./assets/addscope.png" width="600" height="auto">
+    <img src="./assets/searchscope.png" width="600" height="auto">
+    <img src="./assets/googleapi.png" width="600" height="auto">
 
     9. Scroll down, and click `Save and Continue`
     
     10. Click `+ ADD USERS` and click `Save and Continue`
-    <img src="./assets/adduser.png" width="800" height="auto">
+    <img src="./assets/adduser.png" width="600" height="auto">
 
     11. Create the OAuth client ID
-    <img src="./assets/createcredential.png" width="800" height="auto">
+    <img src="./assets/createcredential.png" width="600" height="auto">
     
     12. Name your application, and then click `CREATE`
-    <img src="./assets/credentialname.png" width="800" height="auto">
+    <img src="./assets/credentialname.png" width="600" height="auto">
 
     13. Download `.json` (Note: Dont show with others otherwise they may access your account)
-    <img src="./assets/credentialdownload.png" width="800" height="auto">
+    <img src="./assets/credentialdownload.png" width="600" height="auto">
     
     14. Rename `client_secret_XXXXXXXXXXXX.json` to `client_secret.json`, and then move it into `token` folder
 
@@ -161,7 +161,7 @@ python3 main.py
 ```
 
 At the first time, the page will be redirected to `Choose an account` page, and then click or log in your account. Just click `Continue`, and then `Continue`. Finally, close the authentication window. Go back to the terminal, you will see:
-<img src="./assets/refresh.png" width="800" height="auto">
+<img src="./assets/refresh.png" width="600" height="auto">
 
 Type this again
 
@@ -193,5 +193,3 @@ python3 main.py -ga
 ```bash
 python3 main.py -r
 ```
-
-<img src="./assets/secrets.png" width="800" height="auto">
