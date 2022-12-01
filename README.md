@@ -183,4 +183,4 @@ python3 main.py -ga
 python3 main.py -r
 ```
 
-<img src="./assets/secrets.png" width="500" height="auto">
+<img src="./assets/secrets.png" width="800" height="auto">
