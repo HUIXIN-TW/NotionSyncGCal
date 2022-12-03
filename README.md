@@ -193,3 +193,5 @@ Congraduations! All settings are done! Let's run the program.
     ```bash
     python3 main.py -r
     ```
+
+<a href="https://www.buymeacoffee.com/huixinyang" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/default-orange.png" alt="Buy Me A Coffee" height="41" width="174"></a>
