@@ -41,6 +41,7 @@ Task_Notion_Name = nt.page_property["Task_Notion_Name"]
 Date_Notion_Name = nt.page_property["Date_Notion_Name"]
 Initiative_Notion_Name = nt.page_property["Initiative_Notion_Name"]
 ExtraInfo_Notion_Name = nt.page_property["ExtraInfo_Notion_Name"]
+Location_Notion_Name = nt.page_property["Location_Notion_Name"]
 On_GCal_Notion_Name = nt.page_property["On_GCal_Notion_Name"]
 NeedGCalUpdate_Notion_Name = nt.page_property["NeedGCalUpdate_Notion_Name"]
 GCalEventId_Notion_Name = nt.page_property["GCalEventId_Notion_Name"]
@@ -99,7 +100,7 @@ print("\n")
 print("\n")
 print("################################## START ##################################")
 print("###########################################################################")
-print(f"----- Sync.py | Setting Section | After {after_date}, Before {before_date} -----")
+print(f"--- Sync.py | After {after_date} Included, Before {before_date} Not Included ---")
 
 
 
@@ -144,7 +145,7 @@ def makeEventDescription(initiative, info, taskstatus):
         return f"Initiative: {initiative} \nTask Status: {taskstatus} \n{info}"
 
 #METHOD TO MAKE A CALENDAR EVENT - DIFFERENT TIME CONDITIONS
-def makeCalEvent(exist_eventId, eventName, eventDescription, eventStartTime, sourceURL, eventEndTime, newCalId, oldCalId):
+def makeCalEvent(exist_eventId, eventName, eventDescription, eventStartTime, sourceURL, eventEndTime, newCalId, oldCalId, location):
     print("Convert Notion date type to Google calendar format: ", eventName)
     
     datetime_type = 0
@@ -179,6 +180,7 @@ def makeCalEvent(exist_eventId, eventName, eventDescription, eventStartTime, sou
     if datetime_type == 1:       
         event = {
             "summary": eventName,
+            "location": location,
             "description": eventDescription,
             "start": {
                 "dateTime": eventStartTime.strftime("%Y-%m-%dT%H:%M:%S"),
@@ -564,7 +566,7 @@ def deleteGInfo(id):
     return my_page
 
 #Create Notion page
-def create_page(calname, calstartdate, calenddate, caldescription, calid, gCal_id, gCal_name):
+def create_page(calname, calstartdate, calenddate, caldescription, calid, gCal_id, gCal_name, callocation):
     my_page = notion.pages.create(
         **{
             "parent": {
@@ -604,6 +606,14 @@ def create_page(calname, calstartdate, calenddate, caldescription, calid, gCal_i
                         }
                     }]
                 },
+                Location_Notion_Name:  {
+                    "type": "rich_text", 
+                    "rich_text": [{
+                        "text": {
+                            "content": callocation
+                        }
+                    }]
+                },
                 GCalEventId_Notion_Name: {
                     "type": "rich_text", 
                     "rich_text": [{
@@ -635,7 +645,7 @@ def create_page(calname, calstartdate, calenddate, caldescription, calid, gCal_i
     print(f"From {calstartdate} to {calenddate}")
     
 #Update Notion page: plus event name, event id, info
-def update_page_all(pageid, calname, calstartdate, calenddate, caldescription, calid, gCal_id, gCal_name):
+def update_page_all(pageid, calname, calstartdate, calenddate, caldescription, calid, gCal_id, gCal_name, callocation):
     my_page = notion.pages.update(
         **{
             "page_id": pageid,
@@ -670,6 +680,14 @@ def update_page_all(pageid, calname, calstartdate, calenddate, caldescription, c
                     "rich_text": [{
                         "text": {
                             "content": caldescription
+                        }
+                    }]
+                },
+                Location_Notion_Name:  {
+                    "type": "rich_text", 
+                    "rich_text": [{
+                        "text": {
+                            "content": callocation
                         }
                     }]
                 },
@@ -791,6 +809,7 @@ def notion_to_gcal(action=0):
     URL_list = [] #7
     calEventIdList = [] #8
     CalendarList = [] #9
+    Locations = [] #10
 
 
     if len(resultList) > 0:
@@ -862,7 +881,16 @@ def notion_to_gcal(action=0):
                 event_8 = el["properties"][Calendar_Notion_Name]["select"]["name"]
                 CalendarList.append(calendarDictionary[event_8])
             except: #keyerror occurs when there's nothing put into the calendar in the first place
-                CalendarList.append(DEFAULT_CALENDAR_ID)            
+                CalendarList.append(DEFAULT_CALENDAR_ID)       
+            #9
+            try:
+                event_10 = el["properties"][Location_Notion_Name]["rich_text"][0]["text"]["content"]
+                print(event_10)
+                Locations.append(event_10)
+            except:
+                print("No Location Info")
+                Locations.append("")
+                
             # get cal event id?
             try:
                 exist_EventId = el["properties"][GCalEventId_Notion_Name]["rich_text"][0]["text"]["content"]
@@ -890,13 +918,13 @@ def notion_to_gcal(action=0):
                 calEventId = makeCalEvent(
                     exist_EventId, TaskNames[i], makeEventDescription(Initiatives[i], ExtraInfo[i], TaskStatus[i]), 
                     datetime.strptime(start_Dates[i], "%Y-%m-%d"), URL_list[i], 
-                    datetime.strptime(end_Times[i], "%Y-%m-%d"), CalendarList[i], currentCal)
+                    datetime.strptime(end_Times[i], "%Y-%m-%d"), CalendarList[i], currentCal, Locations[i])
             except:
                 print("Date: start and end are both date plus time")
                 calEventId = makeCalEvent(
                     exist_EventId, TaskNames[i], makeEventDescription(Initiatives[i], ExtraInfo[i], TaskStatus[i]), 
                     datetime.strptime(start_Dates[i][:-6], "%Y-%m-%dT%H:%M:%S.000"), URL_list[i],  
-                    datetime.strptime(end_Times[i][:-6], "%Y-%m-%dT%H:%M:%S.000"), CalendarList[i], currentCal)
+                    datetime.strptime(end_Times[i][:-6], "%Y-%m-%dT%H:%M:%S.000"), CalendarList[i], currentCal, Locations[i])
                     
             
             calEventIdList.append(calEventId)
@@ -928,6 +956,7 @@ def gcal_to_notion(action=0):
     calStartDates = [] #try: time format
     calEndDates = [] #try: time format
     calDescriptions = [] #try: add description
+    calLocations = [] #try: add location
     print("\n")
     print("gcal_to_notion | Adj google time format")
     for calItem in calItems:
@@ -955,7 +984,7 @@ def gcal_to_notion(action=0):
             x = datetime(date.year, date.month, date.day, 0, 0, 0)
             calEndDates.append(x)
         try:#add description
-            withLocation = calItem["description"] + "\n" + calItem["location"]
+            withLocation = calItem["description"] + "\n" + "Location: " + calItem["location"]
             calDescriptions.append(withLocation)
         except:
             try:
@@ -965,6 +994,10 @@ def gcal_to_notion(action=0):
                     calDescriptions.append(calItem["location"])
                 except:
                     calDescriptions.append(" ")
+        try:#add location
+            calLocations.append(calItem["location"])
+        except:
+            calLocations.append("No Location Info")
     
     print("\n")
     print("gcal_to_notion | Compare google event id vs notion event id")
@@ -989,7 +1022,7 @@ def gcal_to_notion(action=0):
                 print("--- Update events | Including name, description and calid from GCal to Notion ---")
                 pageid = ALL_notion_gCal_Ids_pageid[calIds[i]]
                 update_page_all(pageid, calNames[i], calStartDate, calEndDate, calDescriptions[i], 
-                            calIds[i], gCal_calendarId[i], gCal_calendarName[i])
+                            calIds[i], gCal_calendarId[i], gCal_calendarName[i], calLocations[i])
             else:
                 if action == 0: #default, update the timeslot and create the events which are not in notion
                     print("----------------- Update events' time slot from GCal to Notion ------------------")
@@ -998,7 +1031,7 @@ def gcal_to_notion(action=0):
         else: #create the event on notion
             print("----------- Create events (not in Notion already) from GCal to Notion -----------")
             create_page(calNames[i], calStartDate, calEndDate, calDescriptions[i], 
-                        calIds[i], gCal_calendarId[i], gCal_calendarName[i])
+                        calIds[i], gCal_calendarId[i], gCal_calendarName[i], calLocations[i])
                     
     print("\n")
 
@@ -1052,12 +1085,13 @@ def notion_event_sample(num=1):
                 print("\n")
             
 def gcal_event_sample(name=DEFAULT_CALENDAR_NAME, num=1):
-    calendarID = ""
-    eventID=""
+    calendarID = "" #input manually
+    eventID = "" #input manually
     events = service.events().list(calendarId=calendarID).execute()
     if eventID != "":
         for i, el in enumerate(events['items']):
             if el['id'] == eventID:
+                print(f"Find {eventID}")
                 print(events['items'][i]['location'])
                 break
     else:
