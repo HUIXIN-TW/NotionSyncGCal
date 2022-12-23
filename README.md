@@ -95,6 +95,7 @@ Inspired by [akarri2001/Notion-and-Google-Calendar-2-Way-Sync](https://github.co
         - "Date_Notion_Name": "Date",
         - "Initiative_Notion_Name": "Initiative",
         - "ExtraInfo_Notion_Name": "Extra Info",
+        - "Location_Notion_Name": "Location",
         - "On_GCal_Notion_Name": "On GCal?",
         - "NeedGCalUpdate_Notion_Name": "NeedGCalUpdate",
         - "GCalEventId_Notion_Name": "GCal Event Id",
