@@ -51,7 +51,11 @@ def sync_notion_gcal(cmd):
 
     if len(cmd) == 1:
         #default: update from notion to google
-        s.notion_to_gcal(notion_action)
+        s.notion_to_gcal(notion_action, True)
+    elif cmd[1] == "-na" or cmd[1] == "--UPDATE-ALL-ON-NOTION":
+        #default: update from notion to google
+        #including NeedGCalUpdate is false
+        s.notion_to_gcal(notion_action, False)
     elif cmd[1] == "-gt" or cmd[1] == "--GOOGLETIME":
         #update from google time and create new events
         s.gcal_to_notion(google_action)
@@ -68,7 +72,7 @@ def sync_notion_gcal(cmd):
             s.gcal_to_notion(google_action)    
     elif cmd[1] == "-np" or cmd[1] == "NOTIONPAGE": #still bug
         notion_action = 1
-        s.notion_to_gcal(notion_action)
+        s.notion_to_gcal(notion_action, True)
     elif cmd[1] == "-r" or cmd[1] == "--REMOVE":
         #delete google cal via notion Done?
         s.deleteEvent()

@@ -15,10 +15,6 @@ nt = Token.Notion()
 gt = Token.Google()
 
 
-
-
-
-
 ##### The Set-Up Section - Notion #####
 #get notion token
 NOTION_TOKEN = nt.notion_token
@@ -52,6 +48,7 @@ Delete_Notion_Name = nt.page_property["Delete_Notion_Name"]
 Status_Notion_Name = nt.page_property["Status_Notion_Name"]
 Page_ID_Notion_Name = nt.page_property["Page_ID_Notion_Name"]
 CompleteIcon_Notion_Name = nt.page_property["CompleteIcon_Notion_Name"]
+Skip_Description_Condition = nt.skip_description_condition
 #set at 0 if you want the delete column 
 #set at 1 if you want nothing deleted
 DELETE_OPTION = nt.delete_option
@@ -145,7 +142,7 @@ def makeEventDescription(initiative, info, taskstatus):
         return f"Initiative: {initiative} \nTask Status: {taskstatus} \n{info}"
 
 #METHOD TO MAKE A CALENDAR EVENT - DIFFERENT TIME CONDITIONS
-def makeCalEvent(exist_eventId, eventName, eventDescription, eventlocation, eventStartTime, eventEndTime, newCalId, oldCalId, sourceURL):
+def makeCalEvent(exist_eventId, eventName, eventDescription, eventlocation, eventStartTime, eventEndTime, newCalId, oldCalId, sourceURL, skip):
     print("Convert Notion date type to Google calendar format: ", eventName)
     
     datetime_type = 0
@@ -177,7 +174,7 @@ def makeCalEvent(exist_eventId, eventName, eventDescription, eventlocation, even
             eventEndTime = eventEndTime
         
     # write into Event: date or datetime
-    if datetime_type == 1:       
+    if skip == 1:   # can skip some information if you want to
         event = {
             "summary": eventName,
             "location": eventlocation,
@@ -196,22 +193,42 @@ def makeCalEvent(exist_eventId, eventName, eventDescription, eventlocation, even
             }
         }  
     else:
-        event = {
-            "summary": eventName,
-            "description": eventDescription,
-            "start": {
-                "date": eventStartTime.strftime("%Y-%m-%d"),
-                "timeZone": timezone,
-            },
-            "end": {
-                "date": eventEndTime.strftime("%Y-%m-%d"),
-                "timeZone": timezone,
-            }, 
-            "source": {
-                "title": "Notion Link",
-                "url": sourceURL,
+        if datetime_type == 1:       
+            event = {
+                "summary": eventName,
+                "location": eventlocation,
+                "description": eventDescription,
+                "start": {
+                    "dateTime": eventStartTime.strftime("%Y-%m-%dT%H:%M:%S"),
+                    "timeZone": timezone,
+                },
+                "end": {
+                    "dateTime": eventEndTime.strftime("%Y-%m-%dT%H:%M:%S"),
+                    "timeZone": timezone,
+                }, 
+                "source": {
+                    "title": "Notion Link",
+                    "url": sourceURL,
+                }
+            }  
+        else:
+            event = {
+                "summary": eventName,
+                "location": eventlocation,
+                "description": eventDescription,
+                "start": {
+                    "date": eventStartTime.strftime("%Y-%m-%d"),
+                    "timeZone": timezone,
+                },
+                "end": {
+                    "date": eventEndTime.strftime("%Y-%m-%d"),
+                    "timeZone": timezone,
+                }, 
+                "source": {
+                    "title": "Notion Link",
+                    "url": sourceURL,
+                }
             }
-        }
     
     if exist_eventId == "":
         x = service.events().insert(calendarId=newCalId, body=event).execute()
@@ -767,7 +784,7 @@ def update_page_time(pageid, calname, calstartdate, calenddate, gCal_id, gCal_na
 ##############################################
 #####     1. Add/Update Notion to GCal   #####
 ##############################################
-def notion_to_gcal(action=0):
+def notion_to_gcal(action=0, updateEverything=True):
 
     if action == 1:
         #get all notion events
@@ -798,7 +815,10 @@ def notion_to_gcal(action=0):
                 sys.exit(1)
     else:
         #query the database
-        resultList = queryNotionEvent_notion()
+        if updateEverything:
+            resultList = queryNotionEvent_notion()
+        else:
+            resultList = queryNotionEvent_all()
     
     TaskNames = [] #1
     start_Dates = [] #2
@@ -813,12 +833,17 @@ def notion_to_gcal(action=0):
 
 
     if len(resultList) > 0:
-        i = len(resultList)
-        print(f"---- {i} EVENTS: RUNNING NOTIONSYNC NOW | Change in Notion to Gcalendar ----")
+        n = len(resultList)
+        print(f"---- {n} EVENTS: RUNNING NOTIONSYNC NOW | Change in Notion to Gcalendar ----")
         
         for i, el in enumerate(resultList):
             print(f"---- {i} th Result ready to be updated to google calendar ----")
 
+            # subscription calendar
+            if '@import.calendar.google.com' in el["properties"][Current_Calendar_Id_Notion_Name]["rich_text"][0]["text"]["content"]:
+                subscribedCal = el["properties"][Calendar_Notion_Name]["select"]["name"]
+                print(f"---- {subscribedCal} is subscription which can't be edited ----")
+                continue
             #1
             try:
                 event_0 = el["properties"][CompleteIcon_Notion_Name]["formula"]["string"]
@@ -911,18 +936,21 @@ def notion_to_gcal(action=0):
             updateGStatus(pageId)
 
             # make Google event
+            skip = 0
+            if Skip_Description_Condition in TaskNames[i]:
+                skip = 1
             try:
                 print("Date: start and end are both dates")
                 calEventId = makeCalEvent(
                     exist_EventId, TaskNames[i], makeEventDescription(Initiatives[i], ExtraInfo[i], TaskStatus[i]), Locations[i], 
                     datetime.strptime(start_Dates[i], "%Y-%m-%d"), datetime.strptime(end_Times[i], "%Y-%m-%d"), 
-                    CalendarList[i], currentCal, URL_list[i])
+                    CalendarList[i], currentCal, URL_list[i], skip)
             except:
                 print("Date: start and end are both date plus time")
                 calEventId = makeCalEvent(
                     exist_EventId, TaskNames[i], makeEventDescription(Initiatives[i], ExtraInfo[i], TaskStatus[i]), Locations[i], 
                     datetime.strptime(start_Dates[i][:-6], "%Y-%m-%dT%H:%M:%S.000"), datetime.strptime(end_Times[i][:-6], "%Y-%m-%dT%H:%M:%S.000"), 
-                    CalendarList[i], currentCal, URL_list[i])
+                    CalendarList[i], currentCal, URL_list[i], skip)
                     
             
             calEventIdList.append(calEventId)
@@ -1017,19 +1045,35 @@ def gcal_to_notion(action=0):
         #Create a page or Update a page?
         if calIds[i] in ALL_notion_gCal_Ids:
             if action == 2: #Overwrite notion
-                print("--- Update events | Including name, description and calid from GCal to Notion ---")
-                pageid = ALL_notion_gCal_Ids_pageid[calIds[i]]
-                update_page_all(pageid, calNames[i], calStartDate, calEndDate, calDescriptions[i], calLocations[i], 
-                            calIds[i], gCal_calendarId[i], gCal_calendarName[i])
+                print(f"--- Update events | Including name, description and calid from GCal to Notion {calNames[i]} {calStartDate} ---")
+                try:
+                    pageid = ALL_notion_gCal_Ids_pageid[calIds[i]]
+                    update_page_all(pageid, calNames[i], calStartDate, calEndDate, calDescriptions[i], calLocations[i], 
+                                calIds[i], gCal_calendarId[i], gCal_calendarName[i])
+                except: #subscribe calendar
+                    print(f"This is a subscribed calendar - {calendarDictionary_trans[gCal_calendarId[i]]}")
+                    pageid = ALL_notion_gCal_Ids_pageid[calIds[i]]
+                    update_page_all(pageid, calNames[i], calStartDate, calEndDate, calDescriptions[i], calLocations[i], 
+                                calIds[i], gCal_calendarId[i], calendarDictionary_trans[gCal_calendarId[i]])
             else:
                 if action == 0: #default, update the timeslot and create the events which are not in notion
-                    print("----------------- Update events' time slot from GCal to Notion ------------------")
-                    pageid = ALL_notion_gCal_Ids_pageid[calIds[i]]
-                    update_page_time(pageid, calNames[i], calStartDate, calEndDate, gCal_calendarId[i], gCal_calendarName[i])
+                    print(f"--- Update events' time slot from GCal to Notion {calNames[i]} {calStartDate} ---")
+                    try:
+                        pageid = ALL_notion_gCal_Ids_pageid[calIds[i]]
+                        update_page_time(pageid, calNames[i], calStartDate, calEndDate, gCal_calendarId[i], gCal_calendarName[i])
+                    except: #subscribe calendar
+                        print(f"This is a subscribed calendar - {calendarDictionary_trans[gCal_calendarId[i]]}")
+                        pageid = ALL_notion_gCal_Ids_pageid[calIds[i]]
+                        update_page_time(pageid, calNames[i], calStartDate, calEndDate, gCal_calendarId[i], calendarDictionary_trans[gCal_calendarId[i]])
         else: #create the event on notion
-            print("----------- Create events (not in Notion already) from GCal to Notion -----------")
-            create_page(calNames[i], calStartDate, calEndDate, calDescriptions[i], calLocations[i], 
-                        calIds[i], gCal_calendarId[i], gCal_calendarName[i])
+            print(f"--- Create events (not in Notion already) from GCal to Notion {calNames[i]} {calStartDate} ---")
+            try:
+                create_page(calNames[i], calStartDate, calEndDate, calDescriptions[i], calLocations[i], 
+                            calIds[i], gCal_calendarId[i], gCal_calendarName[i])
+            except: #subscribe calendar
+                print(f"This is a subscribed calendar - {calendarDictionary_trans[gCal_calendarId[i]]}")
+                create_page(calNames[i], calStartDate, calEndDate, calDescriptions[i], calLocations[i], 
+                            calIds[i], gCal_calendarId[i], calendarDictionary_trans[gCal_calendarId[i]])
                     
     print("\n")
 
@@ -1066,7 +1110,7 @@ def deleteEvent():
             deleteGInfo(pageId)
     else:
         print("---------------------- No deleted the GCal event ----------------------")
-    
+
     
 ####################################################
 ########           One Event Sample          #######

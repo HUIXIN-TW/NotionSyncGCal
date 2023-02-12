@@ -26,15 +26,16 @@ class Notion:
         self.gcal_default_name = data["gcal_default_name"]
         self.gcal_default_id = data["gcal_default_id"]
         self.gcal_dic = data["gcal_dic"][0]
-        self.gcal_dic_key_to_value = data["gcal_dic_key_to_value"][0]
+        self.gcal_dic_key_to_value = self.gcal_dic_key_to_value(data["gcal_dic"][0])
         self.page_property = data["page_property"][0]
-    def gcal_dic_key_to_value(gcal_dic): #bug: cant call by init
+        self.skip_description_condition = data["skip_description_condition"]
+    def gcal_dic_key_to_value(self, gcal_dic):
         x = {}
-        for key in gcal_dic[0]:
-            x[gcal_dic[0][key]] = key
+        for key in gcal_dic:
+            x[gcal_dic[key]] = key
         return x
         
-
+x=Notion()
 # google API setting
 class Google:
     def __init__(self):
