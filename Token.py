@@ -10,6 +10,7 @@ from google_auth_oauthlib.flow import InstalledAppFlow
 
 
 FILEPATH = "token/notion_setting.json"
+CREDPATH = "token/token.pkl"
 
 
 class Notion():
@@ -60,6 +61,7 @@ class Notion():
         self.LASTUPDATEDTIME_NOTION_NAME = data["page_property"][0]["LastUpdatedTime_Notion_Name"]
         self.CALENDAR_NOTION_NAME = data["page_property"][0]["Calendar_Notion_Name"]
         self.CURRENT_CALENDAR_ID_NOTION_NAME = data["page_property"][0]["Current_Calendar_Id_Notion_Name"]
+
         # set at 0 if you want the delete column
         # set at 1 if you want nothing deleted
         self.DELETE_NOTION_NAME = data["page_property"][0]["Delete_Notion_Name"]
@@ -82,16 +84,17 @@ class Notion():
 
 class Google():
     def __init__(self):
+        # If the token expires, the other python script GCalToken.py creates a new token for the program to use
+        if os.path.exists(CREDPATH):
+            credentials = pickle.load(open(CREDPATH, "rb"))
+            self.service = build("calendar", "v3", credentials=credentials)
+        else:
+            print("Make sure you store token.pkl in toke folder")
         if os.path.exists(FILEPATH):
             with open(FILEPATH) as f:
                 data = json.load(f)
         else:
             print("Make sure you store notion_setting.json in toke folder")
-        # If the token expires, the other python script GCalToken.py creates a new token for the program to use
-        CRED_PATH = data["credentials_path"]
-        if os.path.exists(CRED_PATH):
-            credentials = pickle.load(open(CRED_PATH, "rb"))
-            self.service = build("calendar", "v3", credentials=credentials)
         try:
             calendar = self.service.calendars().get(
                 calendarId=data["gcal_default_id"]).execute()
@@ -103,24 +106,24 @@ class Google():
                 "Checking if the Google Calendar API token expires. \nRun Token.py to update the token.pkl.")
             print(
                 "Google Cloud Platform https://console.cloud.google.com/apis/credentials")
-            self.ask_creds(FILEPATH)
+            self.ask_creds(CREDPATH)
             os._exit(1)
 
     # DO NOT SHARE WITH OTHERS
 
-    def ask_creds(self, FILEPATH):
+    def ask_creds(self, CREDPATH):
         # If modifying these scopes, delete the file `token.json`
         scopes = ["https://www.googleapis.com/auth/calendar"]
         creds = None
         # The file token.pkl stores the user"s access and refresh tokens, and is
         # created automatically when the authorization flow completes for the first
         # time.
-        if os.path.exists(FILEPATH):
+        if os.path.exists(CREDPATH):
             try:
                 creds = Credentials.from_authorized_user_file(
-                    FILEPATH, scopes)
+                    CREDPATH, scopes)
             except:
-                os.remove(FILEPATH)
+                os.remove(CREDPATH)
         # If there are no (valid) credentials available, let the user log in.
         if not creds or not creds.valid:
             if creds and creds.expired and creds.refresh_token:
@@ -134,5 +137,5 @@ class Google():
                 # Or post the cred to terminal
                 # creds = flow.run_console()
             # Save the credentials for the next run
-            with open(FILEPATH, "wb") as token:
+            with open(CREDPATH, "wb") as token:
                 pickle.dump(creds, token)
