@@ -5,7 +5,6 @@ from datetime import datetime, timedelta
 
 import Token
 
-
 try:
     ##### The Set-Up Section - Notion #####
     nt = Token.Notion()
