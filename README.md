@@ -178,9 +178,9 @@ Congraduations! All settings are done! Let's run the program.
 - Replace all content of google event
   (I don't recommend using this function since my most contents are made by Notion tasks. However, it is still needed sometimes such as downloading events into notion at the first time)
 
-```bash
-python3 main.py -ga
-```
+  ```bash
+  python3 main.py -ga
+  ```
 
 - Delete google events which is ticked in Notion
 
