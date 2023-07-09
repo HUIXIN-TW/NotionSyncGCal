@@ -42,6 +42,8 @@ Inspired by [akarri2001](https://github.com/akarri2001/Notion-and-Google-Calenda
      
      <img src="./assets/folder.png" width="600" height="auto">
 
+     <video src="./assets/NotionStep1.mp4" width="600" height="auto" controls="controls"></video>
+
   For advanced users, you can fork this repository and then clone it. 
 
   1. In the top-right corner of the page, click Fork.
@@ -73,6 +75,8 @@ Inspired by [akarri2001](https://github.com/akarri2001/Notion-and-Google-Calenda
 - Step2: Duplicate the Notion template as the initial database [NotionGCal](https://huixin.notion.site/aa639e48cfee4216976756f33cf57c8e?v=6db9353f3bc54029807c539ffc3dfdb4)
   If you are familar with the entire code, you are welcome to customise your own template. However, I recommend you to use my template and do not change the property names at the first time.
 
+  <video src="./assets/NotionStep2.mp4" width="600" height="auto" controls="controls"></video>
+
 - Step3: Notion Connection Setting
   1. Visit Notion Developer website
     - Directly click [Notion Developer](https://www.notion.so/my-integrations), and make sure you are logged in, or
@@ -84,6 +88,8 @@ Inspired by [akarri2001](https://github.com/akarri2001/Notion-and-Google-Calenda
 
   3. Open the template page, click `...`, then click `Add connection`. (Select what you name your connection)
      <img src="./assets/notionconnect.png" width="600" height="auto">
+
+  <video src="./assets/NotionStep3.mp4" width="600" height="auto" controls="controls"></video>
 
 - Step4: Complete the `notion_setting.json` in the `token_blank` folder, and then rename the folder `token_blank` with `token` (.gitignore will exclude files in this `token` folder to protect your sensitive information when you push your code to github. If you don't want to use github, you can still need to rename the folder but can ignore the reason why we do this)
 
@@ -132,6 +138,8 @@ Inspired by [akarri2001](https://github.com/akarri2001/Notion-and-Google-Calenda
     - "CompleteIcon_Notion_Name": "CompleteIcon"
     You can change the column name without modifying the main code zone as long as you alter this section and notion columns consistently.
 
+    <video src="./assets/NotionStep4.mp4" width="600" height="auto" controls="controls"></video>
+
 - Step5: Create a google token, and make sure your scope include google calendar
 
   1. Go to [google developers](https://console.developers.google.com/)
@@ -176,6 +184,8 @@ Inspired by [akarri2001](https://github.com/akarri2001/Notion-and-Google-Calenda
 
   14. Rename `client_secret_XXXXXXXXXXXX.json` to `client_secret.json`, and then move it into `token` folder
 
+  <video src="./assets/NotionStep5.mp4" width="600" height="auto" controls="controls"></video>
+
 - Step6: Download [python](https://www.python.org/downloads/)
 
   1. Visit the official Python website at https://www.python.org/downloads/.
@@ -190,12 +200,33 @@ Inspired by [akarri2001](https://github.com/akarri2001/Notion-and-Google-Calenda
   
   6. Follow the installation instructions provided by the installer. You can usually accept the default settings unless you have specific requirements. Make sure to check the box that says "Add Python to PATH" during the installation process, as this will make it easier to use Python from the command line.
   
-  7. After the installation is complete, open a new command prompt (Windows) or terminal (macOS/Linux) and type python --version to verify that Python is installed correctly. You should see the version number of Python displayed.
+  7. After the installation is complete, open a new command prompt (Windows) or terminal (macOS/Linux)
+  
+  <img src="./assets/terminal.png" width="600" height="auto">
+  
+  8. type python --version to verify that Python is installed correctly. You should see the version number of Python displayed.
+
+  <img src="./assets/pythonversion.png" width="600" height="auto">
+
+  9. Install python packages
+
+  ```bash
+  pip3 install -r requirements.txt
+  ```
+
+  There are a lot of videos on youtube to teach you how to install python. I recommend you to watch them if you are not familar with python.
 
 Congraduations! All settings are done! Let's run the program.
 
 # Sychronise Notion with Google Calendar
+  Go to the terminal, and type:
+
+  ```bash
+  python3 main.py
+  ```
+
   All commends and its comment in main.py are in `main.py`. You can change them as you want. I will explain most of them.
+
   <img src="./assets/main.png" width="600" height="auto">
 
 - Update from notion event needed to updated to google calendar (default)
@@ -205,6 +236,7 @@ Congraduations! All settings are done! Let's run the program.
   ```
 
   At the first time, the page will be redirected to `Choose an account` page, and then click or log in your account. Just click `Continue`, and then `Continue`. Finally, close the authentication window. Go back to the terminal, you will see:
+
   <img src="./assets/refresh.png" width="600" height="auto">
 
   Type this again
@@ -212,6 +244,14 @@ Congraduations! All settings are done! Let's run the program.
   ```bash
   python3 main.py
   ```
+
+  You will see the following message if you successfully connect to your google calendar. Type enter to continue and the code will start to run. If you do not want it run, type `Ctrl + C` to stop it.
+
+  <img src="./assets/success.png" width="600" height="auto"> 
+
+  If you hit enter, you will see the following message. It means that the code is running. You can check your google calendar to see if it works.
+
+  <img src="./assets/running.png" width="600" height="auto">
 
 - Update from all notion tasks to google calendar
   
