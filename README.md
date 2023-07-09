@@ -41,8 +41,8 @@ Inspired by [akarri2001](https://github.com/akarri2001/Notion-and-Google-Calenda
      You can unzip it and then change the folder name to whatever you want. Have a look these files and folders. We will change some of them later.
      
      <img src="./assets/folder.png" width="600" height="auto">
-     
-     ![](https://drive.google.com/file/d/1sYZlehBzu8OppGCVEnPElMYIgoxJAXso/view?usp=share_link)
+
+     <video src="./assets/NotionStep1.mp4" width="600" height="auto" controls="controls"></video>
 
   For advanced users, you can fork this repository and then clone it. 
 
