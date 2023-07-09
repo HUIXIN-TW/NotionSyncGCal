@@ -31,7 +31,9 @@ Inspired by [akarri2001](https://github.com/akarri2001/Notion-and-Google-Calenda
 ## How to install it
 
 - Step1: Fork or Clone git repository
+
   For beginners, you can download this repository directly.
+
   1. Click the green `Code` button on the top-right corner of the page, and then click `Download ZIP`
 
      <img src="./assets/download.png" width="600" height="auto">
@@ -72,9 +74,10 @@ Inspired by [akarri2001](https://github.com/akarri2001/Notion-and-Google-Calenda
   If you are familar with the entire code, you are welcome to customise your own template. However, I recommend you to use my template and do not change the property names at the first time.
 
 - Step3: Notion Connection Setting
-
-  1. Open your Notion and click `Settings and members`, and then click here
-     <img src="./assets/connection.png" width="600" height="auto">
+  1. Visit Notion Developer website
+    - Directly click [Notion Developer](https://www.notion.so/my-integrations), and make sure you are logged in, or
+    - Via Notion App, open your Notion and click `Settings and members`, and then click here
+      <img src="./assets/connection.png" width="600" height="auto">
 
   2. Create `New integration` and then `Submit`
      <img src="./assets/newintegration.png" width="600" height="auto">
