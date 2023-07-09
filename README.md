@@ -1,8 +1,15 @@
 # Notion Synchronise with Google Calendar
 
-The code will extract the event name, date/time, category, and extra information (text) from the Notion Dashboard and integrate that information into your GCal event. It will also add a URL source code to the GCal event so you can click on the URL and automatically be brought over to the specific Notion Page your event is at.
+Do you find yourself juggling between Notion and Google Calendar to manage your events? Fret not! This awesome code is here to save your day. It magically extracts event details from your Notion Dashboard and seamlessly integrates them into your Google Calendar events. But wait, there's more! It even adds a handy URL to your GCal event, so you can effortlessly jump back to the specific Notion Page related to the event. How cool is that?
 
-WARNING: This repo will access Notion's database and Google Calendar if you do not know what you are doing, it may cause unwanted changes.
+**Warning**: Proceed with caution! This repo wields the power to make changes to your Notion database and Google Calendar. So, if you're not confident about what you're doing, buckle up and brace yourself for some unexpected surprises.
+
+## What you will need to get started
+
+- google account
+- Notion account
+- github account (optional)
+- python3
 
 ## Current Capabilities:
 
@@ -12,20 +19,28 @@ WARNING: This repo will access Notion's database and Google Calendar if you do n
 ### Functions:
 
 - Ability to change timezones by changing `timecode` and `timezone` in `notion_setting`
-- Ability to change the date range by changing `goback_days` and `goforward_days` in `notion_setting.json`
+- Ability to change the date range by changing `goback_days` and `goforward_days` in `notion_setting.json` (If you are a new IT guy here, please use 1 and 2 days respectively before you understand the code)
 - Able to decide the default length of new GCal events by changing `event_length` in `notion_setting.json`
 - Option to delete gCal events if checked off as `Done?` column in Notion
 - Sync across _multiple calendars_ and choose which calendar you would like to sync by changing `gcal_dic` and `gcal_dic_key_to_value` in `notion_setting.json`
 - Able to name the required Notion columns whatever you want and have the code work by changing `page_property` in `notion_setting.json`
 - credential and OAuth consent screen with google calendar scope
 
-Inspired by [akarri2001/Notion-and-Google-Calendar-2-Way-Sync](https://github.com/akarri2001/Notion-and-Google-Calendar-2-Way-Sync)
+Inspired by [akarri2001](https://github.com/akarri2001/Notion-and-Google-Calendar-2-Way-Sync)
 
 ## How to install it
 
-- Download [python](https://www.python.org/downloads/)
+- Step1: Fork or Clone git repository
+  For beginners, you can download this repository directly.
+  1. Click the green `Code` button on the top-right corner of the page, and then click `Download ZIP`
 
-- Fork or Clone git repository
+     <img src="./assets/download.png" width="600" height="auto">
+     
+     You can unzip it and then change the folder name to whatever you want. Have a look these files and folders. We will change some of them later.
+     
+     <img src="./assets/folder.png" width="600" height="auto">
+
+  For advanced users, you can fork this repository and then clone it. 
 
   1. In the top-right corner of the page, click Fork.
 
@@ -46,17 +61,17 @@ Inspired by [akarri2001/Notion-and-Google-Calendar-2-Way-Sync](https://github.co
   ```bash
   git clone https://github.com/YOUR-USERNAME/YOUR-REPOSITORY-NAME
   ```
-
-- Change directory to where you download, and then install packages
+  7. Change directory to where you download, and then install packages
 
   ```bash
   cd YOUR-REPOSITORY-NAME
   pip3 install -r requirements.txt
   ```
 
-- Duplicate the template as the initial database [NotionGCal](https://huixin.notion.site/aa639e48cfee4216976756f33cf57c8e?v=6db9353f3bc54029807c539ffc3dfdb4)
+- Step2: Duplicate the Notion template as the initial database [NotionGCal](https://huixin.notion.site/aa639e48cfee4216976756f33cf57c8e?v=6db9353f3bc54029807c539ffc3dfdb4)
+  If you are familar with the entire code, you are welcome to customise your own template. However, I recommend you to use my template and do not change the property names at the first time.
 
-- Notion Connection Setting
+- Step3: Notion Connection Setting
 
   1. Open your Notion and click `Settings and members`, and then click here
      <img src="./assets/connection.png" width="600" height="auto">
@@ -67,7 +82,7 @@ Inspired by [akarri2001/Notion-and-Google-Calendar-2-Way-Sync](https://github.co
   3. Open the template page, click `...`, then click `Add connection`. (Select what you name your connection)
      <img src="./assets/notionconnect.png" width="600" height="auto">
 
-- Complete the `notion_setting.json` in the `token_blank` folder, and then rename the folder `token_blank` with `token` (.gitignore will exclude files in this `token` folder to protect your sensitive information)
+- Step4: Complete the `notion_setting.json` in the `token_blank` folder, and then rename the folder `token_blank` with `token` (.gitignore will exclude files in this `token` folder to protect your sensitive information when you push your code to github. If you don't want to use github, you can still need to rename the folder but can ignore the reason why we do this)
 
   - "notion*token": "Paste your Internal Integration Token which starts with `secret*...`",
     <img src="./assets/secrets.png" width="600" height="auto">
@@ -76,12 +91,12 @@ Inspired by [akarri2001/Notion-and-Google-Calendar-2-Way-Sync](https://github.co
   - "database_id": "look the same link, only paste databaseID",
     <img src="./assets/copylink.png" width="600" height="auto">
 
-  - the following items is up to you
+  - the following items is up to you. If you are the first time using terminal or python, I recommend you to use 1 or 2 fir "goforward_days". This mean that the code will synchromise the events from 1 day before to 2 days after today. If you are familar with python, you can change them as you want.
 
     - "timecode": "+08:00",
     - "timezone": "Australia/Perth",
     - "goback_days": 1,
-    - "goforward_days": 7,
+    - "goforward_days": 2,
     - "delete_option": 0,
     - "event_length": 60,
     - "start_time": 8,
@@ -97,10 +112,25 @@ Inspired by [akarri2001/Notion-and-Google-Calendar-2-Way-Sync](https://github.co
     - "gcal_dic": [{"YOUR CALENDAR NAME1": "YOUR CALENDAR ID1", "YOUR CALENDAR NAME2": "YOUR CALENDAR ID2"}],
     - "gcal_dic_key_to_value": [{"YOUR CALENDAR ID1": "YOUR CALENDAR NAME1", "YOUR CALENDAR ID2": "YOUR CALENDAR NAME2"}],
 
-  - The following items are column names in notion based on my template. The `page_property` section is setting these column name. - "Task_Notion_Name": "Task Name", - "Date_Notion_Name": "Date", - "Initiative_Notion_Name": "Initiative", - "ExtraInfo_Notion_Name": "Extra Info", - "Location_Notion_Name": "Location", - "On_GCal_Notion_Name": "On GCal?", - "NeedGCalUpdate_Notion_Name": "NeedGCalUpdate", - "GCalEventId_Notion_Name": "GCal Event Id", - "LastUpdatedTime_Notion_Name" : "Last Updated Time", - "Calendar_Notion_Name": "Calendar", - "Current_Calendar_Id_Notion_Name": "Current Calendar Id", - "Delete_Notion_Name": "Done?", - "Status_Notion_Name": "Status", - "Page_ID_Notion_Name": "PageID", - "CompleteIcon_Notion_Name": "CompleteIcon"
+  - The following items are column names in notion based on my template. The `page_property` section is setting these column name. 
+    - "Task_Notion_Name": "Task Name", 
+    - "Date_Notion_Name": "Date", 
+    - "Initiative_Notion_Name": "Initiative", 
+    - "ExtraInfo_Notion_Name": "Extra Info", 
+    - "Location_Notion_Name": "Location", 
+    - "On_GCal_Notion_Name": "On GCal?", 
+    - "NeedGCalUpdate_Notion_Name": "NeedGCalUpdate", 
+    - "GCalEventId_Notion_Name": "GCal Event Id", 
+    - "LastUpdatedTime_Notion_Name" : "Last Updated Time", 
+    - "Calendar_Notion_Name": "Calendar", 
+    - "Current_Calendar_Id_Notion_Name": "Current Calendar Id", 
+    - "Delete_Notion_Name": "Done?", 
+    - "Status_Notion_Name": "Status", 
+    - "Page_ID_Notion_Name": "PageID", 
+    - "CompleteIcon_Notion_Name": "CompleteIcon"
     You can change the column name without modifying the main code zone as long as you alter this section and notion columns consistently.
 
-- Create a google token, and make sure your scope include google calendar
+- Step5: Create a google token, and make sure your scope include google calendar
 
   1. Go to [google developers](https://console.developers.google.com/)
 
@@ -121,7 +151,7 @@ Inspired by [akarri2001/Notion-and-Google-Calendar-2-Way-Sync](https://github.co
 
   6. Click `CONFIGURE CONSENT SCREEN`, and then select `External` and click `CREATE`
 
-  7. Name whatever you want, and select your email as `User support email`. Next, type your email to `Developer contect information`, and then click `SAVE & CONTINUE`
+  7. Name whatever you want, and select your email as `User support email`. Next, type your email to `Developer contact information`, and then click `SAVE & CONTINUE`
 
   8. Click `ADD OR REMOVE SCOPES`, and then Select the scope as belows. Scroll down and click `UPDATE`
      <img src="./assets/addscope.png" width="600" height="auto">
@@ -144,11 +174,29 @@ Inspired by [akarri2001/Notion-and-Google-Calendar-2-Way-Sync](https://github.co
 
   14. Rename `client_secret_XXXXXXXXXXXX.json` to `client_secret.json`, and then move it into `token` folder
 
+- Step6: Download [python](https://www.python.org/downloads/)
+
+  1. Visit the official Python website at https://www.python.org/downloads/.
+  
+  2. On the Downloads page, you will see the latest version of Python available for download. The website will automatically detect your operating system and suggest the appropriate version for your platform (Windows, macOS, or Linux). If you want to download a different version, click on the "Looking for a specific release?" link.
+  
+  3. Click on the download link for the version of Python you want to install. You will typically have two options: one for the latest stable release (e.g., Python 3.x.x) and one for the latest legacy release (e.g., Python 2.7.x). It is recommended to choose the latest stable release unless you have specific requirements for using Python 2.
+  
+  4. After clicking the download link, you will be redirected to the download page. Scroll down to find the files for your operating system. Choose the installer appropriate for your system architecture (32-bit or 64-bit).
+  
+  5. Once the installer is downloaded, run the installer executable (.exe file on Windows or .pkg file on macOS) by double-clicking on it.
+  
+  6. Follow the installation instructions provided by the installer. You can usually accept the default settings unless you have specific requirements. Make sure to check the box that says "Add Python to PATH" during the installation process, as this will make it easier to use Python from the command line.
+  
+  7. After the installation is complete, open a new command prompt (Windows) or terminal (macOS/Linux) and type python --version to verify that Python is installed correctly. You should see the version number of Python displayed.
+
 Congraduations! All settings are done! Let's run the program.
 
-# Sychronise
+# Sychronise Notion with Google Calendar
+  All commends and its comment in main.py are in `main.py`. You can change them as you want. I will explain most of them.
+  <img src="./assets/main.png" width="600" height="auto">
 
-- Update from notion to google
+- Update from notion event needed to updated to google calendar (default)
 
   ```bash
   python3 main.py
@@ -161,6 +209,12 @@ Congraduations! All settings are done! Let's run the program.
 
   ```bash
   python3 main.py
+  ```
+
+- Update from all notion tasks to google calendar
+  
+  ```bash
+  python3 main.py -na
   ```
 
 - Update from google time which is in Notion, and create google new events which is not in Notion
@@ -187,5 +241,3 @@ Congraduations! All settings are done! Let's run the program.
   ```bash
   python3 main.py -r
   ```
-
-<a href="https://www.buymeacoffee.com/huixinyang" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/default-orange.png" alt="Buy Me A Coffee" height="41" width="174"></a>

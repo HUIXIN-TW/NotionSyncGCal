@@ -1,23 +1,19 @@
 {
+  "credentials_path": "token/token.pkl",
   "notion_token": "",
   "urlroot": "",
   "database_id": "",
   "timecode": "+08:00",
   "timezone": "Australia/Perth",
   "goback_days": 1,
-  "goforward_days": 7,
+  "goforward_days": 2,
   "delete_option": 0,
-  "event_length": 60,
-  "start_time": 8,
+  "default_event_length": 60,
+  "default_start_time": 8,
   "allday_option": 0,
   "gcal_default_name": "",
   "gcal_default_id": "",
   "gcal_dic": [
-    {
-      "": ""
-    }
-  ],
-  "gcal_dic_key_to_value": [
     {
       "": ""
     }
@@ -39,5 +35,6 @@
       "Page_ID_Notion_Name": "PageID",
       "CompleteIcon_Notion_Name": "CompleteIcon"
     }
-  ]
+  ],
+  "skip_description_condition": ""
 }
