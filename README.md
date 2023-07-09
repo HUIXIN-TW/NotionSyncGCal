@@ -87,11 +87,10 @@ Inspired by [akarri2001](https://github.com/akarri2001/Notion-and-Google-Calenda
 
 - Step4: Complete the `notion_setting.json` in the `token_blank` folder, and then rename the folder `token_blank` with `token` (.gitignore will exclude files in this `token` folder to protect your sensitive information when you push your code to github. If you don't want to use github, you can still need to rename the folder but can ignore the reason why we do this)
 
-  - "notion*token": "Paste your Internal Integration Token which starts with `secret*...`",
+  - "notion_token": "Paste your Internal Integration Token which starts with `secret*...`",
     <img src="./assets/secrets.png" width="600" height="auto">
 
   - "urlroot": "https://www.notion.so/{YOURNOTIONNAME}/{databaseID}?XXXXX",
-  - "database_id": "look the same link, only paste databaseID",
     <img src="./assets/copylink.png" width="600" height="auto">
 
   - the following items is up to you. If you are the first time using terminal or python, I recommend you to use 1 or 2 fir "goforward_days". This mean that the code will synchromise the events from 1 day before to 2 days after today. If you are familar with python, you can change them as you want.
@@ -107,13 +106,13 @@ Inspired by [akarri2001](https://github.com/akarri2001/Notion-and-Google-Calenda
 
   - Go to your google calendar page, and then click `Settings` on the top-right, next, scroll the left bar to find `Setting for my calendar`. Click it, calendar `Name` is on the top, and scroll down to find `Calendar ID`
 
-    - "gcal_default_name": "YOUR CALENDAR NAME",
-    - "gcal_default_id": "YOUR CALENDAR ID",
-
   - Enter your default calendar at least. If you want to add multiple calendars, separate them by `,`
 
     - "gcal_dic": [{"YOUR CALENDAR NAME1": "YOUR CALENDAR ID1", "YOUR CALENDAR NAME2": "YOUR CALENDAR ID2"}],
-    - "gcal_dic_key_to_value": [{"YOUR CALENDAR ID1": "YOUR CALENDAR NAME1", "YOUR CALENDAR ID2": "YOUR CALENDAR NAME2"}],
+
+    If you set up multiple calendars, it will look like this:
+    <img src="./assets/multiplecal.png" width="600" height="auto">
+
 
   - The following items are column names in notion based on my template. The `page_property` section is setting these column name. 
     - "Task_Notion_Name": "Task Name", 

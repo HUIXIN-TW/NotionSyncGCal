@@ -1,4 +1,6 @@
 import os
+import re
+import sys
 import json
 import pickle
 from notion_client import Client
@@ -20,9 +22,10 @@ class Notion():
                 data = json.load(f)
         else:
             print("Make sure you store notion_setting.json in toke folder")
-        self.DATABASE_ID = data["database_id"]
+        
         # open up a task and then copy the URL root up to the "p="
         self.URLROOT = data["urlroot"]
+        self.DATABASE_ID = self.get_database_id(data["urlroot"])
         # Change timecode to be representative of your timezone, it has to be adjusted as daylight savings
         self.TIMECODE = data["timecode"]
         self.TIMEZONE = data["timezone"]
@@ -43,12 +46,13 @@ class Notion():
         # 0 Notion -> GCal: be created as an all-day event
         # 1 Notion -> GCal: be created at whatever hour you defined in the DEFAULT_EVENT_START
         self.ALLDAY_OPTION = data["allday_option"]
-        self.GCAL_DEFAULT_NAME = data["gcal_default_name"]
-        self.GCAL_DEFAULT_ID = data["gcal_default_id"]
         # MULTIPLE CALENDAR PART:
         self.GCAL_DIC = data["gcal_dic"][0]
         self.GCAL_DIC_KEY_TO_VALUE = self.gcal_dic_key_to_value(
             data["gcal_dic"][0])
+        # Default calendar Setting
+        self.GCAL_DEFAULT_NAME = list(self.GCAL_DIC)[0]
+        self.GCAL_DEFAULT_ID = list(self.GCAL_DIC_KEY_TO_VALUE)[0]
         # DATABASE SPECIFIC EDITS
         self.TASK_NOTION_NAME = data["page_property"][0]["Task_Notion_Name"]
         self.DATE_NOTION_NAME = data["page_property"][0]["Date_Notion_Name"]
@@ -79,6 +83,19 @@ class Notion():
             key_to_value[gcal_dic[key]] = key
         return key_to_value
 
+    def get_database_id(self, url):
+        # Define the regular expression pattern
+        pattern = r"https://www.notion.so/[^/]+/([^?]+)"
+
+        # Search for the pattern in the URL
+        match = re.search(pattern, url)
+        if match:
+            extracted_string = match.group(1)
+            return extracted_string
+        else:
+            print("Error: No match database ID")
+            sys.exit(1)
+
 # google API setting
 
 
@@ -96,8 +113,9 @@ class Google():
         else:
             print("Make sure you store notion_setting.json in toke folder")
         try:
+            gcal_default_id = Notion().GCAL_DEFAULT_ID
             calendar = self.service.calendars().get(
-                calendarId=data["gcal_default_id"]).execute()
+                calendarId=gcal_default_id).execute()
             print(f"--- Init Toke.py Google class ---")
             print(f"--- {self.service} ---")
         except:

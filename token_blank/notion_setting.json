@@ -1,8 +1,6 @@
 {
-  "credentials_path": "token/token.pkl",
   "notion_token": "",
   "urlroot": "",
-  "database_id": "",
   "timecode": "+08:00",
   "timezone": "Australia/Perth",
   "goback_days": 1,
@@ -11,8 +9,6 @@
   "default_event_length": 60,
   "default_start_time": 8,
   "allday_option": 0,
-  "gcal_default_name": "",
-  "gcal_default_id": "",
   "gcal_dic": [
     {
       "": ""
