@@ -9,7 +9,7 @@ Do you find yourself juggling between Notion and Google Calendar to manage your 
 - google account
 - Notion account
 - github account (optional)
-- python3
+- python3 (or Docker)
 
 ## Current Capabilities:
 
@@ -186,7 +186,7 @@ Inspired by [akarri2001](https://github.com/akarri2001/Notion-and-Google-Calenda
 
   <video src="./assets/NotionStep5.mp4" width="600" height="auto" controls="controls"></video>
 
-- Step6: Download [python](https://www.python.org/downloads/)
+- Step6: Download [python](https://www.python.org/downloads/)  (or skip this step if you use Docker)
 
   1. Visit the official Python website at https://www.python.org/downloads/.
   
@@ -216,21 +216,52 @@ Inspired by [akarri2001](https://github.com/akarri2001/Notion-and-Google-Calenda
 
   There are a lot of videos on youtube to teach you how to install python. I recommend you to watch them if you are not familar with python.
 
+- Step7: If you are familar with Docker, you can use Docker instaed of python to run this code. 
+
+  * Warning: if you use docker, change "docker": true, in `notion_setting.json`. Otherwise, the creds will not work when you activated it at the first time.
+  
+  1. download [Docker](https://www.docker.com/products/docker-desktop). 
+
+  2. open the terminal and type:
+  ```bash
+  docker build -t sync .
+  ```
+
+  3. Third, type to run default script:
+  ```bash
+  docker run -it sync
+  ```
+  or add the following commend to update from google calendar time only. You can check the commend in `main.py` or the following Sychronise Notion with Google Calendar section.
+  ```bash
+  docker run -it sync src/main.py -gt
+  ```
+
+  * At the first time, you need to copy the creds from brower to terminal. And copy the code and paste it into the `token.pkl` in token folder. Run the above code again, and then you can use docker to run the code.
+
+  4. Other commend to check the container. You can start the docker container and then run the code in the container.
+  ```bash
+  docker ps -a
+  ```
+
+  ```bash
+  docker <CONTAINER ID> start
+  ```
+
+  ```bash
+  docker exec -it <CONTAINER ID> sh
+  python src/main.py
+  ```
+
 Congraduations! All settings are done! Let's run the program.
 
 # Sychronise Notion with Google Calendar
-  Go to the terminal, and type:
+  Go to the terminal, and change the folder to where these script are.:
 
   ```bash
-  python3 main.py
-  ```
-
-  All commends and its comment in main.py are in `main.py`. You can change them as you want. I will explain most of them.
-
-  <img src="./assets/main.png" width="600" height="auto">
-
-- Update from notion event needed to updated to google calendar (default)
-
+  cd src
+  ```  
+  
+  Run the code to activate the connection between Notion and Google Calendar:
   ```bash
   python3 main.py
   ```
@@ -239,7 +270,11 @@ Congraduations! All settings are done! Let's run the program.
 
   <img src="./assets/refresh.png" width="600" height="auto">
 
-  Type this again
+  All commends and its comment in main.py are in `main.py`. You can change them as you want. I will explain most of them.
+
+  <img src="./assets/main.png" width="600" height="auto">
+
+- Update from notion event needed to updated to google calendar (default)
 
   ```bash
   python3 main.py

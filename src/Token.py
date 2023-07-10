@@ -11,8 +11,13 @@ from google.auth.transport.requests import Request
 from google_auth_oauthlib.flow import InstalledAppFlow
 
 
-FILEPATH = "token/notion_setting.json"
-CREDPATH = "token/token.pkl"
+# Get the absolute path to the current directory
+current_dir = os.path.dirname(os.path.abspath(__file__))
+
+# Construct the absolute file paths within the container
+FILEPATH = os.path.join(current_dir, "../token/notion_setting.json")
+CLIENTPATH = os.path.join(current_dir, "../token/client_secret.json")
+CREDPATH = os.path.join(current_dir, "../token/token.pkl")
 
 
 class Notion():
@@ -22,7 +27,6 @@ class Notion():
                 data = json.load(f)
         else:
             print("Make sure you store notion_setting.json in toke folder")
-        
         # open up a task and then copy the URL root up to the "p="
         self.URLROOT = data["urlroot"]
         self.DATABASE_ID = self.get_database_id(data["urlroot"])
@@ -96,6 +100,9 @@ class Notion():
             print("Error: No match database ID")
             sys.exit(1)
 
+    def get_string(self):
+        print("--- Token Notion Activated ---")
+
 # google API setting
 
 
@@ -110,6 +117,7 @@ class Google():
         if os.path.exists(FILEPATH):
             with open(FILEPATH) as f:
                 data = json.load(f)
+                self.DOCKER = data["docker"]
         else:
             print("Make sure you store notion_setting.json in toke folder")
         try:
@@ -124,6 +132,7 @@ class Google():
                 "Checking if the Google Calendar API token expires. \nRun Token.py to update the token.pkl.")
             print(
                 "Google Cloud Platform https://console.cloud.google.com/apis/credentials")
+            print("Make sure tha you have the right client_secret.json in token folder")
             self.ask_creds(CREDPATH)
             os._exit(1)
 
@@ -147,13 +156,21 @@ class Google():
             if creds and creds.expired and creds.refresh_token:
                 creds.refresh(Request())
             else:
-                flow = InstalledAppFlow.from_client_secrets_file(
-                    "token/client_secret.json", scopes)
-                creds = flow.run_local_server(port=0)
+                flow = InstalledAppFlow.from_client_secrets_file(CLIENTPATH, scopes)
+                if self.DOCKER:
+                    print("Run in docker container")
+                    # Post the cred to terminal and copy the code to the terminal
+                    creds = flow.run_console()
+                else:
+                    print("Run in local server")
+                    # Easy: Use local server while not in docker container
+                    creds = flow.run_local_server(port=0)
                 print("------------------Refresh tokens------------------")
                 print("\n")
-                # Or post the cred to terminal
-                # creds = flow.run_console()
             # Save the credentials for the next run
             with open(CREDPATH, "wb") as token:
+                print("Save the credentials for the next run")
                 pickle.dump(creds, token)
+
+    def get_string(self):
+        print("--- Token Google Activated ---")

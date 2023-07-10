@@ -1,0 +1,11 @@
+.git
+.vscode
+__pycache__
+
+# Ignore the static folder
+/assets
+
+# Ignore the database file
+/tmp
+/test
+/token_blank
