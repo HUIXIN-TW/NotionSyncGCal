@@ -244,7 +244,7 @@ Inspired by [akarri2001](https://github.com/akarri2001/Notion-and-Google-Calenda
   ```
 
   ```bash
-  docker <CONTAINER ID> start
+  docker start <CONTAINER ID>
   ```
 
   ```bash
