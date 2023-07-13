@@ -34,62 +34,81 @@ class Notion():
         print(f"--- database_id: {self.DATABASE_ID} is setting ---")
         # Change timecode to be representative of your timezone, it has to be adjusted as daylight savings
         self.TIMECODE = data["timecode"]
-        print(f"--- {self.TIMECODE} is setting ---")
+        print(f"--- timecode: {self.TIMECODE} is setting ---")
         self.TIMEZONE = data["timezone"]
-        print(f"--- {self.TIMEZONE} is setting ---")
+        print(f"--- timezone: {self.TIMEZONE} is setting ---")
         # Notion search range: go back to which date?
         # google search range: go back to which date?
         self.AFTER_DATE = (date.today() + timedelta(days=-
                            data["goback_days"])).strftime(f"%Y-%m-%d")
-        print(f"--- {self.AFTER_DATE} is setting ---")
+        print(f"--- goback_days: {self.AFTER_DATE} is setting ---")
         self.BEFORE_DATE = (
             date.today() + timedelta(days=+ data["goforward_days"])).strftime(f"%Y-%m-%d")
-        print(f"--- {self.BEFORE_DATE} is setting ---")
+        print(f"--- goforward_days: {self.BEFORE_DATE} is setting ---")
         self.GOOGLE_TIMEMIN = (date.today(
         ) + timedelta(days=- data["goback_days"])).strftime(f"%Y-%m-%dT%H:%M:%S{self.TIMECODE}")
-        print(f"--- {self.GOOGLE_TIMEMIN} is setting ---")
+        print(f"--- google_timemin: {self.GOOGLE_TIMEMIN} is setting ---")
         self.GOOGLE_TIMEMAX = (date.today(
         ) + timedelta(days=+ data["goforward_days"])).strftime(f"%Y-%m-%dT%H:%M:%S{self.TIMECODE}")
-        print(f"--- {self.GOOGLE_TIMEMAX} is setting ---")
+        print(f"--- google_timemax: {self.GOOGLE_TIMEMAX} is setting ---")
         self.DELETE_OPTION = data["delete_option"]
-        print(f"--- {self.DELETE_OPTION} is setting ---")
+        print(f"--- delete_option: {self.DELETE_OPTION} is setting ---")
         self.DEFAULT_EVENT_LENGTH = data["default_event_length"]
-        print(f"--- {self.DEFAULT_EVENT_LENGTH} is setting ---")
+        print(f"--- default_event_length: {self.DEFAULT_EVENT_LENGTH} is setting ---")
         # 8 would be 8 am. 16 would be 4 pm. Only int
         self.DEFAULT_EVENT_START = data["default_start_time"]
-        print(f"--- {self.DEFAULT_EVENT_START} is setting ---")
+        print(f"--- default_start_time: {self.DEFAULT_EVENT_START} is setting ---")
         # 0 Notion -> GCal: be created as an all-day event
         # 1 Notion -> GCal: be created at whatever hour you defined in the DEFAULT_EVENT_START
         self.ALLDAY_OPTION = data["allday_option"]
-        print(f"--- {self.ALLDAY_OPTION} is setting ---")
+        print(f"--- allday_option: {self.ALLDAY_OPTION} is setting ---")
         # MULTIPLE CALENDAR PART:
         self.GCAL_DIC = data["gcal_dic"][0]
-        print(f"--- {self.GCAL_DIC} is setting ---")
+        print(f"--- gcal_dic: {self.GCAL_DIC} is setting ---")
         self.GCAL_DIC_KEY_TO_VALUE = self.gcal_dic_key_to_value(
             data["gcal_dic"][0])
+        print(f"--- gcal_dic_key_to_value: {self.GCAL_DIC_KEY_TO_VALUE} is setting ---")
         # Default calendar Setting
         self.GCAL_DEFAULT_NAME = list(self.GCAL_DIC)[0]
+        print(f"--- gcal_default_name: {self.GCAL_DEFAULT_NAME} is setting ---")
         self.GCAL_DEFAULT_ID = list(self.GCAL_DIC_KEY_TO_VALUE)[0]
+        print(f"--- gcal_default_id: {self.GCAL_DEFAULT_ID} is setting ---")
         # DATABASE SPECIFIC EDITS
         self.TASK_NOTION_NAME = data["page_property"][0]["Task_Notion_Name"]
+        print(f"--- task_notion_name: {self.TASK_NOTION_NAME} is setting ---")
         self.DATE_NOTION_NAME = data["page_property"][0]["Date_Notion_Name"]
+        print(f"--- date_notion_name: {self.DATE_NOTION_NAME} is setting ---")
         self.INITIATIVE_NOTION_NAME = data["page_property"][0]["Initiative_Notion_Name"]
+        print(f"--- initiative_notion_name: {self.INITIATIVE_NOTION_NAME} is setting ---")
         self.EXTRAINFO_NOTION_NAME = data["page_property"][0]["ExtraInfo_Notion_Name"]
+        print(f"--- extrainfo_notion_name: {self.EXTRAINFO_NOTION_NAME} is setting ---")
         self.LOCATION_NOTION_NAME = data["page_property"][0]["Location_Notion_Name"]
+        print(f"--- location_notion_name: {self.LOCATION_NOTION_NAME} is setting ---")
         self.ON_GCAL_NOTION_NAME = data["page_property"][0]["On_GCal_Notion_Name"]
+        print(f"--- on_gcal_notion_name: {self.ON_GCAL_NOTION_NAME} is setting ---")
         self.NEEDGCALUPDATE_NOTION_NAME = data["page_property"][0]["NeedGCalUpdate_Notion_Name"]
+        print(f"--- needgcalupdate_notion_name: {self.NEEDGCALUPDATE_NOTION_NAME} is setting ---")
         self.GCALEVENTID_NOTION_NAME = data["page_property"][0]["GCalEventId_Notion_Name"]
+        print(f"--- gcaleventid_notion_name: {self.GCALEVENTID_NOTION_NAME} is setting ---")
         self.LASTUPDATEDTIME_NOTION_NAME = data["page_property"][0]["LastUpdatedTime_Notion_Name"]
+        print(f"--- lastupdatedtime_notion_name: {self.LASTUPDATEDTIME_NOTION_NAME} is setting ---")
         self.CALENDAR_NOTION_NAME = data["page_property"][0]["Calendar_Notion_Name"]
+        print(f"--- calendar_notion_name: {self.CALENDAR_NOTION_NAME} is setting ---")
         self.CURRENT_CALENDAR_ID_NOTION_NAME = data["page_property"][0]["Current_Calendar_Id_Notion_Name"]
+        print(f"--- current_calendar_id_notion_name: {self.CURRENT_CALENDAR_ID_NOTION_NAME} is setting ---")
 
         # set at 0 if you want the delete column
         # set at 1 if you want nothing deleted
         self.DELETE_NOTION_NAME = data["page_property"][0]["Delete_Notion_Name"]
+        print(f"--- delete_notion_name: {self.DELETE_NOTION_NAME} is setting ---")
         self.STATUS_NOTION_NAME = data["page_property"][0]["Status_Notion_Name"]
+        print(f"--- status_notion_name: {self.STATUS_NOTION_NAME} is setting ---")
         self.PAGE_ID_NOTION_NAME = data["page_property"][0]["Page_ID_Notion_Name"]
+        print(f"--- page_id_notion_name: {self.PAGE_ID_NOTION_NAME} is setting ---")
         self.COMPLETEICON_NOTION_NAME = data["page_property"][0]["CompleteIcon_Notion_Name"]
+        print(f"--- completeicon_notion_name: {self.COMPLETEICON_NOTION_NAME} is setting ---")
         self.SKIP_DESCRIPTION_CONDITION = data["skip_description_condition"]
+        print(f"--- skip_description_condition: {self.SKIP_DESCRIPTION_CONDITION} is setting ---")
         # set notion auth
         self.NOTION = Client(auth=data["notion_token"])
         print("--- Init Toke.py Notion class ---")
