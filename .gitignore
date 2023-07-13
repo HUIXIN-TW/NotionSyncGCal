@@ -1,4 +1,6 @@
-/test
+.DS_Store
+
 /tmp
 /token
-.DS_Store
+
+/node_modules

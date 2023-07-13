@@ -15,6 +15,7 @@ RUN pip install --upgrade pip && pip install -r requirements.txt
 # Copy the source code
 COPY src /app/src
 COPY token /app/token
+COPY tests /app/tests
 
 # Set the entrypoint to Python
 ENTRYPOINT ["python"]

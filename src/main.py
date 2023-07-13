@@ -9,6 +9,7 @@ import Sync as s
 #   - Event Name: Only Notion to google will be a better version because it shows the CompleteIcon as prefix
 #   - Event Description: Only Notion to google will be a better vesion because it shows the Initiative and Status
 
+
 def main():
     show_action = input("Do you want to redirect to file? Y/N:  ")
     print("\n")
@@ -30,11 +31,13 @@ def main():
             with open(out_filename, "w") as f:
                 sys.stdout = f  # print into txt file
                 print(
-                    "--------------------------------------------------------------------------")
+                    "--------------------------------------------------------------------------"
+                )
                 print(f"File Name:           {cmd_name}")
                 print(f"Date Time:            {today}")
                 print(
-                    "--------------------------------------------------------------------------")
+                    "--------------------------------------------------------------------------"
+                )
                 print("\n")
                 sync_notion_gcal(sys.argv)
             sys.stdout = temp  # redirect to default std
@@ -68,7 +71,8 @@ def sync_notion_gcal(cmd):
         s.gcal_to_notion(google_action)
     elif cmd[1] == "-ga" or cmd[1] == "--GOOGLEALL":
         check_again = input(
-            "Do you want to overwrite to Notion? It can't be undo! Enter [YES, OVERWRITE]:  ")
+            "Do you want to overwrite to Notion? It can't be undo! Enter [YES, OVERWRITE]:  "
+        )
         if check_again == "YES, OVERWRITE":
             # update from google to notion
             # danger zone from google description to notion description
@@ -91,10 +95,14 @@ def sync_notion_gcal(cmd):
         except:
             name = "Task"
         print("\n")
-        print("-------------------------------- Notion ----------------------------------")
+        print(
+            "-------------------------------- Notion ----------------------------------"
+        )
         s.notion_event_sample(n)
         print("\n")
-        print("--------------------------------  GCal  ----------------------------------")
+        print(
+            "--------------------------------  GCal  ----------------------------------"
+        )
         s.gcal_event_sample(name, n)
     else:
         print("Error: No command")
