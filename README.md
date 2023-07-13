@@ -102,7 +102,7 @@ Inspired by [akarri2001](https://github.com/akarri2001/Notion-and-Google-Calenda
   - the following items is up to you. If you are the first time using terminal or python, I recommend you to use 1 or 2 fir "goforward_days". This mean that the code will synchromise the events from 1 day before to 2 days after today. If you are familar with python, you can change them as you want.
 
     - "timecode": "+08:00",
-    - "timezone": "Australia/Perth",
+    - "timezone": "Asia/Taipei",
     - "goback_days": 1,
     - "goforward_days": 2,
     - "delete_option": 0,

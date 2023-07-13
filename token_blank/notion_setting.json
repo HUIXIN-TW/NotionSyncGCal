@@ -1,8 +1,9 @@
 {
+  "docker": false,
   "notion_token": "",
   "urlroot": "",
   "timecode": "+08:00",
-  "timezone": "Australia/Perth",
+  "timezone": "Asia/Taipei",
   "goback_days": 1,
   "goforward_days": 2,
   "delete_option": 0,

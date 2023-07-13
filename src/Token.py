@@ -29,29 +29,42 @@ class Notion():
             print("Make sure you store notion_setting.json in toke folder")
         # open up a task and then copy the URL root up to the "p="
         self.URLROOT = data["urlroot"]
+        print(f"--- urlroot: {self.URLROOT} is setting ---")
         self.DATABASE_ID = self.get_database_id(data["urlroot"])
+        print(f"--- database_id: {self.DATABASE_ID} is setting ---")
         # Change timecode to be representative of your timezone, it has to be adjusted as daylight savings
         self.TIMECODE = data["timecode"]
+        print(f"--- {self.TIMECODE} is setting ---")
         self.TIMEZONE = data["timezone"]
+        print(f"--- {self.TIMEZONE} is setting ---")
         # Notion search range: go back to which date?
         # google search range: go back to which date?
         self.AFTER_DATE = (date.today() + timedelta(days=-
                            data["goback_days"])).strftime(f"%Y-%m-%d")
+        print(f"--- {self.AFTER_DATE} is setting ---")
         self.BEFORE_DATE = (
             date.today() + timedelta(days=+ data["goforward_days"])).strftime(f"%Y-%m-%d")
+        print(f"--- {self.BEFORE_DATE} is setting ---")
         self.GOOGLE_TIMEMIN = (date.today(
         ) + timedelta(days=- data["goback_days"])).strftime(f"%Y-%m-%dT%H:%M:%S{self.TIMECODE}")
+        print(f"--- {self.GOOGLE_TIMEMIN} is setting ---")
         self.GOOGLE_TIMEMAX = (date.today(
         ) + timedelta(days=+ data["goforward_days"])).strftime(f"%Y-%m-%dT%H:%M:%S{self.TIMECODE}")
+        print(f"--- {self.GOOGLE_TIMEMAX} is setting ---")
         self.DELETE_OPTION = data["delete_option"]
+        print(f"--- {self.DELETE_OPTION} is setting ---")
         self.DEFAULT_EVENT_LENGTH = data["default_event_length"]
+        print(f"--- {self.DEFAULT_EVENT_LENGTH} is setting ---")
         # 8 would be 8 am. 16 would be 4 pm. Only int
         self.DEFAULT_EVENT_START = data["default_start_time"]
+        print(f"--- {self.DEFAULT_EVENT_START} is setting ---")
         # 0 Notion -> GCal: be created as an all-day event
         # 1 Notion -> GCal: be created at whatever hour you defined in the DEFAULT_EVENT_START
         self.ALLDAY_OPTION = data["allday_option"]
+        print(f"--- {self.ALLDAY_OPTION} is setting ---")
         # MULTIPLE CALENDAR PART:
         self.GCAL_DIC = data["gcal_dic"][0]
+        print(f"--- {self.GCAL_DIC} is setting ---")
         self.GCAL_DIC_KEY_TO_VALUE = self.gcal_dic_key_to_value(
             data["gcal_dic"][0])
         # Default calendar Setting
@@ -108,18 +121,21 @@ class Notion():
 
 class Google():
     def __init__(self):
-        # If the token expires, the other python script GCalToken.py creates a new token for the program to use
         if os.path.exists(CREDPATH):
             credentials = pickle.load(open(CREDPATH, "rb"))
             self.service = build("calendar", "v3", credentials=credentials)
         else:
             print("Make sure you store token.pkl in toke folder")
-        if os.path.exists(FILEPATH):
-            with open(FILEPATH) as f:
-                data = json.load(f)
-                self.DOCKER = data["docker"]
-        else:
+        try:
+            if os.path.exists(FILEPATH):
+                print("Notion setting file found")
+                with open(FILEPATH) as f:
+                    data = json.load(f)
+                    self.DOCKER = data["docker"]
+        except:
             print("Make sure you store notion_setting.json in toke folder")
+            print("Or incrrect json format")
+            os._exit(1)
         try:
             gcal_default_id = Notion().GCAL_DEFAULT_ID
             calendar = self.service.calendars().get(
