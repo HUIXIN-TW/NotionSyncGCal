@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import data from './data.json';
 import moment from 'moment-timezone';
+import './renderJson.css';
 
 function App() {
   const [jsonData, setJsonData] = useState(data);
@@ -37,6 +38,7 @@ function App() {
   return (
     <div>
       <h1>JSON Data:</h1>
+      <p> Fill your personal setting</p>
       <ul>
         {Object.entries(jsonData).map(([key, value]) => (
            <li key={key}>
@@ -63,7 +65,7 @@ function App() {
            ) : typeof value === 'boolean' ? (
              <select
                value={value.toString()}
-               onChange={(e) => handleValueChange(key, e.target.value)}
+               onChange={(e) => handleValueChange(key, e.target.value === 'true')}
              >
                <option value="true">true</option>
                <option value="false">false</option>
@@ -74,7 +76,9 @@ function App() {
          </li>
         ))}
       </ul>
-      <button onClick={handleSave}>Save</button>
+      <div className="container">
+      <button className="save-button" onClick={handleSave}>Save</button>
+      </div>
     </div>
   );
 }
