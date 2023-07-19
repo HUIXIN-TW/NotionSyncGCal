@@ -19,7 +19,8 @@ try:
     print(
         f"--- Run Sync.py | After {nt.AFTER_DATE} Included, Before {nt.BEFORE_DATE} Not Included ---"
     )
-except:
+except Exception as e:
+    print(e)
     print("--- Exit Sync.py ---")
     os._exit(1)
 
@@ -846,10 +847,11 @@ def notion_to_gcal(action=0, updateEverything=True):
                 currentCal = el["properties"][nt.CURRENT_CALENDAR_ID_NOTION_NAME][
                     "rich_text"
                 ][0]["text"]["content"]
-            except:
+            except Exception as e:
                 if exist_EventId != "":
                     errorTask = TaskNames[i]
                     print(f"Check the invalid event Id: {errorTask}")
+                    print(e)
                     sys.exit(1)
 
             # get each page id
@@ -1133,18 +1135,19 @@ def deleteEvent():
                 eventId = el["properties"][nt.GCALEVENTID_NOTION_NAME]["rich_text"][0][
                     "text"
                 ]["content"]
-            except:
+            except Exception as e:
                 print(
                     f"{summary} does not have event ID. Make sure that it exists in Notion"
                 )
+                print(e)
                 os._exit(1)
-            print(f"{i}th 正在處理的GCal Event {summary}, EventID {eventId}")
+            print(f"{i}th processing GCal Event {summary}, EventID {eventId}")
 
             try:  # delete Gcal event
                 GOOGLE_SERVICE.service.events().delete(
                     calendarId=calendarID, eventId=eventId
                 ).execute()
-                print(f"{i}th 正在刪除的GCal Event {summary}, EventID {eventId}")
+                print(f"{i}th Deleting GCal Event {summary}, EventID {eventId}")
             except:
                 continue
 

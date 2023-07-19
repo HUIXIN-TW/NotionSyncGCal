@@ -170,7 +170,7 @@ class Notion:
         except:
             setattr(self, attribute_name, None)
             print(f"--- Failed to set {attribute_name.lower()} ---")
-            sys.exit(1)
+            os.exit(1)
 
     def gcal_dic_key_to_value(self, gcal_dic):
         key_to_value = {}
@@ -189,7 +189,7 @@ class Notion:
             return extracted_string
         else:
             print("Error: No match database ID")
-            sys.exit(1)
+            os.exit(1)
 
     def get_string(self):
         print("--- Token Notion Activated ---")

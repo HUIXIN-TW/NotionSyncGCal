@@ -5,119 +5,95 @@ from datetime import datetime
 import Sync as s
 
 
-# Limitation:
-#   - Event Name: Only Notion to google will be a better version because it shows the CompleteIcon as prefix
-#   - Event Description: Only Notion to google will be a better vesion because it shows the Initiative and Status
-
-
 def main():
     show_action = input("Do you want to redirect to file? Y/N:  ")
     print("\n")
 
-    if show_action not in ["Y", "y", "Yes", "yes", "YES"]:
-        print("Show on the terminal...")
-        sync_notion_gcal(sys.argv)
+    if show_action in ["y", "yes"]:
+        write_to_file()
     else:
-        try:
-            temp = sys.stdout  # default output is console
-
-            cmd_name = ""
-            for name in sys.argv:
-                cmd_name = cmd_name + " " + name
-
-            today = datetime.today().strftime(f"%Y-%m-%dT%H:%M:%S")
-            out_filename = f"show_results_{today}.txt"
-
-            with open(out_filename, "w") as f:
-                sys.stdout = f  # print into txt file
-                print(
-                    "--------------------------------------------------------------------------"
-                )
-                print(f"File Name:           {cmd_name}")
-                print(f"Date Time:            {today}")
-                print(
-                    "--------------------------------------------------------------------------"
-                )
-                print("\n")
-                sync_notion_gcal(sys.argv)
-            sys.stdout = temp  # redirect to default std
-            print(f"COMPLETED, please see {out_filename}")
-        except:
-            print("Error...")
-            sys.exit(1)
-
-    if show_action == ["both", "BOTH", "Both"]:
-        print(f.readlines())
+        print("Displaying output on the terminal...")
+        run_sync_notion_gcal(sys.argv)  # Call the synchronization function
 
 
-def sync_notion_gcal(cmd):
-    start_time = time.time()  # Start time
-    notion_action = 0  # default: notion to google update time section
-    google_action = 0  # default: google to notion update time section
+def write_to_file():
+    try:
+        temp = sys.stdout  # Store the default stdout
+        cmd_name = " ".join(sys.argv)
+        today = datetime.today().strftime("%Y-%m-%dT%H:%M:%S")
+        filename = f"show_results_{today}.txt"
+        with open(filename, "w") as f:
+            sys.stdout = f  # Redirect output to the file
+            print("----------------------------------------------------")
+            print(f"File Name: {cmd_name}")
+            print(f"Date Time: {today}")
+            print("----------------------------------------------------")
+            print()
+            run_sync_notion_gcal(sys.argv)  # Call the synchronization function
+        sys.stdout = temp  # Restore the default stdout
+        print(f"Completed! The output has been saved to {filename}.")
+    except Exception as e:
+        print("An error occurred while redirecting output to a file:")
+        print(e)
+    finally:
+        sys.stdout = temp  # Restore the default stdout
 
+
+def run_sync_notion_gcal(cmd):
+    start_time = time.time()
+
+    # default: update from notion to google
     if len(cmd) == 1:
-        # default: update from notion to google
-        s.notion_to_gcal(notion_action, True)
-    elif cmd[1] == "-na" or cmd[1] == "--UPDATE-ALL-ON-NOTION":
-        # default: update from notion to google
-        # including NeedGCalUpdate is false
-        s.notion_to_gcal(notion_action, False)
-    elif cmd[1] == "-gt" or cmd[1] == "--GOOGLETIME":
-        # update from google time and create new events
-        s.gcal_to_notion(google_action)
-    elif cmd[1] == "-gc" or cmd[1] == "--GOOGLECREATE":
-        # create from google event only not update time format
-        google_action = 1
-        s.gcal_to_notion(google_action)
-    elif cmd[1] == "-ga" or cmd[1] == "--GOOGLEALL":
+        s.notion_to_gcal(action=0, updateEverything=True)
+    # default: update from notion to google, including NeedGCalUpdate is false
+    elif cmd[1] == "-na" or cmd[1] == "--update-all-on-notion":
+        s.notion_to_gcal(action=0, updateEverything=False)
+    # update from google time and create new events
+    elif cmd[1] == "-gt" or cmd[1] == "--google-time":
+        s.gcal_to_notion(action=0)
+    # create from google event only not update time format
+    elif cmd[1] == "-gc" or cmd[1] == "--google-create":
+        s.gcal_to_notion(action=1)
+    # update from google to notion, danger zone from google description to notion description
+    elif cmd[1] == "-ga" or cmd[1] == "--google-all":
         check_again = input(
-            "Do you want to overwrite to Notion? It can't be undo! Enter [YES, OVERWRITE]:  "
+            "Do you want to overwrite Notion? This action cannot be undone! Enter [YES, OVERWRITE]: "
         )
         if check_again == "YES, OVERWRITE":
-            # update from google to notion
-            # danger zone from google description to notion description
-            google_action = 2
-            s.gcal_to_notion(google_action)
-    elif cmd[1] == "-np" or cmd[1] == "NOTIONPAGE":  # still bug
-        notion_action = 1
-        s.notion_to_gcal(notion_action, True)
-    elif cmd[1] == "-r" or cmd[1] == "--REMOVE":
-        # delete google cal via notion Done?
+            s.gcal_to_notion(action=2)
+    # TODO: can extract the notion page id from the url
+    elif cmd[1] == "-np" or cmd[1] == "--notion-page":
+        s.notion_to_gcal(action=1, updateEverything=True)
+    # delete google cal via notion Done?
+    elif cmd[1] == "-r" or cmd[1] == "--remove":
         s.deleteEvent()
-    elif cmd[1] == "-s" or cmd[1] == "--SAMPLE":
-        # print sample
+    # print sample
+    elif cmd[1] == "-s" or cmd[1] == "--sample":
         try:
             n = int(cmd[2])
-        except:
+        except IndexError:
             n = 1
         try:
-            name = [3]
-        except:
+            name = cmd[3]
+        except IndexError:
             name = "Task"
-        print("\n")
-        print(
-            "-------------------------------- Notion ----------------------------------"
-        )
-        s.notion_event_sample(n)
-        print("\n")
-        print(
-            "--------------------------------  GCal  ----------------------------------"
-        )
-        s.gcal_event_sample(name, n)
+        print("\nNotion Events:")
+        s.notion_event_sample(num=n)
+        print("\nGoogle Events:")
+        s.gcal_event_sample(name=name, num=n)
     else:
-        print("Error: No command")
+        print("Error: Invalid command")
 
     end_time = time.time()  # end time
     current_time = datetime.now().strftime("%H:%M:%S")
     print("\n")
     print("----------------------------- TimeInformation -----------------------------")
-    print(f"Command Line: {cmd}")
+    print(f"Command Line: {' '.join(cmd)}")
     print("Current Time =", current_time)
-    print("Process finished --- %s seconds ---" % (end_time - start_time))
+    print("Process finished in %.2f seconds" % (end_time - start_time))
     print("-------------------------------- COMPLETED --------------------------------")
     print("###########################################################################")
     print("################################### END ###################################")
-    print("\n")
     print("\n")
 
 
