@@ -3,10 +3,66 @@ import data from './data.json';
 import moment from 'moment-timezone';
 import './renderJson.css';
 
+function renderProperty(property, value, handleChange) {
+  if (typeof value === 'boolean') {
+    return (
+      <select
+        value={value.toString()}
+        onChange={(e) => handleChange(property, e.target.value === 'true')}
+      >
+        <option value="true">true</option>
+        <option value="false">false</option>
+      </select>
+    );
+  } else if (typeof value === 'string') {
+    return (
+      <input
+        type="text"
+        value={value}
+        onChange={(e) => handleChange(property, e.target.value)}
+      />
+    );
+  }  else if (typeof value === 'number') {
+    return (
+      <input
+        type="number"
+        value={value}
+        onChange={(e) => handleChange(property, e.target.value)}
+      />
+    );
+  } 
+  else if (Array.isArray(value)) {
+    return (
+      <ul>
+        {value.map((item, index) => (
+          <li key={index}>
+            {renderProperty(index, item, handleChange)}
+          </li>
+        ))}
+      </ul>
+    );
+  } else if (typeof value === 'object') {
+    return (
+      <ul>
+        {Object.entries(value).map(([key, nestedValue]) => (
+          <li key={key}>
+            <strong>{key}:</strong> {renderProperty(key, nestedValue, handleChange)}
+          </li>
+        ))}
+      </ul>
+    );
+  } else {
+    return JSON.stringify(value);
+  }
+}
+
 function App() {
   const [jsonData, setJsonData] = useState(data);
   
   const handleValueChange = (key, newValue) => {
+    if (key === 'description') {
+      return;
+    }
     if (key === 'timezone') {
       const selectedTimezone = newValue;
       const selectedTimezoneData = moment.tz(selectedTimezone);
@@ -30,7 +86,7 @@ function App() {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.setAttribute('download', 'client.data.json'); // Set the same file name
+    link.setAttribute('download', 'client.data.json'); 
     link.click();
     URL.revokeObjectURL(url);
   };
@@ -55,23 +111,8 @@ function App() {
                ))}
              </select>
            ) : key === 'timecode' ? (
-            value ) :
-            typeof value === 'string' ? (
-             <input
-               type="text"
-               value={value}
-               onChange={(e) => handleValueChange(key, e.target.value)}
-             />
-           ) : typeof value === 'boolean' ? (
-             <select
-               value={value.toString()}
-               onChange={(e) => handleValueChange(key, e.target.value === 'true')}
-             >
-               <option value="true">true</option>
-               <option value="false">false</option>
-             </select>
-           ) : (
-             JSON.stringify(value)
+            value ) : (
+              renderProperty(key, value, handleValueChange)
            )}
          </li>
         ))}
