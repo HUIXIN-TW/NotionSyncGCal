@@ -1,38 +1,139 @@
+/* App.css */
+body {
+  margin: 0;
+  padding: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh; /* Set the minimum height of the body to cover the viewport height */
+}
+
 .container {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-  }
-  
-  h1 {
-    color: black;
-    font-size: 24px;
-  }
-  
-  li {
-    margin-bottom: 10px;
-  }
-  
-  input[type="text"] {
-    width: 200px;
-    padding: 5px;
-  }
-  
-  select {
-    width: 150px;
-    padding: 5px;
-  }
-  
-  .save-button {
-    background-color: #007bff;
-    color: #fff;
-    padding: 10px 20px;
-    border: none;
-    border-radius: 4px;
-    font-size: 16px;
-    cursor: pointer;
-  }
-  
-  .save-button:hover {
-    background-color: #0056b3;
-  }
+  justify-content: center;
+
+}
+
+h1 {
+  color: #333;
+  font-size: 28px;
+  margin-bottom: 20px;
+}
+
+p {
+  color: #666;
+  font-size: 16px;
+  margin-bottom: 10px;
+}
+
+ul {
+  list-style: none;
+  padding: 0;
+}
+
+li {
+  margin-bottom: 10px;
+  color: #333;
+}
+
+input[type="text"],
+select {
+  width: 200px;
+  padding: 10px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 16px;
+}
+
+select {
+  width: 220px;
+}
+
+.save-button {
+  background-color: #007bff;
+  color: #fff;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 4px;
+  font-size: 16px;
+  cursor: pointer;
+  margin-top: 20px;
+}
+
+.save-button:hover {
+  background-color: #0056b3;
+}
+
+/* GCalItem.css */
+
+.GCalItem {
+  margin-bottom: 20px;
+  border: 1px solid #ccc;
+  padding: 10px;
+  border-radius: 4px;
+  display: flex; /* Add this to use flexbox */
+  align-items: center; /* Center items vertically in the flex container */
+  justify-content: space-between; /* Center items vertically in the flex container */
+}
+
+.GCalItem strong {
+  color: #007bff;
+}
+
+.GCalItem input[type="text"] {
+  flex: 1; /* Fill available space in the flex container */
+  padding: 8px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 14px;
+}
+
+.GCalItem button {
+  background-color: #dc3545;
+  color: #fff;
+  padding: 8px 16px;
+  border: none;
+  border-radius: 4px;
+  font-size: 14px;
+  cursor: pointer;
+  margin-left: 10px; /* Add this to create space between the input fields and the delete button */
+}
+
+.GCalItem  button:hover {
+  background-color: #c82333;
+}
+
+/* AddGCalItem.css */
+
+.AddGCalItem {
+  margin-top: 20px;
+  border: 1px solid #ccc;
+  padding: 10px;
+  border-radius: 4px;
+}
+
+.AddGCalItem strong {
+  color: #007bff;
+}
+
+.AddGCalItem input[type="text"] {
+  width: 150px;
+  padding: 8px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 14px;
+  margin-right: 10px;
+}
+
+.AddGCalItem button {
+  background-color: #28a745;
+  color: #fff;
+  padding: 8px 16px;
+  border: none;
+  border-radius: 4px;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.AddGCalItem button:hover {
+  background-color: #218838;
+}
