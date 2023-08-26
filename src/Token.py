@@ -170,7 +170,7 @@ class Notion:
         except:
             setattr(self, attribute_name, None)
             print(f"--- Failed to set {attribute_name.lower()} ---")
-            os.exit(1)
+            sys.exit()
 
     def gcal_dic_key_to_value(self, gcal_dic):
         key_to_value = {}
@@ -189,7 +189,7 @@ class Notion:
             return extracted_string
         else:
             print("Error: No match database ID")
-            os.exit(1)
+            sys.exit()
 
     def get_string(self):
         print("--- Token Notion Activated ---")
@@ -214,7 +214,7 @@ class Google:
         except:
             print("Make sure you store notion_setting.json in toke folder")
             print("Or incrrect json format")
-            os._exit(1)
+            sys.exit()
         try:
             gcal_default_id = Notion().GCAL_DEFAULT_ID
             calendar = (
@@ -232,7 +232,7 @@ class Google:
             )
             print("Make sure tha you have the right client_secret.json in token folder")
             self.ask_creds(CREDPATH)
-            os._exit(1)
+            sys.exit()
 
     # DO NOT SHARE WITH OTHERS
 

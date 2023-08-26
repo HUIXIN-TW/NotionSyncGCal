@@ -22,7 +22,7 @@ try:
 except Exception as e:
     print(e)
     print("--- Exit Sync.py ---")
-    os._exit(1)
+    sys.exit()
 
 #######################################
 ##### The Method Section - Google #####
@@ -1140,7 +1140,7 @@ def deleteEvent():
                     f"{summary} does not have event ID. Make sure that it exists in Notion"
                 )
                 print(e)
-                os._exit(1)
+                sys.exit()
             print(f"{i}th processing GCal Event {summary}, EventID {eventId}")
 
             try:  # delete Gcal event
