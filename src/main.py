@@ -124,14 +124,13 @@ def main():
     try:
         if sys.argv[2] == "-m":
             modify_json(sys.argv)
+        # check if the user want to sync with new json file
+        # if not yes, then exit the program
+        if not ask_yes_no(f"Do you want to sync with new json file? Y/N: "):
+            sys.exit()
     except:
         print("No json file is modified")
         pass
-
-    # check if the user want to sync with new json file
-    # if not yes, then exit the program
-    if not ask_yes_no(f"Do you want to sync with new json file? Y/N: "):
-        sys.exit()
 
     # check if the user want to redirect to file    
     redirect_to_file = ask_yes_no("Do you want to redirect to file? Y/N: ")
