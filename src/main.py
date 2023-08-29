@@ -121,8 +121,12 @@ def print_results_header(cmd):
 
 def main():
     # check if the user want to modify json file
-    if sys.argv[2] == "-m":
-        modify_json(sys.argv)
+    try:
+        if sys.argv[2] == "-m":
+            modify_json(sys.argv)
+    except:
+        print("No json file is modified")
+        pass
 
     # check if the user want to sync with new json file
     # if not yes, then exit the program
