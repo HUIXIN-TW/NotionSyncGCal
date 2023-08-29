@@ -4,6 +4,8 @@ import json
 import time
 from datetime import datetime
 
+NOTION_SETTINGS_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "../token/notion_setting.json")
+
 def import_sync_module():
     try:
         import Sync as s
@@ -12,68 +14,30 @@ def import_sync_module():
         print("Error: Unable to import the Sync module.")
         sys.exit()
 
-def get_cmd_args():
-    try:
-        return sys.argv[2], int(sys.argv[3]), int(sys.argv[4])
-    except IndexError:
-        return None, 1, 1
+def ask_yes_no(question):
+    """Ask a yes or no question and return True if the answer is 'yes'."""
+    answer = input(question).strip().lower()
+    return answer in ["y", "yes"]
 
-def main():
-    # Get the command line arguments
-    cmd, goback_value, goforward_days = get_cmd_args()
+def modify_json(cmd):
+    """Modify the goback_days and goforward_days in notion_setting.json"""
+    goback_value, goforward_days = int(cmd[3]), int(cmd[4])
 
-    # If users want to modify the JSON file
-    if cmd == "-m":
-        print(f"Going to set goback_days = {goback_value}")
-        print(f"Going to set goforward_days = {goforward_days}")
+    with open(NOTION_SETTINGS_PATH, 'r') as file:
+        data = json.load(file)
+        print(json.dumps(data, indent=2))
 
-        show_action = input("Do you want to modify json file (notion_setting.json) ? Y/N:  ")
-        if show_action.lower() in ["y", "yes"]:
-            modify_json(goback_value, goforward_days)
-        else:
-            print("Not modifying the JSON file...")
-            sys.exit()
-
-    # If users want to print on terminal or redirect to file
-    show_action = input("Do you want to redirect to file? Y/N:  ")
+    data["goback_days"], data["goforward_days"] = goback_value, goforward_days
+    
+    print("\n")
+    print(f"Modified goback_days to {goback_value} and goforward_days to {goforward_days} in notion_setting.json")
     print("\n")
 
-    # Import the Sync module
-    s = import_sync_module()
+    with open(NOTION_SETTINGS_PATH, 'w') as file:
+        json.dump(data, file, indent=2)
+        print(json.dumps(data, indent=2))
 
-    # If users want to redirect to file
-    if show_action.lower() in ["y", "yes"]:
-        write_to_file()
-    # If users want to print on terminal
-    else:
-        print("Displaying output on the terminal...")
-        run_sync_notion_gcal(s, sys.argv)
-
-
-def write_to_file():
-    try:
-        temp = sys.stdout  # Store the default stdout
-        cmd_name = " ".join(sys.argv)
-        today = datetime.today().strftime("%Y-%m-%dT%H:%M:%S")
-        filename = f"show_results_{today}.txt"
-        with open(filename, "w") as f:
-            sys.stdout = f  # Redirect output to the file
-            print("----------------------------------------------------")
-            print(f"File Name: {cmd_name}")
-            print(f"Date Time: {today}")
-            print("----------------------------------------------------")
-            print()
-            run_sync_notion_gcal(sys.argv)  # Call the synchronization function
-        sys.stdout = temp  # Restore the default stdout
-        print(f"Completed! The output has been saved to {filename}.")
-    except Exception as e:
-        print("An error occurred while redirecting output to a file:")
-        print(e)
-    finally:
-        sys.stdout = temp  # Restore the default stdout
-
-
-def run_sync_notion_gcal(s, cmd):
+def execute_sync_action(s, cmd):
     #TODO: add a function to check the cmd is valid or not
     start_time = time.time()  # start time
     # default: update from notion to google
@@ -130,36 +94,51 @@ def run_sync_notion_gcal(s, cmd):
     print("################################### END ###################################")
     print("\n")
 
-#TODO: Effectively modify the JSON file
-def modify_json(goback_value=1, goforward_days=1):
-    # Get the absolute path to the current directory
-    current_dir = os.path.dirname(os.path.abspath(__file__))
-    FILEPATH = os.path.join(current_dir, "../token/notion_setting.json")
-    
-    # Read the current contents of the JSON file
-    with open(FILEPATH, 'r') as file:
-        data = json.load(file)
-    
-    # Modify the "goback_days" value
-    data["goback_days"] = goback_value
-    data["goforward_days"] = goforward_days
-    print("Setting goback_days =", goback_value)
-    print("Setting goforward_days =", goforward_days)
-    
-    # Write the modified data back to the JSON file
-    with open(FILEPATH, 'w') as file:
-        json.dump(data, file, indent=2)
 
-    # Print the current contents of the JSON file
-    with open(FILEPATH, 'r') as file:
-        data = json.load(file)
-        formatted_data = json.dumps(data, indent=2)
-        for line in formatted_data.split('\n'):
-            print(line)
-    print("Modified the goback_days and goforward_days values in notion_setting.json")
-    print("\n")
+def write_to_file(cmd):
+    backup_stdout = sys.stdout
 
+    today = datetime.today().strftime("%Y-%m-%dT%H:%M:%S")
+    filename = f"show_results_{today}.txt"
+
+    try:
+        with open(filename, "w") as f:
+            sys.stdout = f
+            print_results_header(cmd)
+            execute_sync_action(s, cmd)
+        print(f"Completed! The output has been saved to {filename}.")
+    except Exception as e:
+        print(f"Error while writing to {filename}: {e}")
+    finally:
+        sys.stdout = backup_stdout
+
+def print_results_header(cmd):
+    print("----------------------------------------------------")
+    print(f"Command: {' '.join(cmd)}")
+    print(f"Date Time: {datetime.now().strftime('%Y-%m-%dT%H:%M:%S')}")
+    print("----------------------------------------------------")
+    print()
+
+def main():
+    # check if the user want to modify json file
+    if sys.argv[2] == "-m":
+        modify_json(sys.argv)
+
+    # check if the user want to sync with new json file
+    # if not yes, then exit the program
+    if not ask_yes_no(f"Do you want to sync with new json file? Y/N: "):
+        sys.exit()
+
+    # check if the user want to redirect to file    
+    redirect_to_file = ask_yes_no("Do you want to redirect to file? Y/N: ")
+
+    s = import_sync_module()
+
+    if redirect_to_file:
+        write_to_file(sys.argv)
+    else:
+        print("Displaying output on the terminal...")
+        execute_sync_action(s, sys.argv)
 
 if __name__ == "__main__":
-    s = None
     main()
