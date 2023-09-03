@@ -1,5 +1,7 @@
 # Notion Synchronise with Google Calendar
 
+> command-line interface to sync data between Notion and Google Calendar.
+
 Do you find yourself juggling between Notion and Google Calendar to manage your events? Fret not! This awesome code is here to save your day. It magically extracts event details from your Notion Dashboard and seamlessly integrates them into your Google Calendar events. But wait, there's more! It even adds a handy URL to your GCal event, so you can effortlessly jump back to the specific Notion Page related to the event. How cool is that?
 
 **Warning**: Proceed with caution! This repo wields the power to make changes to your Notion database and Google Calendar. So, if you're not confident about what you're doing, buckle up and brace yourself for some unexpected surprises.

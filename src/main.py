@@ -4,41 +4,50 @@ import json
 import time
 from datetime import datetime
 
-NOTION_SETTINGS_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "../token/notion_setting.json")
+NOTION_SETTINGS_PATH = os.path.join(
+    os.path.dirname(os.path.abspath(__file__)), "../token/notion_setting.json"
+)
+
 
 def import_sync_module():
     try:
         import Sync as s
+
         return s
     except ImportError:
         print("Error: Unable to import the Sync module.")
         sys.exit()
+
 
 def ask_yes_no(question):
     """Ask a yes or no question and return True if the answer is 'yes'."""
     answer = input(question).strip().lower()
     return answer in ["y", "yes"]
 
+
 def modify_json(cmd):
     """Modify the goback_days and goforward_days in notion_setting.json"""
     goback_value, goforward_days = int(cmd[3]), int(cmd[4])
 
-    with open(NOTION_SETTINGS_PATH, 'r') as file:
+    with open(NOTION_SETTINGS_PATH, "r") as file:
         data = json.load(file)
         print(json.dumps(data, indent=2))
 
     data["goback_days"], data["goforward_days"] = goback_value, goforward_days
-    
+
     print("\n")
-    print(f"Modified goback_days to {goback_value} and goforward_days to {goforward_days} in notion_setting.json")
+    print(
+        f"Modified goback_days to {goback_value} and goforward_days to {goforward_days} in notion_setting.json"
+    )
     print("\n")
 
-    with open(NOTION_SETTINGS_PATH, 'w') as file:
+    with open(NOTION_SETTINGS_PATH, "w") as file:
         json.dump(data, file, indent=2)
         print(json.dumps(data, indent=2))
 
+
 def execute_sync_action(s, cmd):
-    #TODO: add a function to check the cmd is valid or not
+    # TODO: add a function to check the cmd is valid or not
     start_time = time.time()  # start time
     # default: update from notion to google
     if len(cmd) == 1 or cmd[1] == "-nm" or cmd[1] == "--update-modified-on-notion":
@@ -112,12 +121,14 @@ def write_to_file(cmd):
     finally:
         sys.stdout = backup_stdout
 
+
 def print_results_header(cmd):
     print("----------------------------------------------------")
     print(f"Command: {' '.join(cmd)}")
     print(f"Date Time: {datetime.now().strftime('%Y-%m-%dT%H:%M:%S')}")
     print("----------------------------------------------------")
     print()
+
 
 def main():
     # check if the user want to modify json file
@@ -132,7 +143,7 @@ def main():
         print("No json file is modified")
         pass
 
-    # check if the user want to redirect to file    
+    # check if the user want to redirect to file
     redirect_to_file = ask_yes_no("Do you want to redirect to file? Y/N: ")
 
     s = import_sync_module()
@@ -142,6 +153,7 @@ def main():
     else:
         print("Displaying output on the terminal...")
         execute_sync_action(s, sys.argv)
+
 
 if __name__ == "__main__":
     main()
