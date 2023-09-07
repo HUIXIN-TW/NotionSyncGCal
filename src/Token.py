@@ -23,7 +23,7 @@ CREDPATH = os.path.join(current_dir, "../token/token.pkl")
 class Notion:
     def __init__(self):
         if os.path.exists(FILEPATH):
-            with open(FILEPATH) as f:
+            with open(FILEPATH, encoding="utf-8") as f:
                 data = json.load(f)
         else:
             print("Make sure you store notion_setting.json in toke folder")
@@ -208,7 +208,7 @@ class Google:
         try:
             if os.path.exists(FILEPATH):
                 print("Notion setting file found")
-                with open(FILEPATH) as f:
+                with open(FILEPATH, encoding="utf-8") as f:
                     data = json.load(f)
                     self.DOCKER = data["docker"]
         except:
