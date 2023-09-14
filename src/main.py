@@ -14,8 +14,8 @@ def import_sync_module():
         import Sync as s
 
         return s
-    except ImportError:
-        print("Error: Unable to import the Sync module.")
+    except ImportError as e:
+        print(f"Error: Unable to import the Sync module. {e}")
         sys.exit()
 
 
