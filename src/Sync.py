@@ -4,25 +4,26 @@ import json
 from datetime import datetime, timedelta
 
 
-import Token
+import gcal_token
+import notion_token
 
 try:
     ##### The Set-Up Section - Notion #####
-    nt = Token.Notion()
+    nt = notion_token.Notion()
     print("--- Notion activated ---")
     ##### The Set-Up Section - GCal #####
-    GOOGLE_SERVICE = Token.Google()
+    GOOGLE_SERVICE = gcal_token.Google()
     print(f"--- {GOOGLE_SERVICE.service} ---")
     print(f"--- Google activated ---")
     print("\n")
     print("################################## START ##################################")
     print("###########################################################################")
     print(
-        f"--- Run Sync.py | After {nt.AFTER_DATE} Included, Before {nt.BEFORE_DATE} Not Included ---"
+        f"--- Run sync.py | After {nt.AFTER_DATE} Included, Before {nt.BEFORE_DATE} Not Included ---"
     )
 except Exception as e:
     print(e)
-    print("--- Exit Sync.py ---")
+    print("--- Exit sync.py ---")
     sys.exit()
 
 #######################################

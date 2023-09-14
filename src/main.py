@@ -4,14 +4,16 @@ import json
 import time
 from datetime import datetime
 
-NOTION_SETTINGS_PATH = os.path.join(
-    os.path.dirname(os.path.abspath(__file__)), "../token/notion_setting.json"
-)
+# Get the absolute path to the current directory
+CURRENT_DIR = Path(__file__).parent
+
+# Construct the absolute file paths within the container
+NOTION_SETTINGS_PATH = CURRENT_DIR / "../token/notion_setting.json"
 
 
 def import_sync_module():
     try:
-        import Sync as s
+        import sync as s
 
         return s
     except ImportError as e:
