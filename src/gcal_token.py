@@ -35,9 +35,9 @@ class Google:
         except Exception as e:
             logger.error(e)
 
-        self.service = self.initialize_google_service()
+        self.service = self.init_google_service()
 
-    def initialize_google_service(self):
+    def init_google_service(self):
         try:
             if CREDENTIALS_PATH.exists():
                 with CREDENTIALS_PATH.open("rb") as f:

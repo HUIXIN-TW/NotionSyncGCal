@@ -8,7 +8,6 @@ import gcal_token
 import notion_token
 
 try:
-    ##### The Set-Up Section - Notion #####
     nt = notion_token.Notion()
     print("--- Notion activated ---")
     ##### The Set-Up Section - GCal #####

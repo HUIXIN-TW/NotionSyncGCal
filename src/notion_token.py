@@ -141,10 +141,7 @@ class Notion:
             raise SettingError("Failed to extract database ID from URL")
 
     def gcal_dic_key_to_value(self, gcal_dic):
-        key_to_value = {}
-        for key in gcal_dic:
-            key_to_value[gcal_dic[key]] = key
-        return key_to_value
+        return {value: key for key, value in gcal_dic.items()}
 
     def test_settings(self):
         """Tests if all settings were applied correctly."""
@@ -155,8 +152,3 @@ class Notion:
         print(f"Default calendar: {self.GCAL_DEFAULT_NAME}")
         logger.info("--- Token Notion Activated ---")
 
-
-# Usage:
-# filepath = "path/to/your/settings/file.json"
-# notion = Notion(filepath)
-# notion.validate_settings()

@@ -2,7 +2,8 @@ import os
 import sys
 import json
 import time
-from datetime import datetime
+from datetime import datetime, timedelta, date
+from pathlib import Path
 
 # Get the absolute path to the current directory
 CURRENT_DIR = Path(__file__).parent
@@ -14,11 +15,9 @@ NOTION_SETTINGS_PATH = CURRENT_DIR / "../token/notion_setting.json"
 def import_sync_module():
     try:
         import sync as s
-
         return s
     except ImportError as e:
-        print(f"Error: Unable to import the Sync module. {e}")
-        sys.exit()
+        raise ImportError(f"Critical dependency not found: {e}")
 
 
 def ask_yes_no(question):
@@ -27,29 +26,27 @@ def ask_yes_no(question):
     return answer in ["y", "yes"]
 
 
-def modify_json(cmd):
+def modify_json(cmd, data):
     """Modify the goback_days and goforward_days in notion_setting.json"""
     goback_value, goforward_days = int(cmd[3]), int(cmd[4])
-
-    with open(NOTION_SETTINGS_PATH, "r") as file:
-        data = json.load(file)
-        print(json.dumps(data, indent=2))
-
     data["goback_days"], data["goforward_days"] = goback_value, goforward_days
-
-    print("\n")
     print(
         f"Modified goback_days to {goback_value} and goforward_days to {goforward_days} in notion_setting.json"
     )
-    print("\n")
-
     with open(NOTION_SETTINGS_PATH, "w") as file:
         json.dump(data, file, indent=2)
+        print("Updated notion_setting.json:")
         print(json.dumps(data, indent=2))
 
+def read_json():
+    with open(NOTION_SETTINGS_PATH, "r") as file:
+        data = json.load(file)
+        print("Current notion_setting.json:")
+        print(json.dumps(data, indent=2))
+    return data
 
-def execute_sync_action(s, cmd):
-    # TODO: add a function to check the cmd is valid or not
+def execute_sync_action(s, cmd, data):
+    # TODO: Change 0, 1 ,2 into more meaningful name
     start_time = time.time()  # start time
     # default: update from notion to google
     if len(cmd) == 1 or cmd[1] == "-nm" or cmd[1] == "--update-modified-on-notion":
@@ -70,9 +67,6 @@ def execute_sync_action(s, cmd):
         )
         if check_again == "YES, OVERWRITE":
             s.gcal_to_notion(action=2)
-    # TODO: can extract the notion page id from the url
-    elif cmd[1] == "-np" or cmd[1] == "--notion-page":
-        s.notion_to_gcal(action=1, updateEverything=True)
     # delete google cal via notion Done?
     elif cmd[1] == "-r" or cmd[1] == "--remove":
         s.deleteEvent()
@@ -94,10 +88,13 @@ def execute_sync_action(s, cmd):
         print("Error: Invalid command")
 
     end_time = time.time()  # end time
-    current_time = datetime.now().strftime("%H:%M:%S")
+    current_time = datetime.now().strftime("%H:%M:%S")  
+    after_date = (date.today() + timedelta(days=data["goback_days"])).strftime("%Y-%m-%d")
+    before_date = (date.today() + timedelta(days=data["goforward_days"])).strftime("%Y-%m-%d")
     print("\n")
     print("----------------------------- TimeInformation -----------------------------")
     print(f"Command Line: {' '.join(cmd)}")
+    print(f"After Date {after_date} Included, Before Date {before_date} Not Included")
     print("Current Time =", current_time)
     print("Process finished in %.2f seconds" % (end_time - start_time))
     print("-------------------------------- COMPLETED --------------------------------")
@@ -106,55 +103,19 @@ def execute_sync_action(s, cmd):
     print("\n")
 
 
-def write_to_file(cmd):
-    backup_stdout = sys.stdout
-
-    today = datetime.today().strftime("%Y-%m-%dT%H:%M:%S")
-    filename = f"show_results_{today}.txt"
-
-    try:
-        with open(filename, "w") as f:
-            sys.stdout = f
-            print_results_header(cmd)
-            execute_sync_action(s, cmd)
-        print(f"Completed! The output has been saved to {filename}.")
-    except Exception as e:
-        print(f"Error while writing to {filename}: {e}")
-    finally:
-        sys.stdout = backup_stdout
-
-
-def print_results_header(cmd):
-    print("----------------------------------------------------")
-    print(f"Command: {' '.join(cmd)}")
-    print(f"Date Time: {datetime.now().strftime('%Y-%m-%dT%H:%M:%S')}")
-    print("----------------------------------------------------")
-    print()
-
-
 def main():
     # check if the user want to modify json file
+    data = read_json()
     try:
         if sys.argv[2] == "-m":
-            modify_json(sys.argv)
-        # check if the user want to sync with new json file
-        # if not yes, then exit the program
-        if not ask_yes_no(f"Do you want to sync with new json file? Y/N: "):
-            sys.exit()
+            modify_json(sys.argv, data)
     except:
         print("No json file is modified")
-        pass
-
-    # check if the user want to redirect to file
-    redirect_to_file = ask_yes_no("Do you want to redirect to file? Y/N: ")
 
     s = import_sync_module()
 
-    if redirect_to_file:
-        write_to_file(sys.argv)
-    else:
-        print("Displaying output on the terminal...")
-        execute_sync_action(s, sys.argv)
+    print("Displaying output on the terminal...")
+    execute_sync_action(s, sys.argv, data)
 
 
 if __name__ == "__main__":
