@@ -1,5 +1,6 @@
 import os
 import sys
+import json
 from datetime import datetime, timedelta
 
 
@@ -1168,7 +1169,7 @@ def notion_event_sample(num=1):
             if count < num:
                 count = count + 1
                 print(f"{i}th Query Notion Event")
-                print(el)
+                print(json.dumps(el, indent=4, sort_keys=True))
                 print("\n")
 
 

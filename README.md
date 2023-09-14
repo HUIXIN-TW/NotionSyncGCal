@@ -274,21 +274,25 @@ Inspired by [akarri2001](https://github.com/akarri2001/Notion-and-Google-Calenda
   ```
 
   You are in docker container
+
   ```docker
   # python src/main.py
   ```
 
   Exit docker container
+
   ```docker
   exit
   ```
 
   Stop docker container
+
   ```docker
   docker stop <CONTAINER ID>
   ```
 
   Clear all Docker containers
+
   ```docker
   docker rm $(docker ps -aq)
   ```
