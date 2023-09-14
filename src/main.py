@@ -15,6 +15,7 @@ NOTION_SETTINGS_PATH = CURRENT_DIR / "../token/notion_setting.json"
 def import_sync_module():
     try:
         import sync as s
+
         return s
     except ImportError as e:
         raise ImportError(f"Critical dependency not found: {e}")
@@ -38,6 +39,7 @@ def modify_json(cmd, data):
         print("Updated notion_setting.json:")
         print(json.dumps(data, indent=2))
 
+
 def read_json():
     with open(NOTION_SETTINGS_PATH, "r") as file:
         data = json.load(file)
@@ -50,10 +52,12 @@ def execute_sync_action(s, cmd, data):
     start_time = time.time()  # start time
     # default: update from notion to google
     if len(cmd) == 1 or cmd[1] == "-nm" or cmd[1] == "--update-modified-on-notion":
-        s.notion_to_gcal(action=0, updateEverything=True)
+        notion_to_gcal = s.NotionToGCal(action=0, updateEverything=True)
+        notion_to_gcal.main()
     # default: update from notion to google, including NeedGCalUpdate is false
     elif cmd[1] == "-na" or cmd[1] == "--update-all-on-notion":
-        s.notion_to_gcal(action=0, updateEverything=False)
+        notion_to_gcal = s.NotionToGCal(action=0, updateEverything=False)
+        notion_to_gcal.main()
     # update from google time and create new events
     elif cmd[1] == "-gt" or cmd[1] == "--google-time":
         s.gcal_to_notion(action=0)
@@ -88,9 +92,13 @@ def execute_sync_action(s, cmd, data):
         print("Error: Invalid command")
 
     end_time = time.time()  # end time
-    current_time = datetime.now().strftime("%H:%M:%S")  
-    after_date = (date.today() + timedelta(days=data["goback_days"])).strftime("%Y-%m-%d")
-    before_date = (date.today() + timedelta(days=data["goforward_days"])).strftime("%Y-%m-%d")
+    current_time = datetime.now().strftime("%H:%M:%S")
+    after_date = (date.today() + timedelta(days=data["goback_days"])).strftime(
+        "%Y-%m-%d"
+    )
+    before_date = (date.today() + timedelta(days=data["goforward_days"])).strftime(
+        "%Y-%m-%d"
+    )
     print("\n")
     print("----------------------------- TimeInformation -----------------------------")
     print(f"Command Line: {' '.join(cmd)}")
