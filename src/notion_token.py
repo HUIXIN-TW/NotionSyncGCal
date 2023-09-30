@@ -151,4 +151,3 @@ class Notion:
     def get_string(self):
         print(f"Default calendar: {self.GCAL_DEFAULT_NAME}")
         logger.info("--- Token Notion Activated ---")
-

@@ -13,6 +13,7 @@ from pathlib import Path
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+logging.getLogger("googleapiclient.discovery_cache").setLevel(logging.ERROR)
 
 # Get the absolute path to the current directory
 CURRENT_DIR = Path(__file__).parent
@@ -39,16 +40,32 @@ class Google:
 
     def init_google_service(self):
         try:
+            credentials = None
+
+            # check if token.pkl exists
             if CREDENTIALS_PATH.exists():
                 with CREDENTIALS_PATH.open("rb") as f:
                     credentials = pickle.load(f)
+            
+                # Check if the token is expired or invalid
+                if not credentials.valid:
+                    if credentials.expired and credentials.refresh_token:
+                        logger.info("Token has expired. Refreshing tokens...")
+                        self.refresh_tokens()
+                        with CREDENTIALS_PATH.open("rb") as f:
+                            credentials = pickle.load(f)
+                    else:
+                        logger.error("Token is invalid and cannot be refreshed.")
+                        sys.exit()
             else:
                 logger.info("No existing token found. Refreshing tokens...")
                 self.refresh_tokens()
                 with CREDENTIALS_PATH.open("rb") as f:
                     credentials = pickle.load(f)
+
             service = build("calendar", "v3", credentials=credentials)
             return service
+            
         except Exception as e:
             logger.error(e)
             sys.exit()
@@ -90,3 +107,8 @@ class Google:
         """Tests if all settings were applied correctly."""
         # Implement tests for your settings here
         pass
+
+
+if __name__ == "__main__":
+    g = Google()
+    g.refresh_tokens()

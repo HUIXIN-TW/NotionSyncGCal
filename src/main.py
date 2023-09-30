@@ -14,7 +14,8 @@ NOTION_SETTINGS_PATH = CURRENT_DIR / "../token/notion_setting.json"
 
 def import_sync_module():
     try:
-        import sync as s
+        import Sync as s
+
         return s
     except ImportError as e:
         raise ImportError(f"Critical dependency not found: {e}")
@@ -38,12 +39,14 @@ def modify_json(cmd, data):
         print("Updated notion_setting.json:")
         print(json.dumps(data, indent=2))
 
+
 def read_json():
     with open(NOTION_SETTINGS_PATH, "r") as file:
         data = json.load(file)
         print("Current notion_setting.json:")
         print(json.dumps(data, indent=2))
     return data
+
 
 def execute_sync_action(s, cmd, data):
     # TODO: Change 0, 1 ,2 into more meaningful name
@@ -88,9 +91,13 @@ def execute_sync_action(s, cmd, data):
         print("Error: Invalid command")
 
     end_time = time.time()  # end time
-    current_time = datetime.now().strftime("%H:%M:%S")  
-    after_date = (date.today() + timedelta(days=data["goback_days"])).strftime("%Y-%m-%d")
-    before_date = (date.today() + timedelta(days=data["goforward_days"])).strftime("%Y-%m-%d")
+    current_time = datetime.now().strftime("%H:%M:%S")
+    after_date = (date.today() + timedelta(days=data["goback_days"])).strftime(
+        "%Y-%m-%d"
+    )
+    before_date = (date.today() + timedelta(days=data["goforward_days"])).strftime(
+        "%Y-%m-%d"
+    )
     print("\n")
     print("----------------------------- TimeInformation -----------------------------")
     print(f"Command Line: {' '.join(cmd)}")
