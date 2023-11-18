@@ -8,9 +8,9 @@ Do you find yourself juggling between Notion and Google Calendar to manage your 
 
 ## What you will need to get started
 
-- google account
+- Google account
 - Notion account
-- github account (optional)
+- GitHub account (optional)
 - python3 (or Docker)
 
 ## Current Capabilities:
@@ -30,7 +30,7 @@ Do you find yourself juggling between Notion and Google Calendar to manage your 
 
 Inspired by [akarri2001](https://github.com/akarri2001/Notion-and-Google-Calendar-2-Way-Sync)
 
-## How to install it
+## How to install the app
 
 - Step1: Fork or Clone git repository
 
@@ -43,8 +43,6 @@ Inspired by [akarri2001](https://github.com/akarri2001/Notion-and-Google-Calenda
      You can unzip it and then change the folder name to whatever you want. Have a look these files and folders. We will change some of them later.
 
      <img src="./assets/folder.png" width="600" height="auto">
-
-     <video src="./assets/NotionStep1.mp4" width="600" height="auto" controls="controls"></video>
 
   For advanced users, you can fork this repository and then clone it.
 
@@ -84,8 +82,6 @@ Inspired by [akarri2001](https://github.com/akarri2001/Notion-and-Google-Calenda
 - Step2: Duplicate the Notion template as the initial database [NotionGCal](https://huixin.notion.site/aa639e48cfee4216976756f33cf57c8e?v=6db9353f3bc54029807c539ffc3dfdb4)
   If you are familar with the entire code, you are welcome to customise your own template. However, I recommend you to use my template and do not change the property names at the first time.
 
-  <video src="./assets/NotionStep2.mp4" width="600" height="auto" controls="controls"></video>
-
 - Step3: Notion Connection Setting
 
   1. Visit Notion Developer website
@@ -95,12 +91,12 @@ Inspired by [akarri2001](https://github.com/akarri2001/Notion-and-Google-Calenda
     <img src="./assets/connection.png" width="600" height="auto">
 
   2. Create `New integration` and then `Submit`
+
      <img src="./assets/newintegration.png" width="600" height="auto">
 
   3. Open the template page, click `...`, then click `Add connection`. (Select what you name your connection)
-     <img src="./assets/notionconnect.png" width="600" height="auto">
 
-  <video src="./assets/NotionStep3.mp4" width="600" height="auto" controls="controls"></video>
+     <img src="./assets/notionconnect.png" width="600" height="auto">
 
 - Step4: Complete the `notion_setting.json` in the `token_blank` folder, and then rename the folder `token_blank` with `token` (.gitignore will exclude files in this `token` folder to protect your sensitive information when you push your code to github. If you don't want to use github, you can still need to rename the folder but can ignore the reason why we do this)
 
@@ -149,25 +145,27 @@ Inspired by [akarri2001](https://github.com/akarri2001/Notion-and-Google-Calenda
     - "CompleteIcon_Notion_Name": "CompleteIcon"
       You can change the column name without modifying the main code zone as long as you alter this section and notion columns consistently.
 
-    <video src="./assets/NotionStep4.mp4" width="600" height="auto" controls="controls"></video>
-
 - Step5: Create a google token, and make sure your scope include google calendar
 
   1. Go to [google developers](https://console.developers.google.com/)
 
   2. Create a New Project, and select it
+
      <img src="./assets/library.png" width="600" height="auto">
      <img src="./assets/newproject.png" width="600" height="auto">
      <img src="./assets/selectproject.png" width="600" height="auto">
 
   3. Clikc `+ ENABLE APIS AND SERVICES` to enable google calendar API, and then add your email
+
      <img src="./assets/library.png" width="600" height="auto">
      <img src="./assets/searchapi.png" width="600" height="auto">
 
   4. You enabled google calendar API successfully if you see this
+
      <img src="./assets/enabled.png" width="600" height="auto">
 
   5. Click `+ CREATE CREDENTIALS`
+
      <img src="./assets/OAuthID.png" width="600" height="auto">
 
   6. Click `CONFIGURE CONSENT SCREEN`, and then select `External` and click `CREATE`
@@ -175,6 +173,7 @@ Inspired by [akarri2001](https://github.com/akarri2001/Notion-and-Google-Calenda
   7. Name whatever you want, and select your email as `User support email`. Next, type your email to `Developer contact information`, and then click `SAVE & CONTINUE`
 
   8. Click `ADD OR REMOVE SCOPES`, and then Select the scope as belows. Scroll down and click `UPDATE`
+
      <img src="./assets/addscope.png" width="600" height="auto">
      <img src="./assets/searchscope.png" width="600" height="auto">
      <img src="./assets/googleapi.png" width="600" height="auto">
@@ -182,20 +181,22 @@ Inspired by [akarri2001](https://github.com/akarri2001/Notion-and-Google-Calenda
   9. Scroll down, and click `Save and Continue`
 
   10. Click `+ ADD USERS` and click `Save and Continue`
+
       <img src="./assets/adduser.png" width="600" height="auto">
 
   11. Create the OAuth client ID
+
       <img src="./assets/createcredential.png" width="600" height="auto">
 
   12. Name your application, and then click `CREATE`
+
       <img src="./assets/credentialname.png" width="600" height="auto">
 
   13. Download `.json` (Note: Dont show with others otherwise they may access your account)
+
       <img src="./assets/credentialdownload.png" width="600" height="auto">
 
   14. Rename `client_secret_XXXXXXXXXXXX.json` to `client_secret.json`, and then move it into `token` folder
-
-  <video src="./assets/NotionStep5.mp4" width="600" height="auto" controls="controls"></video>
 
 - Step6: Download [python](https://www.python.org/downloads/) (or skip this step if you use Docker)
 
