@@ -4,3 +4,5 @@
 /token
 
 /node_modules
+/venv
+/src/__pycache__
