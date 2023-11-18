@@ -1,3 +1,14 @@
+import notion_token
+from datetime import datetime, timedelta
+
+nt = notion_token.Notion()
+
+
+def notion_time():
+    """Helper function to get the current time in the Notion format"""
+    return datetime.now().strftime(f"%Y-%m-%dT%H:%M:%S{nt.TIMECODE}")
+
+
 def build_date_range_filter(property_name, before_date, after_date):
     """Build a filter for date range."""
     return {
@@ -39,7 +50,7 @@ def build_properties_update(properties_dict):
 
 
 def build_update_page_time_properties(
-    calname, calstartdate, calenddate, calid, gCal_id, gCal_name
+    calname, calstartdate, calenddate, gCal_id, gCal_name
 ):
     """Helper function to build properties for updating a page."""
     properties = {

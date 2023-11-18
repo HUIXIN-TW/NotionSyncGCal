@@ -5,7 +5,7 @@ import logging
 from datetime import datetime, timedelta
 
 from gcal_services import (
-    all_gcal_eventid,
+    get_all_gcal_eventid,
     DateTimeIntoNotionFormat,
     makeCalEvent,
     makeTaskURL,
@@ -15,7 +15,7 @@ from gcal_services import (
 )
 from notion_services import (
     notion_time,
-    all_notion_eventid,
+    get_all_notion_eventid,
     queryNotionEvent_all,
     queryNotionEvent_notion,
     queryNotionEvent_page,
@@ -53,7 +53,7 @@ except Exception as e:
 
 
 class NotionToGCal:
-    def __init__(self, action=0, updateEverything=True):
+    def __init__(self, action="UPDATE", updateEverything=True):
         self.action = action
         self.updateEverything = updateEverything
         self.all_notion_gCal_Ids, self.all_notion_gCal_Ids_pageid = None, None
@@ -176,7 +176,6 @@ class NotionToGCal:
 
     @staticmethod
     def update_gstatus(pageId):
-        # Assuming updateGStatus is a function defined elsewhere in your code
         try:
             updateGStatus(pageId)
         except Exception as e:
@@ -184,7 +183,6 @@ class NotionToGCal:
 
     @staticmethod
     def make_cal_event(args):
-        # Assuming makeCalEvent is a function defined elsewhere in your code
         try:
             cal_event_id = makeCalEvent(*args)
             return cal_event_id
@@ -194,7 +192,6 @@ class NotionToGCal:
 
     @staticmethod
     def update_cal(pageId, calEventId, calendarList):
-        # Assuming updateCal is a function defined elsewhere in your code
         try:
             updateCal(pageId, calEventId, calendarList)
         except Exception as e:
@@ -202,7 +199,6 @@ class NotionToGCal:
 
     @staticmethod
     def update_default_cal(pageId, calEventId, calendarList):
-        # Assuming updateDefaultCal is a function defined elsewhere in your code
         try:
             updateDefaultCal(pageId, calEventId, calendarList)
         except Exception as e:
@@ -270,10 +266,10 @@ class NotionToGCal:
                 # Create or update event on Google Calendar
                 try:
                     start_date = datetime.strptime(
-                        event_details["start_date"], "%Y-%m-%dT%H:%M:%S%z"
+                        event_details["start_date"], "%Y-%m-%dT%H:%M:%S.%f%z"
                     )
                     end_date = datetime.strptime(
-                        event_details["end_date"], "%Y-%m-%dT%H:%M:%S%z"
+                        event_details["end_date"], "%Y-%m-%dT%H:%M:%S.%f%z"
                     )
                 except:
                     start_date = datetime.strptime(
@@ -307,23 +303,20 @@ class NotionToGCal:
             )
 
 
-# Usage:
-# notion_to_gcal = NotionToGCal(action=0, updateEverything=True)
-# notion_to_gcal.main()
-
-
 class GCalToNotion:
-    def __init__(self, action=0):
+    def __init__(self, action="UPDATE_TIME_CREATE_NEW_BY_GOOGLE"):
         self.action = action
         (
             self.all_notion_gCal_Ids,
             self.all_notion_gCal_Ids_pageid,
-        ) = all_notion_eventid("gcal_to_notion")
-        self.calItems = all_gcal_eventid("gcal_to_notion")
+        ) = get_all_notion_eventid("gcal_to_notion")
+        self.calItems = get_all_gcal_eventid()
         self.process_calendar_items()
 
     def process_calendar_items(self):
         cal_data = [self.extract_calendar_data(item) for item in self.calItems]
+        for item in cal_data:
+            print("Calendar Data Item:", item['summary'])
         self.compare_and_update_calendars(cal_data)
 
     @staticmethod
@@ -382,7 +375,7 @@ class GCalToNotion:
 
             if data["id"] in self.all_notion_gCal_Ids:
                 pageid = self.all_notion_gCal_Ids_pageid[data["id"]]
-                if self.action == "OverwriteNotion":  #
+                if self.action == "OVERWRITE_BY_GOOGLE":
                     update_page_all(
                         pageid,
                         data["summary"],
@@ -394,7 +387,9 @@ class GCalToNotion:
                         data["organizer_email"],
                         nt.GCAL_DIC_KEY_TO_VALUE[data["organizer_email"]],
                     )
-                elif self.action == 0:  # Default action
+                elif (
+                    self.action == "UPDATE_TIME_CREATE_NEW_BY_GOOGLE"
+                ):  # Default action
                     update_page_time(
                         pageid,
                         data["summary"],

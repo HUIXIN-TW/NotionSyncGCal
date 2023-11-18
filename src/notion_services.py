@@ -11,6 +11,7 @@ from build_filters import (
     build_string_equality_filter_for_formula,
     build_properties_update,
     build_create_or_update_page_properties,
+    build_update_page_time_properties
 )
 
 
@@ -64,7 +65,7 @@ def notion_time():
     return datetime.now().strftime(f"%Y-%m-%dT%H:%M:%S{nt.TIMECODE}")
 
 
-def all_notion_eventid(operation_context):
+def get_all_notion_eventid(operation_context):
     """Helper function to get all Notion event ids"""
     all_notion_gCal_Ids = []
     all_notion_gCal_Ids_pageid = {}
@@ -74,6 +75,7 @@ def all_notion_eventid(operation_context):
         GCalId = result["properties"][nt.GCALEVENTID_NOTION_NAME]["rich_text"][0][
             "text"
         ]["content"]
+        logging.info(f"Google Event ID: {GCalId}")
         all_notion_gCal_Ids.append(GCalId)
         all_notion_gCal_Ids_pageid[GCalId] = result["id"]
     return all_notion_gCal_Ids, all_notion_gCal_Ids_pageid
@@ -120,22 +122,28 @@ def queryNotionEvent_notion():
         return []
 
 
-def queryNotionEvent_page(id):  # TODO: bug
+def queryNotionEvent_page(id):
     """Helper function to query a specific Notion page by ID."""
-    page_id_filter = build_string_equality_filter_for_formula(
-        nt.PAGE_ID_NOTION_NAME, id
-    )
-    delete_filter = build_checkbox_filter(nt.DELETE_NOTION_NAME, False)
-    final_filter = build_and_filter([page_id_filter, delete_filter])
+
     try:
-        my_page = nt.NOTION.databases.query(
+        # Build filters
+        page_id_filter = build_string_equality_filter_for_formula(
+            nt.PAGE_ID_NOTION_NAME, id
+        )
+        delete_filter = build_checkbox_filter(nt.DELETE_NOTION_NAME, False)
+        final_filter = build_and_filter([page_id_filter, delete_filter])
+
+        # Query the database
+        response = nt.NOTION.databases.query(
             database_id=nt.DATABASE_ID, filter=final_filter
         )
-        results = my_page.get("results", [])
-        logging.info(f"Page Query: {results}")
+        results = response.get("results", [])
+
+        # Log the results
+        logging.info(f"Queried page ID {page_id}, found {len(results)} result(s).")
         return results
     except Exception as e:
-        logging.error(f"Failed to query Notion page: {e}")
+        logging.error(f"Failed to query Notion page with ID {page_id}: {e}")
         return []
 
 
@@ -157,7 +165,6 @@ def queryNotionEvent_gcal():
             database_id=nt.DATABASE_ID, filter=final_filter
         )
         results = my_page.get("results", [])
-        logging.info(f"gCal Query: {results}")
         return results
     except Exception as e:
         logging.error(f"Failed to query Notion gCal events: {e}")
@@ -352,13 +359,12 @@ def update_page_time(
     calname,
     calstartdate,
     calenddate,
-    calid,
     gCal_id,
     gCal_name,
 ):
     """Helper function to update a page in Notion."""
     properties = build_update_page_time_properties(
-        calname, calstartdate, calenddate, calid, gCal_id, gCal_name
+        calname, calstartdate, calenddate, gCal_id, gCal_name
     )
 
     try:

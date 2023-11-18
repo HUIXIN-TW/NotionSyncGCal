@@ -1,62 +1,85 @@
+import logging
+import json
+import os
+import sys
+import time
+import pytz
+from datetime import datetime, timedelta, date
+from pathlib import Path
+
+# Local application/library specific imports
 import notion_token
 import gcal_token
-from datetime import datetime, timedelta
 
 
-# TODO: All function have not been tested yet
+# Get the absolute path to the current directory
+CURRENT_DIR = Path(__file__).parent
 
+# Construct the absolute file paths within the container
+NOTION_SETTINGS_PATH = CURRENT_DIR / "../token/notion_setting.json"
+
+# Logging setup
+logging.basicConfig(level=logging.INFO)
+
+# Initialize Notion and Google tokens
 nt = notion_token.Notion()
 gt = gcal_token.Google()
 
-
-def all_gcal_eventid(which):
-    # get all google events
-    print("\n")
-    print(f"{which} | Get all Google event")
-    events = []  # contains all cals and their tasks
-    for calid in nt.GCAL_DIC.values():
-        x = queryGCalId(calid)
-        events.extend(x["items"])
-    return events
+# Load Notion settings
+with open(NOTION_SETTINGS_PATH, "r") as file:
+    data = json.load(file)
 
 
-# METHOD TO MAKE GOOGLE TIME FORMAT TO NOTION
+def get_all_gcal_eventid():
+    """Retrieve all events from Google Calendar."""
+    timezone = pytz.timezone(
+        nt.TIMEZONE
+    )  # Set the timezone to match the timezone of your Google Calendar
+
+    # Calculate the start and end dates for the event range
+    after_date = datetime.now(timezone) - timedelta(days=data["goback_days"])
+    before_date = datetime.now(timezone) + timedelta(days=data["goforward_days"])
+
+    try:
+        events = []
+        for cal_id in nt.GCAL_DIC.values():
+            response = (
+                gt.service.events()
+                .list(
+                    calendarId=cal_id,
+                    timeMin=after_date.isoformat(),  # ISO format for Google Calendar API
+                    timeMax=before_date.isoformat(),
+                )
+                .execute()
+            )
+            if response['items'] != []:
+                events.extend(response.get("items", []))
+        return events
+    except Exception as e:
+        logging.error(f"Error retrieving Google Calendar events: {e}")
+        return []
 
 
-def DateTimeIntoNotionFormat(dateTimeValue):
-    return dateTimeValue.strftime(f"%Y-%m-%dT%H:%M:%S{nt.TIMECODE}")
+def DateTimeIntoNotionFormat(datetime_obj):
+    """Format a datetime object for Notion."""
+    return datetime_obj.strftime(f"%Y-%m-%dT%H:%M:%S{nt.TIMECODE}")
 
 
-# METHOD TO MAKE A NOTION URL
-
-
-def makeTaskURL(
-    ending, urlRoot
-):  # urlRoot: Notion Page Prefix, ending: Notion Page Suffix
+def makeTaskURL(ending, urlRoot):
+    """Create a Notion task URL from a task ID."""
     urlId = ending.replace("-", "")
-    return urlRoot + urlId  # Notion Page ID
+    return urlRoot + urlId
 
 
-# METHOD TO MAKE A CALENDAR EVENT DESCRIPTION
-
-
-def makeEventDescription(initiative, info, taskstatus):
-    print("Trying to print the content")
-    if initiative == "" and info == "":
-        print("No Content")
-        return f"Task Status: {taskstatus}"
-    elif info == "":
-        print("Only Initiative")
-        return f"Initiative: {initiative} \nTask Status: {taskstatus}"
-    elif initiative == "":
-        print("Only info")
-        return info
-    else:
-        print("All info")
-        return f"Initiative: {initiative} \nTask Status: {taskstatus} \n{info}"
-
-
-# METHOD TO MAKE A CALENDAR EVENT - DIFFERENT TIME CONDITIONS
+def makeEventDescription(initiative, info, task_status):
+    """Format the event description for Google Calendar."""
+    parts = []
+    if initiative:
+        parts.append(f"Initiative: {initiative}")
+    if info:
+        parts.append(info)
+    parts.append(f"Task Status: {task_status}")
+    return " \n".join(parts)
 
 
 def makeCalEvent(
@@ -69,8 +92,9 @@ def makeCalEvent(
     newCalId,
     oldCalId,
     sourceURL,
-    skip,
+    skip=0,
 ):
+    """Create or update a calendar event."""
     print("Convert Notion date type to Google calendar format: ", eventName)
 
     datetime_type = 0
@@ -199,10 +223,8 @@ def makeCalEvent(
     return x["id"]
 
 
-# METHOD TO MAKE A EVENT ID LIST
-
-
 def queryGCalId(id, num=300):
+    """Make a list of Google Calendar event IDs."""
     x = (
         gt.service.events()
         .list(
@@ -216,10 +238,8 @@ def queryGCalId(id, num=300):
     return x
 
 
-####################################################
-########   Google deleted items by Notion   #######
-####################################################
 def deleteEvent():
+    """Delete Google Calendar events."""
     print("\n")
     print("-------- Deletion | Done? == True in Notion, delete the GCal event --------")
     resultList = queryNotionEvent_delete()
@@ -257,3 +277,30 @@ def deleteEvent():
             deleteGInfo(pageId)
     else:
         print("---------------------- No deleted the GCal event ----------------------")
+
+
+# Example usage
+if __name__ == "__main__":
+    # Get all Google Calendar events
+    gcal_events = get_all_gcal_eventid()
+    for event in gcal_events:
+        print(event)  # Process events as needed
+
+    # Example event data (replace with actual data)
+    event_data = {
+        "exist_eventId": "",
+        "eventName": "Meeting with Team",
+        "eventDescription": "Discuss project updates",
+        "eventLocation": "Virtual Meeting",
+        "eventStartTime": datetime.now(),
+        "eventEndTime": datetime.now() + timedelta(hours=1),
+        "newCalId": "your_calendar_id",  # Replace with your calendar ID
+        "event": {
+            # Event details
+        },
+    }
+
+    # Create or update an event
+    event_id = create_or_update_calendar_event(event_data)
+    if event_id:
+        print(f"Event created/updated with ID: {event_id}")

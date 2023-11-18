@@ -2,8 +2,10 @@ import os
 import sys
 import json
 import time
+import logging
 from datetime import datetime, timedelta, date
 from pathlib import Path
+
 
 # Get the absolute path to the current directory
 CURRENT_DIR = Path(__file__).parent
@@ -49,71 +51,73 @@ def read_json():
 
 
 def execute_sync_action(s, cmd, data):
-    # TODO: Change 0, 1 ,2 into more meaningful name
-    start_time = time.time()  # start time
-    # default: update from notion to google
-    if len(cmd) == 1 or cmd[1] == "-nm" or cmd[1] == "--update-modified-on-notion":
-        notion_to_gcal = s.NotionToGCal(action=0, updateEverything=True)
-        notion_to_gcal.main()
-    # default: update from notion to google, including NeedGCalUpdate is false
-    elif cmd[1] == "-na" or cmd[1] == "--update-all-on-notion":
-        notion_to_gcal = s.NotionToGCal(action=0, updateEverything=False)
-        notion_to_gcal.main()
-    # update from google time and create new events
-    elif cmd[1] == "-gt" or cmd[1] == "--google-time":
-        s.gcal_to_notion(action=0)
-    # create from google event only not update time format
-    elif cmd[1] == "-gc" or cmd[1] == "--google-create":
-        s.gcal_to_notion(action=1)
-    # update from google to notion, danger zone from google description to notion description
-    elif cmd[1] == "-ga" or cmd[1] == "--google-all":
-        check_again = input(
-            "Do you want to overwrite Notion? This action cannot be undone! Enter [YES, OVERWRITE]: "
-        )
-        if check_again == "YES, OVERWRITE":
-            s.gcal_to_notion(action=2)
-    # delete google cal via notion Done?
-    elif cmd[1] == "-r" or cmd[1] == "--remove":
-        s.deleteEvent()
-    # print sample
-    elif cmd[1] == "-s" or cmd[1] == "--sample":
-        try:
-            n = int(cmd[2])
-        except IndexError:
-            n = 1
-        try:
-            name = cmd[3]
-        except IndexError:
-            name = "Task"
-        print("\nNotion Events:")
-        s.notion_event_sample(num=n)
-        print("\nGoogle Events:")
-        s.gcal_event_sample(name=name, num=n)
-    else:
-        print("Error: Invalid command")
+    """Execute synchronization action based on command line arguments."""
+    start_time = time.perf_counter()
 
-    end_time = time.time()  # end time
+    try:  # start time
+        # default: update from notion to google
+        if len(cmd) == 1 or cmd[1] == "-nm" or cmd[1] == "--update-modified-on-notion":
+            notion_to_gcal = s.NotionToGCal(action="UPDATE", updateEverything=True)
+            notion_to_gcal.main()
+        # default: update from notion to google, including NeedGCalUpdate is false
+        elif cmd[1] == "-na" or cmd[1] == "--update-all-on-notion":
+            notion_to_gcal = s.NotionToGCal(action="UPDATE", updateEverything=False)
+            notion_to_gcal.main()
+        # update from google time and create new events
+        elif cmd[1] == "-gt" or cmd[1] == "--google-time":
+            s.GCalToNotion(action="UPDATE_TIME_CREATE_NEW_BY_GOOGLE")
+        # create from google event only not update time format
+        elif cmd[1] == "-gc" or cmd[1] == "--google-create":
+            s.GCalToNotion(action="UPDATE_TIME_BY_GOOGLE")
+        # update from google to notion, danger zone from google description to notion description
+        elif cmd[1] == "-ga" or cmd[1] == "--google-all":
+            check_again = input(
+                "Do you want to overwrite Notion? This action cannot be undone! Enter [YES, OVERWRITE]: "
+            )
+            if check_again == "YES, OVERWRITE":
+                s.GCalToNotion(action="OVERWRITE_BY_GOOGLE")
+        # delete google cal via notion Done?
+        elif cmd[1] == "-r" or cmd[1] == "--remove": #bug
+            s.deleteEvent()
+        # print sample
+        elif cmd[1] == "-s" or cmd[1] == "--sample": #bug
+            try:
+                n = int(cmd[2])
+            except IndexError:
+                n = 1
+            try:
+                name = cmd[3]
+            except IndexError:
+                name = "Task"
+            print("\nNotion Events:")
+            s.notion_event_sample(num=n)
+            print("\nGoogle Events:")
+            s.gcal_event_sample(name=name, num=n)
+    except Exception as e:
+        logging.error(f"Error executing action: {e}")
+
+    end_time = time.perf_counter()
+    log_time_information(cmd, start_time, end_time, data)
+    logging.info("Process completed.")
+
+
+def log_time_information(cmd, start_time, end_time, data):
+    """Log time information for the executed action."""
     current_time = datetime.now().strftime("%H:%M:%S")
-    after_date = (date.today() + timedelta(days=data["goback_days"])).strftime(
+    after_date = (date.today() - timedelta(days=data["goback_days"])).strftime(
         "%Y-%m-%d"
     )
     before_date = (date.today() + timedelta(days=data["goforward_days"])).strftime(
         "%Y-%m-%d"
     )
-    print("\n")
-    print("----------------------------- TimeInformation -----------------------------")
-    print(f"Command Line: {' '.join(cmd)}")
-    print(f"After Date {after_date} Included, Before Date {before_date} Not Included")
-    print("Current Time =", current_time)
-    print("Process finished in %.2f seconds" % (end_time - start_time))
-    print("-------------------------------- COMPLETED --------------------------------")
-    print("###########################################################################")
-    print("################################### END ###################################")
-    print("\n")
+
+    logging.info(f"Command Line: {' '.join(cmd)}")
+    logging.info(f"After {after_date} Included, Before {before_date} Not Included")
+    logging.info(f"Current Time = {current_time}")
+    logging.info(f"Process finished in {end_time - start_time:.2f} seconds")
 
 
-def main():
-    # check if the user want to modify json file
+if __name__ == "__main__":
     data = read_json()
     try:
         if sys.argv[2] == "-m":
@@ -121,11 +125,7 @@ def main():
     except:
         print("No json file is modified")
 
-    s = import_sync_module()
+    sync_module = import_sync_module()
 
     print("Displaying output on the terminal...")
-    execute_sync_action(s, sys.argv, data)
-
-
-if __name__ == "__main__":
-    main()
+    execute_sync_action(sync_module, sys.argv, data)

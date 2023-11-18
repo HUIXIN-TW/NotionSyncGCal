@@ -1,6 +1,6 @@
 1. **Google Calendar Module** (`gcal_services.py`): This module will contain all the functions that interact with the Google Calendar API. The functions to be moved to this module are:
 
-   - all_gcal_eventid
+   - get_all_gcal_eventid
    - makeCalEvent
    - queryGCalId
    - updateGStatus
@@ -11,7 +11,7 @@
    - DateTimeIntoNotionFormat
    - makeTaskURL
    - notion_time
-   - all_notion_eventid
+   - get_all_notion_eventid
    - queryNotionEvent_all
    - queryNotionEvent_notion
    - queryNotionEvent_page

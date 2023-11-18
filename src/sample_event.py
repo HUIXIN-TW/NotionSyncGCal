@@ -1,13 +1,18 @@
 import notion_token
+import notion_services
+import gcal_token
+import json
+from datetime import datetime, timedelta
+import pytz
 
 # Initialize the Notion token
 nt = notion_token.Notion()
+gt = gcal_token.Google()
 
 
-# TODO: Havent TEST yet
 def notion_event_sample(num=1):
     count = 0
-    resultList = queryNotionEvent_all()
+    resultList = notion_services.queryNotionEvent_all()
     if len(resultList) > 1:
         for i, el in enumerate(resultList):
             if count < num:
@@ -17,15 +22,38 @@ def notion_event_sample(num=1):
                 print("\n")
 
 
-def gcal_event_sample(name=nt.GCAL_DEFAULT_NAME, num=1):
-    calendarID = ""  # input manually
-    eventID = ""  # input manually
-    events = GOOGLE_SERVICE.service.events().list(calendarId=calendarID).execute()
-    if eventID != "":
-        for i, el in enumerate(events["items"]):
-            if el["id"] == eventID:
-                print(f"Find {eventID}")
-                print(events["items"][i]["location"])
-                break
-    else:
-        print(events["items"][num])
+def gcal_event_sample(num=1):
+    # Set the timezone to match the timezone of your Google Calendar
+    timezone = pytz.timezone(nt.TIMEZONE)
+
+    # Get the current date with the correct timezone
+    now = datetime.now(timezone)
+
+    # Set timeMin and timeMax to cover the entire current day
+    timeMin = now.replace(hour=0, minute=0, second=0, microsecond=0).isoformat()
+    timeMax = now.replace(hour=23, minute=59, second=59, microsecond=999999).isoformat()
+
+    # Fetch all calendar IDs
+    calendars_result = gt.service.calendarList().list().execute()
+    calendars = calendars_result.get("items", [])
+
+    # Iterate over all calendars and fetch events
+    all_events = []
+    for calendar in calendars:
+        calendar_id = calendar["id"]
+        events_result = (
+            gt.service.events()
+            .list(calendarId=calendar_id, timeMin=timeMin, timeMax=timeMax)
+            .execute()
+        )
+        events = events_result.get("items", [])
+        all_events.extend(events[:num])  # Add the first 'num' events from each calendar
+
+    # Process the collected events
+    for event in all_events:
+        print(json.dumps(event, indent=4))
+
+
+if __name__ == "__main__":
+    notion_event_sample()
+    gcal_event_sample()
