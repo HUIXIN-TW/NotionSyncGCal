@@ -12,10 +12,11 @@ def build_checkbox_filter(property_name, value):
     """Build a filter for checkbox properties."""
     return {"property": property_name, "checkbox": {"equals": value}}
 
+
 def build_formula_checkbox_filter(property_name, value):
     """Build a filter for checkbox properties."""
     return {"property": property_name, "formula": {"checkbox": {"equals": True}}}
-    
+
 
 def build_or_filter(filters):
     """Build an OR filter."""

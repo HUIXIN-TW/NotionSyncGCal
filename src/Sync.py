@@ -213,10 +213,14 @@ class NotionToGCal:
 
         if self.resultList:
             n = len(self.resultList)
-            logging.info(f"---- {n} EVENTS: RUNNING NOTIONSYNC NOW | Change in Notion to Gcalendar ----")
+            logging.info(
+                f"---- {n} EVENTS: RUNNING NOTIONSYNC NOW | Change in Notion to Gcalendar ----"
+            )
 
             for i, el in enumerate(self.resultList):
-                logging.info(f"---- {i} th Result ready to be updated to google calendar ----")
+                logging.info(
+                    f"---- {i} th Result ready to be updated to google calendar ----"
+                )
 
                 event_details = self.extract_event_details(el)
                 initiative_details = self.extract_initiative_details(el)
@@ -227,17 +231,23 @@ class NotionToGCal:
                 location = self.extract_location(el)
 
                 # Now we will use the extracted details to create or update events on Google Calendar
-                event_description = makeEventDescription(initiative_details, extra_info, task_status)
+                event_description = makeEventDescription(
+                    initiative_details, extra_info, task_status
+                )
 
                 # Get existing event ID from Notion properties, if any
                 try:
-                    existing_event_id = el["properties"][nt.GCALEVENTID_NOTION_NAME]["rich_text"][0]["text"]["content"]
+                    existing_event_id = el["properties"][nt.GCALEVENTID_NOTION_NAME][
+                        "rich_text"
+                    ][0]["text"]["content"]
                 except:
                     existing_event_id = ""
 
                 # Get current calendar ID from Notion properties
                 try:
-                    current_calendar_id = el["properties"][nt.CURRENT_CALENDAR_ID_NOTION_NAME]["rich_text"][0]["text"]["content"]
+                    current_calendar_id = el["properties"][
+                        nt.CURRENT_CALENDAR_ID_NOTION_NAME
+                    ]["rich_text"][0]["text"]["content"]
                 except:
                     current_calendar_id = ""
 
@@ -249,18 +259,28 @@ class NotionToGCal:
 
                 # Check for subscription calendar
                 if "@import.calendar.google.com" in current_calendar_id:
-                    calendar_name = el["properties"][nt.CALENDAR_NOTION_NAME]["select"]["name"]
-                    logging.info(f"---- {calendar_name} is a subscription which can't be edited ----")
+                    calendar_name = el["properties"][nt.CALENDAR_NOTION_NAME]["select"][
+                        "name"
+                    ]
+                    logging.info(
+                        f"---- {calendar_name} is a subscription which can't be edited ----"
+                    )
                     continue
 
                 # Create or update event on Google Calendar
                 try:
-                    start_date = datetime.strptime(event_details["start_date"], "%Y-%m-%dT%H:%M:%S%z")
-                    end_date = datetime.strptime(event_details["end_date"], "%Y-%m-%dT%H:%M:%S%z")
+                    start_date = datetime.strptime(
+                        event_details["start_date"], "%Y-%m-%dT%H:%M:%S%z"
+                    )
+                    end_date = datetime.strptime(
+                        event_details["end_date"], "%Y-%m-%dT%H:%M:%S%z"
+                    )
                 except:
-                    start_date = datetime.strptime(event_details["start_date"], "%Y-%m-%d")
+                    start_date = datetime.strptime(
+                        event_details["start_date"], "%Y-%m-%d"
+                    )
                     end_date = datetime.strptime(event_details["end_date"], "%Y-%m-%d")
-                
+
                 cal_event_id = self.make_cal_event(
                     [
                         existing_event_id,
@@ -271,7 +291,7 @@ class NotionToGCal:
                         end_date,
                         calendar_list,
                         current_calendar_id,
-                        url_list
+                        url_list,
                     ]
                 )
 
@@ -282,7 +302,9 @@ class NotionToGCal:
                     self.update_cal(page_id, cal_event_id, calendar_list)
 
         else:
-            logging.info("Result List is empty. Nothing new from Notion to be added to GCal")
+            logging.info(
+                "Result List is empty. Nothing new from Notion to be added to GCal"
+            )
 
 
 # Usage:

@@ -3,6 +3,7 @@ import notion_token
 # Initialize the Notion token
 nt = notion_token.Notion()
 
+
 # TODO: Havent TEST yet
 def notion_event_sample(num=1):
     count = 0

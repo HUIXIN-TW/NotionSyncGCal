@@ -46,7 +46,7 @@ class Google:
             if CREDENTIALS_PATH.exists():
                 with CREDENTIALS_PATH.open("rb") as f:
                     credentials = pickle.load(f)
-            
+
                 # Check if the token is expired or invalid
                 if not credentials.valid:
                     if credentials.expired and credentials.refresh_token:
@@ -65,7 +65,7 @@ class Google:
 
             service = build("calendar", "v3", credentials=credentials)
             return service
-            
+
         except Exception as e:
             logger.error(e)
             sys.exit()

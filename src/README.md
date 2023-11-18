@@ -1,4 +1,5 @@
 1. **Google Calendar Module** (`gcal_services.py`): This module will contain all the functions that interact with the Google Calendar API. The functions to be moved to this module are:
+
    - all_gcal_eventid
    - makeCalEvent
    - queryGCalId
@@ -6,6 +7,7 @@
    - deleteGInfo
 
 2. **Notion Module** (`notion_operations.py`): This module will contain all the functions that interact with the Notion API. The functions to be moved to this module are:
+
    - DateTimeIntoNotionFormat
    - makeTaskURL
    - notion_time
@@ -24,6 +26,7 @@
    - notion_event_sample
 
 3. **Utilities Module** (`utilities.py`): This module will contain utility functions, including functions for formatting and creating event descriptions. The functions to be moved to this module are:
+
    - makeEventDescription
 
 4. **Sync Module** (`sync_operations.py`): This module will contain functions responsible for syncing data between Notion and Google Calendar. The functions to be moved to this module are:

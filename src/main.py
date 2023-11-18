@@ -47,6 +47,7 @@ def read_json():
         print(json.dumps(data, indent=2))
     return data
 
+
 def execute_sync_action(s, cmd, data):
     # TODO: Change 0, 1 ,2 into more meaningful name
     start_time = time.time()  # start time

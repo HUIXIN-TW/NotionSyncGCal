@@ -1,9 +1,9 @@
-import notion_token 
-import gcal_token 
+import notion_token
+import gcal_token
 from datetime import datetime, timedelta
 
 
-#TODO: All function have not been tested yet
+# TODO: All function have not been tested yet
 
 nt = notion_token.Notion()
 gt = gcal_token.Google()
