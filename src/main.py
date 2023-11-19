@@ -14,7 +14,7 @@ NOTION_SETTINGS_PATH = CURRENT_DIR / "../token/notion_setting.json"
 
 def import_sync_module():
     try:
-        import Sync as s
+        import sync as s
 
         return s
     except ImportError as e:

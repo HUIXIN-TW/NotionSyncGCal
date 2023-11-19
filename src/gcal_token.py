@@ -89,9 +89,22 @@ class Google:
                 flow = InstalledAppFlow.from_client_secrets_file(
                     str(CLIENT_SECRET_PATH), scopes
                 )
-                creds = (
-                    flow.run_console() if self.DOCKER else flow.run_local_server(port=0)
-                )
+                try:
+                    creds = (
+                        flow.run_console() if self.DOCKER else flow.run_local_server(port=0)
+                    )
+                except:
+                    # Get the authorization URL
+                    auth_url, _ = flow.authorization_url(prompt='consent')
+
+                    print("Please go to this URL and finish the authentication process: ", auth_url)
+                    auth_code = input("Enter the authentication code: )
+
+                    # Use the code to complete the authentication
+                    flow.fetch_token(code=auth_code)
+
+                    # Get credentials
+                    creds = flow.credentials
             logger.info("------------------Refresh tokens------------------")
             with CREDENTIALS_PATH.open("wb") as token:
                 logger.info("Save the credentials for the next run")
