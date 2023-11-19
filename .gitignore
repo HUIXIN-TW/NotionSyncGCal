@@ -4,5 +4,6 @@
 /token
 
 /node_modules
-src/__pycache__
+
 /venv
+/src/__pycache__

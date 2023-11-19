@@ -18,6 +18,7 @@ def import_sync_module():
     try:
         import sync as s
 
+
         return s
     except ImportError as e:
         raise ImportError(f"Critical dependency not found: {e}")
@@ -42,12 +43,14 @@ def modify_json(cmd, data):
         print(json.dumps(data, indent=2))
 
 
+
 def read_json():
     with open(NOTION_SETTINGS_PATH, "r") as file:
         data = json.load(file)
         print("Current notion_setting.json:")
         print(json.dumps(data, indent=2))
     return data
+
 
 
 def execute_sync_action(s, cmd, data):
