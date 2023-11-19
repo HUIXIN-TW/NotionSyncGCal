@@ -98,7 +98,7 @@ class Google:
                     auth_url, _ = flow.authorization_url(prompt='consent')
 
                     print("Please go to this URL and finish the authentication process: ", auth_url)
-                    auth_code = input("Enter the authentication code: )
+                    auth_code = input("Enter the authentication code: ")
 
                     # Use the code to complete the authentication
                     flow.fetch_token(code=auth_code)
