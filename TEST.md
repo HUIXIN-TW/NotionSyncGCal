@@ -9,8 +9,7 @@ Before you work on your project, activate the corresponding environment:
 
 macOS user:
 . venv/bin/activate
-Microsoft Windows user:
-venv\Scripts\activate
+
 Install all requirements
 
 pip3 install -r requirements.txt
