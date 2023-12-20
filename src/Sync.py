@@ -811,7 +811,7 @@ def notion_to_gcal(action=0, updateEverything=True):
                 ExtraInfo.append("")
             # 6
             try:
-                event_6 = el["properties"][nt.STATUS_NOTION_NAME]["select"]["name"]
+                event_6 = el["properties"][nt.STATUS_NOTION_NAME]["status"]["name"]
                 print(event_6)
                 TaskStatus.append(event_6)
             except:
