@@ -138,7 +138,7 @@ class NotionToGCal:
     @staticmethod
     def extract_task_status(el):
         try:
-            task_status = el["properties"][nt.STATUS_NOTION_NAME]["select"]["name"]
+            task_status = el["properties"][nt.STATUS_NOTION_NAME]["status"]["name"]
         except:
             task_status = ""
         return task_status
