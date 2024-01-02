@@ -1,0 +1,8 @@
+.DS_Store
+
+/tmp
+/token
+
+/node_modules
+/venv
+/src/__pycache__
