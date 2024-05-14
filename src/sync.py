@@ -1173,15 +1173,17 @@ def notion_event_sample(num=1):
                 print("\n")
 
 
-def gcal_event_sample(name=nt.GCAL_DEFAULT_NAME, num=1):
-    calendarID = ""  # input manually
-    eventID = ""  # input manually
-    events = GOOGLE_SERVICE.service.events().list(calendarId=calendarID).execute()
-    if eventID != "":
-        for i, el in enumerate(events["items"]):
-            if el["id"] == eventID:
-                print(f"Find {eventID}")
-                print(events["items"][i]["location"])
-                break
-    else:
-        print(events["items"][num])
+def gcal_event_sample(num=1):
+    calendarID = input("Calendar ID: ")  # input manually
+    eventID = input("Event ID: ")  # input manually
+    try:
+        if eventID != "":
+            print(f"Get the event {eventID} from the calendar {calendarID}")
+            events = GOOGLE_SERVICE.service.events().get(calendarId=calendarID, eventId=eventID ).execute()
+            print(json.dumps(events, indent=4))
+        else:
+            print(f"Get a event from the calendar {calendarID}")
+            events = GOOGLE_SERVICE.service.events().list(calendarId=calendarID).execute()
+            print(events["items"][num])
+    except Exception as e:
+        print(f"An error occurred: {e}")
