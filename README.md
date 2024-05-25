@@ -105,17 +105,7 @@ cd tests
 
 ### Test Notion Connection
 
-Run specific test file:
-
-```bash
-python3 test_notion_setting.py
-```
-
-With unittest, you can use the -m flag and specify the test directory to run all test files in that directory. For example, if your test files are located in a folder named tests, you can run the following command:
-
-```bash
-python3 -m unittest discover -s .
-```
+To be continued...
 
 ### Test Google Calendar Connection
 
