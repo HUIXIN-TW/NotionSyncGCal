@@ -11,24 +11,33 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # Get the absolute path to the current directory
-CURRENT_DIR = Path(__file__).parent
+CURRENT_DIR = Path(__file__).parent.resolve()
+logger.info(f"Current directory: {CURRENT_DIR}")
 
 # Construct the absolute file paths within the container
-NOTION_SETTINGS_PATH = CURRENT_DIR / "../token/notion_setting.json"
-CLIENT_SECRET_PATH = CURRENT_DIR / "../token/client_secret.json"
-CREDENTIALS_PATH = CURRENT_DIR / "../token/token.pkl"
+NOTION_SETTINGS_PATH = (CURRENT_DIR / "../../token/notion_setting.json").resolve()
+CLIENT_SECRET_PATH = (CURRENT_DIR / "../../token/client_secret.json").resolve()
+CREDENTIALS_PATH = (CURRENT_DIR / "../../token/token.pkl").resolve()
 
+# Log the resolved paths
+logger.info(f"Settings file path: {NOTION_SETTINGS_PATH}")
+logger.info(f"Client secret path: {CLIENT_SECRET_PATH}")
+logger.info(f"Credentials path: {CREDENTIALS_PATH}")
+
+# Check if the files exist
+if not NOTION_SETTINGS_PATH.is_file():
+    logger.error(f"Settings file not found: {NOTION_SETTINGS_PATH}")
+if not CLIENT_SECRET_PATH.is_file():
+    logger.error(f"Client secret file not found: {CLIENT_SECRET_PATH}")
+if not CREDENTIALS_PATH.is_file():
+    logger.error(f"Credentials file not found: {CREDENTIALS_PATH}")
 
 class SettingError(Exception):
     """Custom exception to handle setting errors in the Notion class."""
-
     def __init__(self, message):
         super().__init__(message)
 
-
 class Notion:
-    # URLROOT = DATABASE_ID = TIMECODE = TIMEZONE = NOTION = None
-
     def __init__(self):
         self.filepath = NOTION_SETTINGS_PATH
         self.data = self.load_settings()

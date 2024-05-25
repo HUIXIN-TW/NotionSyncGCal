@@ -1,13 +1,12 @@
 import notion_token
 from datetime import datetime, timedelta
 
+# Initialize the Notion class instance
 nt = notion_token.Notion()
 
-
 def notion_time():
-    """Helper function to get the current time in the Notion format"""
+    """Helper function to get the current time in the Notion format."""
     return datetime.now().strftime(f"%Y-%m-%dT%H:%M:%S{nt.TIMECODE}")
-
 
 def build_date_range_filter(property_name, before_date, after_date):
     """Build a filter for date range."""
@@ -18,40 +17,31 @@ def build_date_range_filter(property_name, before_date, after_date):
         ]
     }
 
-
 def build_checkbox_filter(property_name, value):
     """Build a filter for checkbox properties."""
     return {"property": property_name, "checkbox": {"equals": value}}
 
-
 def build_formula_checkbox_filter(property_name, value):
-    """Build a filter for checkbox properties."""
-    return {"property": property_name, "formula": {"checkbox": {"equals": True}}}
-
+    """Build a filter for formula checkbox properties."""
+    return {"property": property_name, "formula": {"checkbox": {"equals": value}}}
 
 def build_or_filter(filters):
     """Build an OR filter."""
     return {"or": filters}
 
-
 def build_and_filter(filters):
     """Build an AND filter."""
     return {"and": filters}
-
 
 def build_string_equality_filter_for_formula(property_name, value):
     """Helper function to build a Notion filter to match a string equality condition in a formula property."""
     return {"property": property_name, "formula": {"string": {"equals": value}}}
 
-
 def build_properties_update(properties_dict):
     """Helper function to build properties update dictionary."""
     return {"properties": properties_dict}
 
-
-def build_update_page_time_properties(
-    calname, calstartdate, calenddate, gCal_id, gCal_name
-):
+def build_update_page_time_properties(calname, calstartdate, calenddate, gCal_id, gCal_name):
     """Helper function to build properties for updating a page."""
     properties = {
         nt.DATE_NOTION_NAME: {
@@ -77,7 +67,6 @@ def build_update_page_time_properties(
         },
     }
     return build_properties_update(properties)
-
 
 def build_create_or_update_page_properties(
     calname,
