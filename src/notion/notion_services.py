@@ -2,17 +2,17 @@ from datetime import datetime
 import logging
 import notion_token
 
-from build_filters import (
-    build_date_range_filter,
-    build_checkbox_filter,
-    build_formula_checkbox_filter,
-    build_or_filter,
-    build_and_filter,
-    build_string_equality_filter_for_formula,
-    build_properties_update,
-    build_create_or_update_page_properties,
-    build_update_page_time_properties
-)
+# from ..api.build_filters import (
+#     build_date_range_filter,
+#     build_checkbox_filter,
+#     build_formula_checkbox_filter,
+#     build_or_filter,
+#     build_and_filter,
+#     build_string_equality_filter_for_formula,
+#     build_properties_update,
+#     build_create_or_update_page_properties,
+#     build_update_page_time_properties,
+# )
 
 # Initialize the Notion token
 nt = notion_token.Notion()
@@ -20,6 +20,32 @@ nt = notion_token.Notion()
 # Configure logging
 logging.basicConfig(filename="notion_services.log", level=logging.INFO)
 
+
+def read_notion_table():
+    """Helper function to read the Notion table."""
+    try:
+        return nt.NOTION.databases.query(database_id=nt.DATABASE_ID,
+                                         filter={
+                                             "and": [
+                                                 {
+                                                     "property": nt.DATE_NOTION_NAME,
+                                                     "date": {
+                                                         "on_or_before":
+                                                         nt.BEFORE_DATE
+                                                     }
+                                                 },
+                                                 {
+                                                     "property": nt.DATE_NOTION_NAME,
+                                                     "date": {
+                                                         "on_or_after":
+                                                         nt.AFTER_DATE
+                                                     }
+                                                 },
+                                             ]
+                                         })
+    except Exception as e:
+        logging.error(f"Error reading Notion table: {e}")
+        return None
 
 def format_date(date_obj):
     """Helper function to format dates."""
@@ -71,7 +97,9 @@ def get_all_notion_eventid(operation_context):
     resultList = queryNotionEvent_gcal()
     logging.info(f"{operation_context} | Get all Notion event")
     for result in resultList:
-        GCalId = result["properties"][nt.GCALEVENTID_NOTION_NAME]["rich_text"][0]["text"]["content"]
+        GCalId = result["properties"][nt.GCALEVENTID_NOTION_NAME]["rich_text"][0][
+            "text"
+        ]["content"]
         logging.info(f"Google Event ID: {GCalId}")
         all_notion_gCal_Ids.append(GCalId)
         all_notion_gCal_Ids_pageid[GCalId] = result["id"]
@@ -80,11 +108,15 @@ def get_all_notion_eventid(operation_context):
 
 def queryNotionEvent_all():
     """Helper function to query all Notion events."""
-    date_filter = build_date_range_filter(nt.DATE_NOTION_NAME, nt.BEFORE_DATE, nt.AFTER_DATE)
+    date_filter = build_date_range_filter(
+        nt.DATE_NOTION_NAME, nt.BEFORE_DATE, nt.AFTER_DATE
+    )
     delete_filter = build_checkbox_filter(nt.DELETE_NOTION_NAME, False)
     final_filter = build_and_filter([date_filter, delete_filter])
     try:
-        my_page = nt.NOTION.databases.query(database_id=nt.DATABASE_ID, filter=final_filter)
+        my_page = nt.NOTION.databases.query(
+            database_id=nt.DATABASE_ID, filter=final_filter
+        )
         return my_page["results"]
     except Exception as e:
         logging.error(f"Failed to query Notion database: {e}")
@@ -93,16 +125,22 @@ def queryNotionEvent_all():
 
 def queryNotionEvent_notion():
     """Helper function to query Notion events."""
-    date_filter = build_date_range_filter(nt.DATE_NOTION_NAME, nt.BEFORE_DATE, nt.AFTER_DATE)
+    date_filter = build_date_range_filter(
+        nt.DATE_NOTION_NAME, nt.BEFORE_DATE, nt.AFTER_DATE
+    )
     delete_filter = build_checkbox_filter(nt.DELETE_NOTION_NAME, False)
     other_filters = [
         build_checkbox_filter(nt.ON_GCAL_NOTION_NAME, False),
         build_formula_checkbox_filter(nt.NEEDGCALUPDATE_NOTION_NAME, True),
     ]
-    final_filter = build_and_filter([build_or_filter(other_filters), date_filter, delete_filter])
+    final_filter = build_and_filter(
+        [build_or_filter(other_filters), date_filter, delete_filter]
+    )
 
     try:
-        my_page = nt.NOTION.databases.query(database_id=nt.DATABASE_ID, filter=final_filter)
+        my_page = nt.NOTION.databases.query(
+            database_id=nt.DATABASE_ID, filter=final_filter
+        )
         return my_page["results"]
     except Exception as e:
         logging.error(f"Failed to query Notion database: {e}")
@@ -113,12 +151,16 @@ def queryNotionEvent_page(id):
     """Helper function to query a specific Notion page by ID."""
     try:
         # Build filters
-        page_id_filter = build_string_equality_filter_for_formula(nt.PAGE_ID_NOTION_NAME, id)
+        page_id_filter = build_string_equality_filter_for_formula(
+            nt.PAGE_ID_NOTION_NAME, id
+        )
         delete_filter = build_checkbox_filter(nt.DELETE_NOTION_NAME, False)
         final_filter = build_and_filter([page_id_filter, delete_filter])
 
         # Query the database
-        response = nt.NOTION.databases.query(database_id=nt.DATABASE_ID, filter=final_filter)
+        response = nt.NOTION.databases.query(
+            database_id=nt.DATABASE_ID, filter=final_filter
+        )
         results = response.get("results", [])
 
         # Log the results
@@ -133,12 +175,18 @@ def queryNotionEvent_gcal():
     """Helper function to query Notion events synced with Google Calendar."""
     on_gcal_filter = build_checkbox_filter(nt.ON_GCAL_NOTION_NAME, True)
     not_deleted_filter = build_checkbox_filter(nt.DELETE_NOTION_NAME, False)
-    date_range_filter = build_date_range_filter(nt.DATE_NOTION_NAME, nt.BEFORE_DATE, nt.AFTER_DATE)
+    date_range_filter = build_date_range_filter(
+        nt.DATE_NOTION_NAME, nt.BEFORE_DATE, nt.AFTER_DATE
+    )
 
-    final_filter = build_and_filter([on_gcal_filter, not_deleted_filter, date_range_filter])
+    final_filter = build_and_filter(
+        [on_gcal_filter, not_deleted_filter, date_range_filter]
+    )
 
     try:
-        my_page = nt.NOTION.databases.query(database_id=nt.DATABASE_ID, filter=final_filter)
+        my_page = nt.NOTION.databases.query(
+            database_id=nt.DATABASE_ID, filter=final_filter
+        )
         results = my_page.get("results", [])
         return results
     except Exception as e:
@@ -150,12 +198,18 @@ def queryNotionEvent_delete():
     """Helper function to query deleted Notion events synced with Google Calendar."""
     on_gcal_filter = build_checkbox_filter(nt.ON_GCAL_NOTION_NAME, True)
     is_deleted_filter = build_checkbox_filter(nt.DELETE_NOTION_NAME, True)
-    date_range_filter = build_date_range_filter(nt.DATE_NOTION_NAME, nt.BEFORE_DATE, nt.AFTER_DATE)
+    date_range_filter = build_date_range_filter(
+        nt.DATE_NOTION_NAME, nt.BEFORE_DATE, nt.AFTER_DATE
+    )
 
-    final_filter = build_and_filter([on_gcal_filter, is_deleted_filter, date_range_filter])
+    final_filter = build_and_filter(
+        [on_gcal_filter, is_deleted_filter, date_range_filter]
+    )
 
     try:
-        my_page = nt.NOTION.databases.query(database_id=nt.DATABASE_ID, filter=final_filter)
+        my_page = nt.NOTION.databases.query(
+            database_id=nt.DATABASE_ID, filter=final_filter
+        )
         results = my_page.get("results", [])
         logging.info(f"Delete Query: {results}")
         return results
@@ -186,7 +240,9 @@ def updateDefaultCal(page_id, gcal, gcal_id):
     """Helper function to update the default Google Calendar link on a Notion page."""
     properties_update = {
         nt.GCALEVENTID_NOTION_NAME: {"rich_text": [{"text": {"content": gcal}}]},
-        nt.CURRENT_CALENDAR_ID_NOTION_NAME: {"rich_text": [{"text": {"content": gcal_id}}]},
+        nt.CURRENT_CALENDAR_ID_NOTION_NAME: {
+            "rich_text": [{"text": {"content": gcal_id}}]
+        },
         nt.CALENDAR_NOTION_NAME: {"select": {"name": nt.GCAL_DEFAULT_NAME}},
     }
 
@@ -197,7 +253,9 @@ def updateDefaultCal(page_id, gcal, gcal_id):
         logging.info(f"Page {page_id} updated with default calendar info successfully.")
         return my_page
     except Exception as e:
-        logging.error(f"Failed to update page {page_id} with default calendar info: {e}")
+        logging.error(
+            f"Failed to update page {page_id} with default calendar info: {e}"
+        )
         return None
 
 
@@ -205,7 +263,9 @@ def updateCal(page_id, gcal, gcal_id):
     """Helper function to update the Google Calendar link on a Notion page."""
     properties_update = {
         nt.GCALEVENTID_NOTION_NAME: {"rich_text": [{"text": {"content": gcal}}]},
-        nt.CURRENT_CALENDAR_ID_NOTION_NAME: {"rich_text": [{"text": {"content": gcal_id}}]},
+        nt.CURRENT_CALENDAR_ID_NOTION_NAME: {
+            "rich_text": [{"text": {"content": gcal_id}}]
+        },
     }
 
     properties_dict = build_properties_update(properties_update)
@@ -223,7 +283,9 @@ def updateNotionTime(event, page_id, gcal, gcal_id):
     """Helper function to update the time properties on a Notion page."""
     properties_update = {
         nt.GCALEVENTID_NOTION_NAME: {"rich_text": [{"text": {"content": gcal}}]},
-        nt.CURRENT_CALENDAR_ID_NOTION_NAME: {"rich_text": [{"text": {"content": gcal_id}}]},
+        nt.CURRENT_CALENDAR_ID_NOTION_NAME: {
+            "rich_text": [{"text": {"content": gcal_id}}]
+        },
         nt.ON_GCAL_NOTION_NAME: {"checkbox": True},
     }
 
@@ -241,12 +303,19 @@ def syncUpdate_notion(event, gcal_event_id):
     """Sync function to update Notion with Google Calendar event details."""
     title = event.get("summary", "")
     page_id = gcal_event_id
-    properties = build_create_or_update_page_properties(event, page_id, nt.GCAL_DEFAULT_NAME)
-    
+    properties = build_create_or_update_page_properties(
+        event, page_id, nt.GCAL_DEFAULT_NAME)
+
     try:
-        result = nt.NOTION.pages.create(parent={"database_id": nt.DATABASE_ID}, properties=properties)
-        logging.info(f"Event '{title}' created/updated in Notion successfully.")
+        result = nt.NOTION.pages.create(parent={"database_id": nt.DATABASE_ID},
+                                        properties=properties)
+        logging.info(
+            f"Event '{title}' created/updated in Notion successfully.")
         return result
     except Exception as e:
         logging.error(f"Failed to sync event '{title}' to Notion: {e}")
         return None
+
+
+if __name__ == "__main__":
+    print(read_notion_table())
