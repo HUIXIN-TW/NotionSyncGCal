@@ -73,8 +73,10 @@ def update_gcal_event(notion_task, existing_gcal_cal_id,
 
 def create_gcal_event(notion_task, new_gcal_calendar_id=nt.GCAL_DEFAULT_ID):
     event = make_event_body(notion_task)
-    gt.service.events().insert(calendarId=new_gcal_calendar_id, body=event).execute()
+    gcal_event = gt.service.events().insert(calendarId=new_gcal_calendar_id,
+                                       body=event).execute()
     # get the event id and update the notion task by query page id
+    event_id = gcal_event.get("id")
     return event_id
 
 
@@ -114,84 +116,94 @@ def make_event_body(notion_task):
     #   case2: without end date (use start date + 1 day)
     # to_utc(event_start_date).strftime("%Y-%m-%dT%H:%M:%S")
     # to_utc(event_start_date).strftime("%Y-%m-%d")
-    event_start_date = notion_task.get("properties",
-                                       {}).get(nt.DATE_NOTION_NAME,
-                                               {}).get("date",
-                                                       {}).get("start", "")
-    event_end_date = notion_task.get("properties",
-                                     {}).get(nt.DATE_NOTION_NAME,
-                                             {}).get("date",
-                                                     {}).get("end", "")
+    notion_task_start_date = notion_task.get("properties", {}).get(
+        nt.DATE_NOTION_NAME, {}).get("date", {}).get("start", "")
+    notion_task_end_date = notion_task.get("properties",
+                                           {}).get(nt.DATE_NOTION_NAME,
+                                                   {}).get("date",
+                                                           {}).get("end", "")
     # Adjust and convert dates to UTC
-    start_dt_utc, end_dt_utc = adjust_notion_dates(event_start_date, event_end_date)
-
-    logger.info(f"Adjusted start datetime: {start_dt_utc.strftime('%Y-%m-%dT%H:%M:%S%z')}")
-    logger.info(f"Adjusted end datetime: {end_dt_utc.strftime('%Y-%m-%dT%H:%M:%S%z')}")
+    event_start_date, event_end_date = adjust_notion_dates(
+        notion_task_start_date, notion_task_end_date)
 
     # set location
-    event_location = notion_task.get("properties", {}).get(
-        nt.LOCATION_NOTION_NAME,
-        {}).get("rich_text", [{}])[0].get("text", {}).get("content", "")
+    try:
+        event_location = notion_task.get("properties", {}).get(
+            nt.LOCATION_NOTION_NAME,
+            {}).get("rich_text", [])[0].get("text", {}).get("content", "")
+    except:
+        event_location = ""
 
     # set description
-    event_description = notion_task.get("properties", {}).get(
-        nt.DESCRIPTION_NOTION_NAME,
-        {}).get("rich_text", [{}])[0].get("text", {}).get("content", "")
+    try:
+        event_description = notion_task.get("properties", {}).get(
+            nt.EXTRAINFO_NOTION_NAME,
+            {}).get("rich_text", [{}])[0].get("text", {}).get("content", "")
+    except:
+        event_description = ""
 
     # set url
     event_source_url = notion_task.get("url", "")
 
-    event = {
-        "summary": event_summary,
-        "location": event_location,
-        "description": event_description,
-        "start": {
-            "dateTime": event_start_date,
-            "timeZone": nt.TIMEZONE,
-        },
-        "end": {
-            "dateTime": event_end_date,
-            "timeZone": nt.TIMEZONE,
-        },
-        "source": {
-            "title": "Notion Link",
-            "url": event_source_url,
-        },
-    }
+    if "T" in event_start_date:
+        event = {
+            "summary": event_summary,
+            "location": event_location,
+            "description": event_description,
+            "start": {
+                "dateTime": event_start_date,
+                "timeZone": nt.TIMEZONE,
+            },
+            "end": {
+                "dateTime": event_end_date,
+                "timeZone": nt.TIMEZONE,
+            },
+            "source": {
+                "title": "Notion Link",
+                "url": event_source_url,
+            },
+        }
+    else:
+        event = {
+            "summary": event_summary,
+            "location": event_location,
+            "description": event_description,
+            "start": {
+                "date": event_start_date
+            },
+            "end": {
+                "date": event_end_date
+            },
+            "source": {
+                "title": "Notion Link",
+                "url": event_source_url,
+            },
+        }
     return event
 
 
-def adjust_notion_dates(start_date, end_date=None):
+def adjust_notion_dates(start_date_str, end_date_str=None):
     """
+    TODO: Consider Different Timezones
     Adjust Notion date or datetime formats and convert them to UTC.
     """
-    if "T" in start_date:
-        # It's a datetime format
-        notion_start_dt = isoparse(start_date)
-        notion_start_dt_utc = to_utc(notion_start_dt)
-        if end_date:
-            notion_end_dt = isoparse(end_date)
-            notion_end_dt_utc = to_utc(notion_end_dt)
-        else:
-            notion_end_dt_utc = notion_start_dt_utc + timedelta(minutes=nt.DEFAULT_EVENT_LENGTH)
+    start_date = isoparse(start_date_str)
+    if end_date_str:
+        end_date = isoparse(end_date_str)
     else:
-        # It's a date format
-        notion_start_date = datetime.strptime(start_date, "%Y-%m-%d").date()
-        if end_date:
-            notion_end_date = datetime.strptime(end_date, "%Y-%m-%d").date() + timedelta(days=1)
-        else:
-            notion_end_date = notion_start_date + timedelta(days=1)
+        if "T" in start_date_str:  # datetime format
+            end_date = start_date + timedelta(hours=1)
+        else:  # date format
+            end_date = start_date + timedelta(days=1)
 
-        notion_start_dt = datetime.combine(notion_start_date, datetime.min.time()).replace(tzinfo=timezone.utc)
-        notion_end_dt = datetime.combine(notion_end_date, datetime.min.time()).replace(tzinfo=timezone.utc)
+    if "T" in start_date_str:
+        start_date_str = start_date.strftime("%Y-%m-%dT%H:%M:%S%z")
+        end_date_str = end_date.strftime("%Y-%m-%dT%H:%M:%S%z")
+    else:
+        start_date_str = start_date.strftime("%Y-%m-%d")
+        end_date_str = end_date.strftime("%Y-%m-%d")
 
-        notion_start_dt_utc = to_utc(notion_start_dt)
-        notion_end_dt_utc = to_utc(notion_end_dt)
-
-    return notion_start_dt_utc, notion_end_dt_utc
-
-def to_utc(datetime_obj):
-    return datetime_obj.astimezone(timezone.utc)
+    return start_date_str, end_date_str
 
 # Example usage
 if __name__ == "__main__":
