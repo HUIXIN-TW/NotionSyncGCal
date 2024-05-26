@@ -222,48 +222,6 @@ def makeCalEvent(
             )
     return x["id"]
 
-
-def deleteEvent():
-    """Delete Google Calendar events."""
-    print("\n")
-    print("-------- Deletion | Done? == True in Notion, delete the GCal event --------")
-    resultList = queryNotionEvent_delete()
-
-    print(resultList)
-    if len(resultList) > 0:
-        for i, el in enumerate(resultList):
-            # make sure that"s what you want
-            summary = el["properties"]["Task Name"]["title"][0]["text"]["content"]
-            pageId = el["id"]
-            calendarID = nt.GCAL_DIC[
-                el["properties"][nt.CURRENT_CALENDAR_NAME_NOTION_NAME]["select"]["name"]
-            ]
-            try:
-                eventId = el["properties"][nt.GCALEVENTID_NOTION_NAME]["rich_text"][0][
-                    "text"
-                ]["content"]
-            except Exception as e:
-                print(
-                    f"{summary} does not have event ID. Make sure that it exists in Notion"
-                )
-                print(e)
-                sys.exit()
-            print(f"{i}th processing GCal Event {summary}, EventID {eventId}")
-
-            try:  # delete Gcal event
-                gt.service.events().delete(
-                    calendarId=calendarID, eventId=eventId
-                ).execute()
-                print(f"{i}th Deleting GCal Event {summary}, EventID {eventId}")
-            except:
-                continue
-
-            # delete google event id and Cal id in Notion
-            deleteGInfo(pageId)
-    else:
-        print("---------------------- No deleted the GCal event ----------------------")
-
-
 # Example usage
 if __name__ == "__main__":
     # Ensure the directory exists
@@ -277,24 +235,3 @@ if __name__ == "__main__":
     # Open the file in write mode and dump JSON data
     with log_path.open("w") as output:
         json.dump(get_gcal_event(), output, indent=4)
-
-'''
-    # Example event data (replace with actual data)
-    event_data = {
-        "exist_eventId": "",
-        "eventName": "Meeting with Team",
-        "eventDescription": "Discuss project updates",
-        "eventLocation": "Virtual Meeting",
-        "eventStartTime": datetime.now(),
-        "eventEndTime": datetime.now() + timedelta(hours=1),
-        "newCalId": "your_calendar_id",  # Replace with your calendar ID
-        "event": {
-            # Event details
-        },
-    }
-
-    # Create or update an event
-    event_id = create_or_update_calendar_event(event_data)
-    if event_id:
-        print(f"Event created/updated with ID: {event_id}")
-'''
