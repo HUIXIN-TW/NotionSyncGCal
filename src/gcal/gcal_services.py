@@ -251,7 +251,7 @@ def deleteEvent():
             summary = el["properties"]["Task Name"]["title"][0]["text"]["content"]
             pageId = el["id"]
             calendarID = nt.GCAL_DIC[
-                el["properties"][nt.CALENDAR_NOTION_NAME]["select"]["name"]
+                el["properties"][nt.CURRENT_CALENDAR_NAME_NOTION_NAME]["select"]["name"]
             ]
             try:
                 eventId = el["properties"][nt.GCALEVENTID_NOTION_NAME]["rich_text"][0][
