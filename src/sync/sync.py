@@ -76,22 +76,30 @@ def main():
                     logger.info(
                         f"Google Calendar: Updating the task in Notion for event '{gcal_event_summary}'"
                     )
-                    notion_service.update_notion_task(notion_task["id"], gcal_event)
+                    notion_service.update_notion_task(notion_task["id"],
+                                                      gcal_event)
                 # Remove the processed Google Calendar event from the list
                 gcal_event_list.remove(gcal_event)
+                logger.info(
+                    f"Google Calendar: Event '{gcal_event_summary}' removed from the list, {len(gcal_event_list)} events remaining"
+                )
                 break
 
     # Create new tasks in Notion for the remaining Google Calendar events
-    for gcal_event in gcal_event_list:
-        gcal_event_id = gcal_event.get("id", "")
-        if not any(notion_task["properties"]["GCal Event Id"]["rich_text"]
-                   and notion_task["properties"]["GCal Event Id"]["rich_text"]
-                   [0]["plain_text"] == gcal_event_id
-                   for notion_task in notion_task_list):
-            logger.info(
-                f"Google Calendar: Creating a new task in Notion for event '{gcal_event.get('summary', '')}'"
-            )
-            notion_service.create_notion_task(gcal_event)
+    if len(gcal_event_list) > 0:
+        logger.info(
+            f"Google Calendar: Creating new tasks in Notion for {len(gcal_event_list)} events"
+        )
+        for gcal_event in gcal_event_list:
+            gcal_event_id = gcal_event.get("id", "")
+            if not any(notion_task["properties"]["GCal Event Id"]["rich_text"]
+                       and notion_task["properties"]["GCal Event Id"]
+                       ["rich_text"][0]["plain_text"] == gcal_event_id
+                       for notion_task in notion_task_list):
+                logger.info(
+                    f"Google Calendar: Creating a new task in Notion for event '{gcal_event.get('summary', '')}'"
+                )
+                notion_service.create_notion_task(gcal_event)
 
 if __name__ == "__main__":
     main()

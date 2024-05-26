@@ -187,9 +187,9 @@ def create_notion_task(gcal_event):
                 },
             },
         )
-        logging.info(f"Event '{gcal_event.get("summary", "")}' created in Notion successfully.")
+        logging.info(f"Event {gcal_event.get('summary', '')} created in Notion successfully.")
     except Exception as e:
-        logging.error(f"Failed to sync event '{gcal_event.get("summary", "")}' to Notion: {e}")
+        logging.error(f"Failed to sync event {gcal_event.get('summary', '')} to Notion: {e}")
         return None
 
 
