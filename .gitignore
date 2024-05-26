@@ -7,3 +7,5 @@
 
 /venv
 /src/__pycache__
+
+/src/logs

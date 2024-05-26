@@ -1,3 +1,4 @@
+<!-- TODO: Need update -->
 ## How to install the app
 
 - Step1: Fork or Clone git repository
@@ -105,7 +106,7 @@
     - "NeedGCalUpdate_Notion_Name": "NeedGCalUpdate",
     - "GCalEventId_Notion_Name": "GCal Event Id",
     - "LastUpdatedTime_Notion_Name" : "Last Updated Time",
-    - "Calendar_Notion_Name": "Calendar",
+    - "CURRENT_CALENDAR_NAME_NOTION_NAME": "Calendar",
     - "Current_Calendar_Id_Notion_Name": "Current Calendar Id",
     - "Delete_Notion_Name": "Done?",
     - "Status_Notion_Name": "Status",

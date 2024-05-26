@@ -1,18 +1,16 @@
 {
   "docker": false,
-  "notion_token": "",
-  "urlroot": "",
+  "goback_days": 0,
+  "goforward_days": 1,
+  "notion_token": "secret_",
+  "urlroot": "https://www.notion.so/<urlroot>&p=",
   "timecode": "+08:00",
   "timezone": "Asia/Taipei",
-  "goback_days": 1,
-  "goforward_days": 2,
-  "delete_option": 0,
   "default_event_length": 60,
   "default_start_time": 8,
-  "allday_option": 0,
   "gcal_dic": [
     {
-      "": ""
+      "cal": "youremial@gmail.com"
     }
   ],
   "page_property": [
@@ -22,17 +20,14 @@
       "Initiative_Notion_Name": "Initiative",
       "ExtraInfo_Notion_Name": "Extra Info",
       "Location_Notion_Name": "Location",
-      "On_GCal_Notion_Name": "On GCal?",
-      "NeedGCalUpdate_Notion_Name": "NeedGCalUpdate",
-      "GCalEventId_Notion_Name": "GCal Event Id",
-      "LastUpdatedTime_Notion_Name": "Last Updated Time",
-      "Calendar_Notion_Name": "Calendar",
-      "Current_Calendar_Id_Notion_Name": "Current Calendar Id",
-      "Delete_Notion_Name": "Done?",
+      "Last_Updated_Time_Notion_Name": "Last Updated Time",
+      "GCal_EventId_Notion_Name": "GCal Event Id",
+      "GCal_Name_Notion_Name": "Calendar",
+      "GCal_Id_Notion_Name": "GCal Calendar Id",
+      "Delete_Notion_Name": "GCal Deleted?",
       "Status_Notion_Name": "Status",
-      "Page_ID_Notion_Name": "PageID",
-      "CompleteIcon_Notion_Name": "CompleteIcon"
+      "Page_ID_Notion_Name": "Page Id",
+      "CompleteIcon_Notion_Name": "GCal Icon"
     }
-  ],
-  "skip_description_condition": ""
+  ]
 }

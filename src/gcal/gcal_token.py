@@ -24,6 +24,7 @@ NOTION_SETTINGS_PATH = (CURRENT_DIR / "../../token/notion_setting.json").resolve
 CLIENT_SECRET_PATH = (CURRENT_DIR / "../../token/client_secret.json").resolve()
 CREDENTIALS_PATH = (CURRENT_DIR / "../../token/token.pkl").resolve()
 
+
 class Google:
     def __init__(self):
         self.service = None
@@ -87,10 +88,14 @@ class Google:
 
     def perform_oauth_flow(self):
         scopes = ["https://www.googleapis.com/auth/calendar"]
-        flow = InstalledAppFlow.from_client_secrets_file(str(CLIENT_SECRET_PATH), scopes)
+        flow = InstalledAppFlow.from_client_secrets_file(
+            str(CLIENT_SECRET_PATH), scopes
+        )
         try:
             logger.info("Running OAuth flow...")
-            credentials = flow.run_console() if self.DOCKER else flow.run_local_server(port=0)
+            credentials = (
+                flow.run_console() if self.DOCKER else flow.run_local_server(port=0)
+            )
             logger.info("Successfully fetched new tokens.")
         except Exception as e:
             logger.error(f"Error during OAuth flow: {e}")
@@ -108,6 +113,7 @@ class Google:
                 logger.info("Saved credentials to file.")
         except Exception as e:
             logger.error(f"Error saving credentials to file: {e}")
+
 
 if __name__ == "__main__":
     google_instance = Google()

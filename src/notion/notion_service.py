@@ -22,16 +22,19 @@ logger.info(f"Current directory: {CURRENT_DIR}")
 # Initialize the Notion token
 nt = notion_token.Notion()
 
-def read_notion_database():
-    logging.info("Get all Notion event")
+
+def get_notion_task():
     try:
+        logger.info(
+            f"Reading Notion database with ID: {nt.DATABASE_ID} from {nt.DATE_NOTION_NAME}: {nt.AFTER_DATE} to {nt.BEFORE_DATE} (not inclusive)"
+        )
         return nt.NOTION.databases.query(
             database_id=nt.DATABASE_ID,
             filter={
                 "and": [
                     {
                         "property": nt.DATE_NOTION_NAME,
-                        "date": {"on_or_before": nt.BEFORE_DATE},
+                        "date": {"before": nt.BEFORE_DATE},
                     },
                     {
                         "property": nt.DATE_NOTION_NAME,
@@ -39,7 +42,7 @@ def read_notion_database():
                     },
                 ]
             },
-        )
+        )["results"]
     except Exception as e:
         logging.error(f"Error reading Notion table: {e}")
         return None
@@ -48,18 +51,19 @@ def read_notion_database():
 # Update specific properties in notion
 # Note: Never update Extra info from google cal to notion
 # That action will lose rich notion information
-def update_notion_page(page_id, gcal_event):
+def update_notion_task(page_id, gcal_event):
     try:
         nt.NOTION.pages.update(
             page_id=page_id,
             properties={
                 nt.TASK_NOTION_NAME: {
-                    "type": "title",
+                    "type":
+                    "title",
                     "title": [
                         {
                             "type": "text",
                             "text": {
-                                "content": event_name,
+                                "content": gcal_event.get("summary", "")
                             },
                         },
                     ],
@@ -67,8 +71,8 @@ def update_notion_page(page_id, gcal_event):
                 nt.DATE_NOTION_NAME: {
                     "type": "date",
                     "date": {
-                        "start": event_startdate,
-                        "end": event_enddate,
+                        "start": gcal_event.get("start", {}).get("dateTime", ""),
+                        "end": gcal_event.get("end", {}).get("dateTime", ""),
                     },
                 },
                 nt.LASTUPDATEDTIME_NOTION_NAME: {
@@ -80,17 +84,31 @@ def update_notion_page(page_id, gcal_event):
                 },
                 nt.LOCATION_NOTION_NAME: {
                     "type": "rich_text",
-                    "rich_text": [{"text": {"content": event_location}}],
+                    "rich_text": [{
+                        "text": {
+                            "content": gcal_event.get("location", "")
+                        }
+                    }],
                 },
                 nt.GCALEVENTID_NOTION_NAME: {
                     "type": "rich_text",
-                    "rich_text": [{"text": {"content": event_id}}],
+                    "rich_text": [{
+                        "text": {
+                            "content": gcal_event.get("id", "")
+                        }
+                    }],
                 },
                 nt.CURRENT_CALENDAR_ID_NOTION_NAME: {
-                    "rich_text": [{"text": {"content": gcal_id}}]
+                    "rich_text": [{
+                        "text": {
+                            "content": gcal_event.get("organizer", {}).get("email", "")
+                        }
+                    }]
                 },
                 nt.CURRENT_CALENDAR_NAME_NOTION_NAME: {
-                    "select": {"name": gcal_name},
+                    "select": {
+                        "name": gcal_event.get("organizer", {}).get("displayName", "")
+                    },
                 },
             },
         )
@@ -100,18 +118,19 @@ def update_notion_page(page_id, gcal_event):
 
 
 # Create notion with google description as extra information
-def create_notion_page(gcal_event):
+def create_notion_task(gcal_event):
     try:
         nt.NOTION.pages.create(
             parent={"database_id": nt.DATABASE_ID},
             properties={
                 nt.TASK_NOTION_NAME: {
-                    "type": "title",
+                    "type":
+                    "title",
                     "title": [
                         {
                             "type": "text",
                             "text": {
-                                "content": event_name,
+                                "content": gcal_event.get("summary", ""),
                             },
                         },
                     ],
@@ -119,8 +138,8 @@ def create_notion_page(gcal_event):
                 nt.DATE_NOTION_NAME: {
                     "type": "date",
                     "date": {
-                        "start": event_startdate,
-                        "end": event_enddate,
+                        "start": gcal_event.get("start", {}).get("dateTime", ""),
+                        "end": gcal_event.get("end", {}).get("dateTime", ""),
                     },
                 },
                 nt.LASTUPDATEDTIME_NOTION_NAME: {
@@ -132,29 +151,60 @@ def create_notion_page(gcal_event):
                 },
                 nt.EXTRAINFO_NOTION_NAME: {
                     "type": "rich_text",
-                    "rich_text": [{"text": {"content": event_description}}],
+                    "rich_text": [{
+                        "text": {
+                            "content": gcal_event.get("description", "")
+                        }
+                    }],
                 },
                 nt.LOCATION_NOTION_NAME: {
                     "type": "rich_text",
-                    "rich_text": [{"text": {"content": event_location}}],
+                    "rich_text": [{
+                        "text": {
+                            "content": gcal_event.get("location", "")
+                        }
+                    }],
                 },
                 nt.GCALEVENTID_NOTION_NAME: {
                     "type": "rich_text",
-                    "rich_text": [{"text": {"content": event_id}}],
+                    "rich_text": [{
+                        "text": {
+                            "content": gcal_event.get("id", "")
+                        }
+                    }],
                 },
                 nt.CURRENT_CALENDAR_ID_NOTION_NAME: {
-                    "rich_text": [{"text": {"content": gcal_id}}]
+                    "rich_text": [{
+                        "text": {
+                            "content": gcal_event.get("organizer", {}).get("email", "")
+                        }
+                    }]
                 },
                 nt.CURRENT_CALENDAR_NAME_NOTION_NAME: {
-                    "select": {"name": gcal_name},
+                    "select": {
+                        "name": gcal_event.get("organizer", {}).get("displayName", "")
+                    },
                 },
             },
         )
-        logging.info(f"Event '{title}' created in Notion successfully.")
+        logging.info(f"Event '{gcal_event.get("summary", "")}' created in Notion successfully.")
     except Exception as e:
-        logging.error(f"Failed to sync event '{title}' to Notion: {e}")
+        logging.error(f"Failed to sync event '{gcal_event.get("summary", "")}' to Notion: {e}")
         return None
 
+
+def delete_notion_task(page_id):
+    try:
+        nt.NOTION.pages.update(
+            page_id=page_id,
+            properties={nt.DELETE_NOTION_NAME: {
+                "checkbox": true
+            }})
+        logging.info(
+            f"Event '{title}' marked as deletion in Notion successfully.")
+    except Exception as e:
+        logging.error(f"Failed to marked as deletion '{title}' to Notion: {e}")
+        return None
 
 def parse_date_in_notion_format(date_obj):
     """Helper function to notion format dates."""
@@ -164,6 +214,7 @@ def parse_date_in_notion_format(date_obj):
         logging.error(f"Error formatting date: {e}")
         formatted_date = None
     return formatted_date
+
 
 def get_current_time():
     """Helper function to get the current time in the Notion format."""
@@ -175,10 +226,10 @@ if __name__ == "__main__":
     Path("logs").mkdir(parents=True, exist_ok=True)
 
     # Check if the file exists and create it if not
-    log_path = Path("logs/read_notion_database.json")
+    log_path = Path("logs/get_notion_task.json")
     if not log_path.exists():
         log_path.touch()
 
     # Open the file in write mode and dump JSON data
     with log_path.open("w") as output:
-        json.dump(read_notion_database(), output, indent=4)
+        json.dump(get_notion_task(), output, indent=4)
