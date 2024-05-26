@@ -104,7 +104,7 @@
     - "Location_Notion_Name": "Location",
     - "On_GCal_Notion_Name": "On GCal?",
     - "NeedGCalUpdate_Notion_Name": "NeedGCalUpdate",
-    - "GCalEventId_Notion_Name": "GCal Event Id",
+    - "GCAL_EVENTID_NOTION_NAME": "GCal Event Id",
     - "LastUpdatedTime_Notion_Name" : "Last Updated Time",
     - "CURRENT_CALENDAR_NAME_NOTION_NAME": "Calendar",
     - "Current_Calendar_Id_Notion_Name": "Current Calendar Id",

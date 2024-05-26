@@ -99,7 +99,7 @@ class Notion:
             self.INITIATIVE_NOTION_NAME = page_property["Initiative_Notion_Name"]
             self.EXTRAINFO_NOTION_NAME = page_property["ExtraInfo_Notion_Name"]
             self.LOCATION_NOTION_NAME = page_property["Location_Notion_Name"]
-            self.GCALEVENTID_NOTION_NAME = page_property["GCal_EventId_Notion_Name"]
+            self.GCAL_EVENTID_NOTION_NAME = page_property["GCal_EventId_Notion_Name"]
             self.LASTUPDATEDTIME_NOTION_NAME = page_property[
                 "Last_Updated_Time_Notion_Name"
             ]
@@ -167,7 +167,7 @@ class Notion:
         print(f"INITIATIVE_NOTION_NAME: {self.INITIATIVE_NOTION_NAME}")
         print(f"EXTRAINFO_NOTION_NAME: {self.EXTRAINFO_NOTION_NAME}")
         print(f"LOCATION_NOTION_NAME: {self.LOCATION_NOTION_NAME}")
-        print(f"GCALEVENTID_NOTION_NAME: {self.GCALEVENTID_NOTION_NAME}")
+        print(f"GCAL_EVENTID_NOTION_NAME: {self.GCAL_EVENTID_NOTION_NAME}")
         print(f"LASTUPDATEDTIME_NOTION_NAME: {self.LASTUPDATEDTIME_NOTION_NAME}")
         print(
             f"CURRENT_CALENDAR_NAME_NOTION_NAME: {self.CURRENT_CALENDAR_NAME_NOTION_NAME}"

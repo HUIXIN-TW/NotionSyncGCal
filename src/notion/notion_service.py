@@ -90,7 +90,7 @@ def update_notion_task(page_id, gcal_event):
                         }
                     }],
                 },
-                nt.GCALEVENTID_NOTION_NAME: {
+                nt.GCAL_EVENTID_NOTION_NAME: {
                     "type": "rich_text",
                     "rich_text": [{
                         "text": {
@@ -165,7 +165,7 @@ def create_notion_task(gcal_event):
                         }
                     }],
                 },
-                nt.GCALEVENTID_NOTION_NAME: {
+                nt.GCAL_EVENTID_NOTION_NAME: {
                     "type": "rich_text",
                     "rich_text": [{
                         "text": {
@@ -201,9 +201,9 @@ def delete_notion_task(page_id):
                 "checkbox": true
             }})
         logging.info(
-            f"Event '{title}' marked as deletion in Notion successfully.")
+            f"Event {page_id} marked as deletion in Notion successfully.")
     except Exception as e:
-        logging.error(f"Failed to marked as deletion '{title}' to Notion: {e}")
+        logging.error(f"Failed to marked as deletion {page_id} to Notion: {e}")
         return None
 
 def parse_date_in_notion_format(date_obj):
@@ -215,6 +215,8 @@ def parse_date_in_notion_format(date_obj):
         formatted_date = None
     return formatted_date
 
+def get_notion_setting_data():
+    return nt
 
 def get_current_time():
     """Helper function to get the current time in the Notion format."""
