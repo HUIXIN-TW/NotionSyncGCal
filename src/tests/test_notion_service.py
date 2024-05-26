@@ -114,7 +114,7 @@ class TestNotionService(unittest.TestCase):
     @patch('notion.notion_services.nt.NOTION.pages.update')
     def test_updateDefaultCal(self, mock_update):
         # Arrange
-        mock_update.return_value = {'id': 'page_123', 'properties': {ns.nt.GCALEVENTID_NOTION_NAME: {'rich_text': [{'text': {'content': 'gcal_id'}}]}, ns.nt.CURRENT_CALENDAR_ID_NOTION_NAME: {'rich_text': [{'text': {'content': 'gcal'}}]}, ns.nt.CALENDAR_NOTION_NAME: {'select': {'name': ns.nt.GCAL_DEFAULT_NAME}}}}
+        mock_update.return_value = {'id': 'page_123', 'properties': {ns.nt.GCALEVENTID_NOTION_NAME: {'rich_text': [{'text': {'content': 'gcal_id'}}]}, ns.nt.CURRENT_CALENDAR_ID_NOTION_NAME: {'rich_text': [{'text': {'content': 'gcal'}}]}, ns.nt.CURRENT_CALENDAR_NAME_NOTION_NAME: {'select': {'name': ns.nt.GCAL_DEFAULT_NAME}}}}
         page_id = 'page_123'
         gcal = 'gcal'
         gcal_id = 'gcal_id'
@@ -125,8 +125,8 @@ class TestNotionService(unittest.TestCase):
         # Assert
         self.assertEqual(result['properties'][ns.nt.GCALEVENTID_NOTION_NAME]['rich_text'][0]['text']['content'], gcal)
         self.assertEqual(result['properties'][ns.nt.CURRENT_CALENDAR_ID_NOTION_NAME]['rich_text'][0]['text']['content'], gcal_id)
-        self.assertEqual(result['properties'][ns.nt.CALENDAR_NOTION_NAME]['select']['name'], ns.nt.GCAL_DEFAULT_NAME)
-        mock_update.assert_called_once_with(page_id=page_id, properties={ns.nt.GCALEVENTID_NOTION_NAME: {'rich_text': [{'text': {'content': gcal}}]}, ns.nt.CURRENT_CALENDAR_ID_NOTION_NAME: {'rich_text': [{'text': {'content': gcal_id}}]}, ns.nt.CALENDAR_NOTION_NAME: {'select': {'name': ns.nt.GCAL_DEFAULT_NAME}}})
+        self.assertEqual(result['properties'][ns.nt.CURRENT_CALENDAR_NAME_NOTION_NAME]['select']['name'], ns.nt.GCAL_DEFAULT_NAME)
+        mock_update.assert_called_once_with(page_id=page_id, properties={ns.nt.GCALEVENTID_NOTION_NAME: {'rich_text': [{'text': {'content': gcal}}]}, ns.nt.CURRENT_CALENDAR_ID_NOTION_NAME: {'rich_text': [{'text': {'content': gcal_id}}]}, ns.nt.CURRENT_CALENDAR_NAME_NOTION_NAME: {'select': {'name': ns.nt.GCAL_DEFAULT_NAME}}})
 
     @patch('notion.notion_services.nt.NOTION.pages.update')
     def test_updateCal(self, mock_update):

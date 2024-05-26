@@ -7,63 +7,63 @@ import pytz
 from datetime import datetime, timedelta, date
 from pathlib import Path
 
-# Local application/library specific imports
-import notion_token
-import gcal_token
+# Ensure the project root is in sys.path
+CURRENT_DIR = Path(__file__).resolve().parent
+PROJECT_ROOT = CURRENT_DIR.parent.parent
+if PROJECT_ROOT not in sys.path:
+    sys.path.append(str(PROJECT_ROOT))
 
+# Local application/library specific imports
+from notion import notion_token
+from . import gcal_token
+
+# Configure logging
+logging.basicConfig(filename="google_services.log", level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 # Get the absolute path to the current directory
-CURRENT_DIR = Path(__file__).parent
+logger.info(f"Current directory: {CURRENT_DIR}")
 
 # Construct the absolute file paths within the container
-NOTION_SETTINGS_PATH = CURRENT_DIR / "../token/notion_setting.json"
-
-# Logging setup
-logging.basicConfig(level=logging.INFO)
+NOTION_SETTINGS_PATH = (CURRENT_DIR / "../../token/notion_setting.json").resolve()
+CLIENT_SECRET_PATH = (CURRENT_DIR / "../../token/client_secret.json").resolve()
+CREDENTIALS_PATH = (CURRENT_DIR / "../../token/token.pkl").resolve()
 
 # Initialize Notion and Google tokens
 nt = notion_token.Notion()
 gt = gcal_token.Google()
 
-# Load Notion settings
-with open(NOTION_SETTINGS_PATH, "r") as file:
-    data = json.load(file)
+def get_gcal_event():
+    """
+    Retrieve all events from Google Calendar within a specified date range.
 
-
-def get_all_gcal_eventid():
-    """Retrieve all events from Google Calendar."""
-    timezone = pytz.timezone(
-        nt.TIMEZONE
-    )  # Set the timezone to match the timezone of your Google Calendar
+    Returns:
+        List[Dict]: A list of event dictionaries retrieved from Google Calendar.
+    """
+    timezone = pytz.timezone(nt.TIMEZONE)
 
     # Calculate the start and end dates for the event range
-    after_date = datetime.now(timezone) - timedelta(days=data["goback_days"])
-    before_date = datetime.now(timezone) + timedelta(days=data["goforward_days"])
-
     try:
         events = []
         for cal_id in nt.GCAL_DIC.values():
-            response = (
-                gt.service.events()
-                .list(
-                    calendarId=cal_id,
-                    timeMin=after_date.isoformat(),  # ISO format for Google Calendar API
-                    timeMax=before_date.isoformat(),
-                )
-                .execute()
+            response = gt.service.events().list(
+                calendarId=cal_id,
+                timeMin=nt.GOOGLE_TIMEMIN,
+                timeMax=nt.GOOGLE_TIMEMAX,
+            ).execute()
+
+            if response.get('items'):
+                events.extend(response['items'])
+            logger.info(
+                f"Retrieved {len(response.get('items', []))} events from calendar ID {cal_id}"
             )
-            if response['items'] != []:
-                events.extend(response.get("items", []))
+
+        logger.info(f"Total events retrieved: {len(events)}")
         return events
     except Exception as e:
-        logging.error(f"Error retrieving Google Calendar events: {e}")
+        logger.error(f"Error retrieving Google Calendar events: {e}",
+                     exc_info=True)
         return []
-
-
-def DateTimeIntoNotionFormat(datetime_obj):
-    """Format a datetime object for Notion."""
-    return datetime_obj.strftime(f"%Y-%m-%dT%H:%M:%S{nt.TIMECODE}")
-
 
 def makeTaskURL(ending, urlRoot):
     """Create a Notion task URL from a task ID."""
@@ -223,21 +223,6 @@ def makeCalEvent(
     return x["id"]
 
 
-def queryGCalId(id, num=300):
-    """Make a list of Google Calendar event IDs."""
-    x = (
-        gt.service.events()
-        .list(
-            calendarId=id,
-            maxResults=num,
-            timeMin=nt.GOOGLE_TIMEMIN,
-            timeMax=nt.GOOGLE_TIMEMAX,
-        )
-        .execute()
-    )
-    return x
-
-
 def deleteEvent():
     """Delete Google Calendar events."""
     print("\n")
@@ -281,11 +266,19 @@ def deleteEvent():
 
 # Example usage
 if __name__ == "__main__":
-    # Get all Google Calendar events
-    gcal_events = get_all_gcal_eventid()
-    for event in gcal_events:
-        print(event)  # Process events as needed
+    # Ensure the directory exists
+    Path("logs").mkdir(parents=True, exist_ok=True)
 
+    # Check if the file exists and create it if not
+    log_path = Path("logs/get_gcal_event.json")
+    if not log_path.exists():
+        log_path.touch()
+
+    # Open the file in write mode and dump JSON data
+    with log_path.open("w") as output:
+        json.dump(get_gcal_event(), output, indent=4)
+
+'''
     # Example event data (replace with actual data)
     event_data = {
         "exist_eventId": "",
@@ -304,3 +297,4 @@ if __name__ == "__main__":
     event_id = create_or_update_calendar_event(event_data)
     if event_id:
         print(f"Event created/updated with ID: {event_id}")
+'''

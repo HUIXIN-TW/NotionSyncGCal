@@ -22,6 +22,7 @@ NOTION_SETTINGS_PATH = (CURRENT_DIR / "../../token/notion_setting.json").resolve
 
 class SettingError(Exception):
     """Custom exception to handle setting errors in the Notion class."""
+
     def __init__(self, message):
         super().__init__(message)
 
@@ -63,11 +64,14 @@ class Notion:
             self.TIMEZONE = self.data["timezone"]
 
             # Date range settings
+            # ISO format for Notion API
             self.AFTER_DATE = (
                 date.today() +
                 timedelta(days=-self.data["goback_days"])).strftime("%Y-%m-%d")
             self.BEFORE_DATE = (date.today() + timedelta(
                 days=self.data["goforward_days"])).strftime("%Y-%m-%d")
+
+            # ISO format for Google Calendar API
             self.GOOGLE_TIMEMIN = (
                 date.today() + timedelta(days=-self.data["goback_days"])
             ).strftime(f"%Y-%m-%dT%H:%M:%S{self.TIMECODE}")
@@ -75,11 +79,9 @@ class Notion:
                 date.today() + timedelta(days=self.data["goforward_days"])
             ).strftime(f"%Y-%m-%dT%H:%M:%S{self.TIMECODE}")
 
-            # Other settings
-            self.DELETE_OPTION = self.data["delete_option"]
+            # Event default settings
             self.DEFAULT_EVENT_LENGTH = self.data["default_event_length"]
             self.DEFAULT_EVENT_START = self.data["default_start_time"]
-            self.ALLDAY_OPTION = self.data["allday_option"]
 
             # Google calendar settings
             self.GCAL_DIC = self.data["gcal_dic"][0]
@@ -96,25 +98,19 @@ class Notion:
                 "Initiative_Notion_Name"]
             self.EXTRAINFO_NOTION_NAME = page_property["ExtraInfo_Notion_Name"]
             self.LOCATION_NOTION_NAME = page_property["Location_Notion_Name"]
-            self.ON_GCAL_NOTION_NAME = page_property["On_GCal_Notion_Name"]
-            self.NEEDGCALUPDATE_NOTION_NAME = page_property[
-                "NeedGCalUpdate_Notion_Name"]
             self.GCALEVENTID_NOTION_NAME = page_property[
-                "GCalEventId_Notion_Name"]
+                "GCal_EventId_Notion_Name"]
             self.LASTUPDATEDTIME_NOTION_NAME = page_property[
-                "LastUpdatedTime_Notion_Name"]
-            self.CALENDAR_NOTION_NAME = page_property["Calendar_Notion_Name"]
+                "Last_Updated_Time_Notion_Name"]
+            self.CURRENT_CALENDAR_NAME_NOTION_NAME = page_property[
+                "GCal_Name_Notion_Name"]
             self.CURRENT_CALENDAR_ID_NOTION_NAME = page_property[
-                "Current_Calendar_Id_Notion_Name"]
+                "GCal_Id_Notion_Name"]
             self.DELETE_NOTION_NAME = page_property["Delete_Notion_Name"]
             self.STATUS_NOTION_NAME = page_property["Status_Notion_Name"]
             self.PAGE_ID_NOTION_NAME = page_property["Page_ID_Notion_Name"]
             self.COMPLETEICON_NOTION_NAME = page_property[
                 "CompleteIcon_Notion_Name"]
-
-            # Description settings
-            self.SKIP_DESCRIPTION_CONDITION = self.data[
-                "skip_description_condition"]
         except KeyError as e:
             self.logger.error(f"Failed to apply setting: {e}")
             raise SettingError(f"Failed to apply setting: {e}")
@@ -145,7 +141,45 @@ class Notion:
         print(list_users_response)
 
     def get_string(self):
-        print(f"Default calendar: {self.GCAL_DEFAULT_NAME}")
+        # print all apply_settings() variables
+        print(f"URLROOT: {self.URLROOT}")
+        print(f"DATABASE_ID: {self.DATABASE_ID}")
+        print(f"TIMECODE: {self.TIMECODE}")
+        print(f"TIMEZONE: {self.TIMEZONE}")
+
+        # Date range settings
+        print(f"AFTER_DATE: {self.AFTER_DATE}")
+        print(f"BEFORE_DATE: {self.BEFORE_DATE}")
+        print(f"GOOGLE_TIMEMIN: {self.GOOGLE_TIMEMIN}")
+        print(f"GOOGLE_TIMEMAX: {self.GOOGLE_TIMEMAX}")
+
+        # Event default settings
+        print(f"DEFAULT_EVENT_LENGTH: {self.DEFAULT_EVENT_LENGTH}")
+        print(f"DEFAULT_EVENT_START: {self.DEFAULT_EVENT_START}")
+        print(f"GCAL_DIC: {self.GCAL_DIC}")
+        print(f"GCAL_DIC_KEY_TO_VALUE: {self.GCAL_DIC_KEY_TO_VALUE}")
+        print(f"GCAL_DEFAULT_NAME: {self.GCAL_DEFAULT_NAME}")
+        print(f"GCAL_DEFAULT_ID: {self.GCAL_DEFAULT_ID}")
+
+        # Database specific settings
+        print(f"TASK_NOTION_NAME: {self.TASK_NOTION_NAME}")
+        print(f"DATE_NOTION_NAME: {self.DATE_NOTION_NAME}")
+        print(f"INITIATIVE_NOTION_NAME: {self.INITIATIVE_NOTION_NAME}")
+        print(f"EXTRAINFO_NOTION_NAME: {self.EXTRAINFO_NOTION_NAME}")
+        print(f"LOCATION_NOTION_NAME: {self.LOCATION_NOTION_NAME}")
+        print(f"GCALEVENTID_NOTION_NAME: {self.GCALEVENTID_NOTION_NAME}")
+        print(
+            f"LASTUPDATEDTIME_NOTION_NAME: {self.LASTUPDATEDTIME_NOTION_NAME}")
+        print(
+            f"CURRENT_CALENDAR_NAME_NOTION_NAME: {self.CURRENT_CALENDAR_NAME_NOTION_NAME}"
+        )
+        print(
+            f"CURRENT_CALENDAR_ID_NOTION_NAME: {self.CURRENT_CALENDAR_ID_NOTION_NAME}"
+        )
+        print(f"DELETE_NOTION_NAME: {self.DELETE_NOTION_NAME}")
+        print(f"STATUS_NOTION_NAME: {self.STATUS_NOTION_NAME}")
+        print(f"PAGE_ID_NOTION_NAME: {self.PAGE_ID_NOTION_NAME}")
+        print(f"COMPLETEICON_NOTION_NAME: {self.COMPLETEICON_NOTION_NAME}")
         logger.info("--- Token Notion Activated ---")
 
 
@@ -153,3 +187,4 @@ if __name__ == "__main__":
     # Initialize the Notion class
     notion = Notion()
     notion.get_auth_status()
+    notion.get_string()

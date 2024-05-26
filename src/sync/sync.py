@@ -155,7 +155,7 @@ class NotionToGCal:
     @staticmethod
     def extract_calendar_list(el):
         try:
-            calendar_name = el["properties"][nt.CALENDAR_NOTION_NAME]["select"]["name"]
+            calendar_name = el["properties"][nt.CURRENT_CALENDAR_NAME_NOTION_NAME]["select"]["name"]
             calendar_list = nt.GCAL_DIC.get(calendar_name, nt.GCAL_DEFAULT_ID)
         except KeyError:
             calendar_list = nt.GCAL_DEFAULT_ID
@@ -255,7 +255,7 @@ class NotionToGCal:
 
                 # Check for subscription calendar
                 if "@import.calendar.google.com" in current_calendar_id:
-                    calendar_name = el["properties"][nt.CALENDAR_NOTION_NAME]["select"][
+                    calendar_name = el["properties"][nt.CURRENT_CALENDAR_NAME_NOTION_NAME]["select"][
                         "name"
                     ]
                     logging.info(
