@@ -49,13 +49,10 @@ def main():
             )
 
             if notion_gcal_event_id == gcal_event_id:
-                notion_task_last_edited_time = notion_task["properties"][
-                    "Last Updated Time"]["date"]["start"]
+                notion_task_last_edited_time = notion_task.get(
+                    "last_edited_time")
                 gcal_event_updated_time = gcal_event.get("updated")
 
-                logger.info(
-                    f"Same Event ID - Notion time: {notion_task_last_edited_time} | Google time: {gcal_event_updated_time}"
-                )
                 if not notion_task_last_edited_time or not gcal_event_updated_time:
                     logger.warning(
                         "Notion Task or Google Calendar Event has no last edited time or updated time"
@@ -66,6 +63,10 @@ def main():
                 notion_task_last_edited_time_iso = isoparse(
                     notion_task_last_edited_time)
                 gcal_event_updated_time_iso = isoparse(gcal_event_updated_time)
+
+                logger.info(
+                    f"Same Event ID - Notion time: {notion_task_last_edited_time} (Timezone: {notion_task_last_edited_time_iso.tzinfo}) | Google time: {gcal_event_updated_time} (Timezone: {gcal_event_updated_time_iso.tzinfo})"
+                )
 
                 if notion_task_last_edited_time_iso > gcal_event_updated_time_iso:
                     logger.info(
