@@ -1,7 +1,7 @@
 {
   "docker": false,
-  "goback_days": 0,
-  "goforward_days": 1,
+  "goback_days": 7,
+  "goforward_days": 0,
   "notion_token": "secret_",
   "urlroot": "https://www.notion.so/<urlroot>&p=",
   "timecode": "+08:00",
