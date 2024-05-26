@@ -3,6 +3,7 @@ import json
 import sys
 from datetime import datetime
 from pathlib import Path
+import emoji
 
 # Ensure the project root is in sys.path
 CURRENT_DIR = Path(__file__).resolve().parent
@@ -26,7 +27,7 @@ nt = notion_token.Notion()
 def get_notion_task():
     try:
         logger.info(
-            f"Reading Notion database with ID: {nt.DATABASE_ID} from {nt.DATE_NOTION_NAME}: {nt.AFTER_DATE} to {nt.BEFORE_DATE}"
+            f"Reading Notion database with ID: {nt.DATABASE_ID} from {nt.DATE_NOTION_NAME}: {nt.AFTER_DATE} to {nt.BEFORE_DATE} (exclusive)"
         )
         return nt.NOTION.databases.query(
             database_id=nt.DATABASE_ID,
@@ -34,7 +35,7 @@ def get_notion_task():
                 "and": [
                     {
                         "property": nt.DATE_NOTION_NAME,
-                        "date": {"on_or_before": nt.BEFORE_DATE},
+                        "date": {"before": nt.BEFORE_DATE},
                     },
                     {
                         "property": nt.DATE_NOTION_NAME,
@@ -52,6 +53,7 @@ def get_notion_task():
 # Note: Never update Extra info from google cal to notion
 # That action will lose rich notion information
 def update_notion_task(page_id, gcal_event):
+    summary_without_emojis = remove_emojis(gcal_event.get("summary", ""))
     try:
         nt.NOTION.pages.update(
             page_id=page_id,
@@ -63,7 +65,7 @@ def update_notion_task(page_id, gcal_event):
                         {
                             "type": "text",
                             "text": {
-                                "content": gcal_event.get("summary", "")
+                                "content": summary_without_emojis
                             },
                         },
                     ],
@@ -71,7 +73,8 @@ def update_notion_task(page_id, gcal_event):
                 nt.DATE_NOTION_NAME: {
                     "type": "date",
                     "date": {
-                        "start": gcal_event.get("start", {}).get("dateTime", ""),
+                        "start": gcal_event.get("start",
+                                                {}).get("dateTime", ""),
                         "end": gcal_event.get("end", {}).get("dateTime", ""),
                     },
                 },
@@ -83,7 +86,8 @@ def update_notion_task(page_id, gcal_event):
                     },
                 },
                 nt.LOCATION_NOTION_NAME: {
-                    "type": "rich_text",
+                    "type":
+                    "rich_text",
                     "rich_text": [{
                         "text": {
                             "content": gcal_event.get("location", "")
@@ -101,13 +105,15 @@ def update_notion_task(page_id, gcal_event):
                 nt.CURRENT_CALENDAR_ID_NOTION_NAME: {
                     "rich_text": [{
                         "text": {
-                            "content": gcal_event.get("organizer", {}).get("email", "")
+                            "content":
+                            gcal_event.get("organizer", {}).get("email", "")
                         }
                     }]
                 },
                 nt.CURRENT_CALENDAR_NAME_NOTION_NAME: {
                     "select": {
-                        "name": gcal_event.get("organizer", {}).get("displayName", "")
+                        "name":
+                        gcal_event.get("organizer", {}).get("displayName", "")
                     },
                 },
             },
@@ -246,6 +252,8 @@ def get_current_time():
     """Helper function to get the current time in the Notion format."""
     return parse_date_in_notion_format(datetime.now())
 
+def remove_emojis(text):
+    return emoji.replace_emoji(text, replace='')
 
 if __name__ == "__main__":
     # Ensure the directory exists

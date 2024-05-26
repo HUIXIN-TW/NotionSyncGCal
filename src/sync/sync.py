@@ -50,8 +50,12 @@ def main():
             notion_service.nt.
             CURRENT_CALENDAR_NAME_NOTION_NAME]["select"]["name"]
         notion_gcal_cal_id = notion_service.nt.get_cal_id(notion_gcal_cal_name)
-        notion_gcal_event_id = notion_task["properties"][
-            notion_service.nt.GCAL_EVENTID_NOTION_NAME]["rich_text"]
+        
+        try:
+            notion_gcal_event_id = notion_task["properties"][
+                notion_service.nt.GCAL_EVENTID_NOTION_NAME]["rich_text"][0]["plain_text"]
+        except:
+            notion_gcal_event_id = None
 
         # Notion Task properties for deletion
         notion_deletion = notion_task["properties"][
@@ -68,7 +72,7 @@ def main():
         # Notion Task without Google Calendar Event ID - Create a new event in Google Calendar
         if not notion_gcal_event_id:
             logger.info(
-                f"Notion: Creating a new event in Google Calendar for task '{notion_task_name}'"
+                f"Notion Task: Creating a new event in Google Calendar for task '{notion_task_name}'/n"
             )
             new_gcal_event_id = gcal_service.create_gcal_event(
                 notion_task, notion_gcal_cal_id)
@@ -98,11 +102,6 @@ def main():
 
             # Compare the Google Calendar Event ID with the Notion Task Google Calendar Event ID
             if notion_gcal_event_id == gcal_event_id:
-                if not notion_task_last_edited_time or not gcal_event_updated_time:
-                    logger.warning(
-                        "Notion Task or Google Calendar Event has no last edited time or updated time"
-                    )
-                    break
 
                 # Get the last edited time of the Notion Task and the updated time of the Google Calendar Event
                 notion_task_last_edited_time = notion_task.get(
@@ -110,6 +109,12 @@ def main():
                 gcal_event_updated_time = gcal_event.get("updated")
                 same_timezone = compare_timezones(notion_task_last_edited_time,
                                                   gcal_event_updated_time)
+
+                if not notion_task_last_edited_time or not gcal_event_updated_time:
+                    logger.warning(
+                        "Notion Task or Google Calendar Event has no last edited time or updated time"
+                    )
+                    break
 
                 # Compare timezones between Notion and Google Calendar
                 if not same_timezone:
@@ -119,7 +124,7 @@ def main():
 
                 if notion_task_last_edited_time > gcal_event_updated_time:
                     logger.info(
-                        f"Notion: Updating the event in Google Calendar for task '{notion_task_name}'"
+                        f"Notion Task: Updating the event in Google Calendar for task '{notion_task_name}'"
                     )
                     gcal_service.update_gcal_event(notion_task,
                                                    notion_gcal_cal_id,
@@ -138,7 +143,7 @@ def main():
                 # Remove the processed Google Calendar event from the list
                 gcal_event_list.remove(gcal_event)
                 logger.info(
-                    f"Google Calendar: Event '{gcal_event_summary}' removed from the list, {len(gcal_event_list)} events remaining"
+                    f"Google Calendar: Event '{gcal_event_summary}' removed from the list, {len(gcal_event_list)} events remaining\n"
                 )
                 break
 

@@ -1,0 +1,1232 @@
+[
+    {
+        "object": "page",
+        "id": "35f6e63a-abcd-45dc-a7bd-fedd12aeac7e",
+        "created_time": "2024-05-24T08:33:00.000Z",
+        "last_edited_time": "2024-05-26T16:49:00.000Z",
+        "created_by": {
+            "object": "user",
+            "id": "7ac81501-452c-4a39-ac0e-97af88e80ffa"
+        },
+        "last_edited_by": {
+            "object": "user",
+            "id": "7ac81501-452c-4a39-ac0e-97af88e80ffa"
+        },
+        "cover": null,
+        "icon": {
+            "type": "emoji",
+            "emoji": "\ud83c\udfae"
+        },
+        "parent": {
+            "type": "database_id",
+            "database_id": "05482e3c-4aca-40e0-9527-9ff2f2630e66"
+        },
+        "archived": false,
+        "in_trash": false,
+        "properties": {
+            "Last Edited Time": {
+                "id": "%3CBiP",
+                "type": "last_edited_time",
+                "last_edited_time": "2024-05-26T16:49:00.000Z"
+            },
+            "GCal Icon": {
+                "id": "%3D%3FiQ",
+                "type": "formula",
+                "formula": {
+                    "type": "string",
+                    "string": "\u2705"
+                }
+            },
+            "Initiative": {
+                "id": "Aj%7BV",
+                "type": "multi_select",
+                "multi_select": [
+                    {
+                        "id": "7ffd2132-2f5b-4f2b-84a5-e8fa7b932a12",
+                        "name": "\u7a0b\u5f0f\u5b78\u7fd2",
+                        "color": "blue"
+                    }
+                ]
+            },
+            "Planned and Completed Hours % of Sub Tasks": {
+                "id": "CGYY",
+                "type": "formula",
+                "formula": {
+                    "type": "string",
+                    "string": "\ud83d\udfe2No Project Plan for Task"
+                }
+            },
+            "Created Time": {
+                "id": "Iq%40%5C",
+                "type": "created_time",
+                "created_time": "2024-05-24T08:33:00.000Z"
+            },
+            "Completed Hours % of Sub Tasks": {
+                "id": "Iw%7Bs",
+                "type": "formula",
+                "formula": {
+                    "type": "string",
+                    "string": "\ud83d\udfe2No Project Plan for Task"
+                }
+            },
+            "Status": {
+                "id": "J%3A%3FI",
+                "type": "status",
+                "status": {
+                    "id": "e7ac84f0-e8fe-432e-bdc0-1a1891e6c30a",
+                    "name": "\u2705 Completed",
+                    "color": "green"
+                }
+            },
+            "Sum Completed Hours of Sub Tasks": {
+                "id": "K%5E%5Dk",
+                "type": "rollup",
+                "rollup": {
+                    "type": "number",
+                    "number": 0,
+                    "function": "sum"
+                }
+            },
+            "This Actual Hours": {
+                "id": "LF%5DW",
+                "type": "formula",
+                "formula": {
+                    "type": "number",
+                    "number": 1
+                }
+            },
+            "Extra Info": {
+                "id": "M%5Egc",
+                "type": "rich_text",
+                "rich_text": []
+            },
+            "Start Date of Sub Tasks": {
+                "id": "NCNV",
+                "type": "rollup",
+                "rollup": {
+                    "type": "date",
+                    "date": null,
+                    "function": "earliest_date"
+                }
+            },
+            "No. Sub Task Without Date": {
+                "id": "Qz_%3D",
+                "type": "rollup",
+                "rollup": {
+                    "type": "number",
+                    "number": 0,
+                    "function": "empty"
+                }
+            },
+            "No. Parent Task Without Date": {
+                "id": "S%3Bo%7D",
+                "type": "rollup",
+                "rollup": {
+                    "type": "number",
+                    "number": 1,
+                    "function": "empty"
+                }
+            },
+            "NTD": {
+                "id": "T%3DO%60",
+                "type": "number",
+                "number": 0
+            },
+            "This Planned Hours": {
+                "id": "YI%3CB",
+                "type": "formula",
+                "formula": {
+                    "type": "number",
+                    "number": 0
+                }
+            },
+            "No. Completed Sub Task": {
+                "id": "ZRgy",
+                "type": "rollup",
+                "rollup": {
+                    "type": "number",
+                    "number": null,
+                    "function": "percent_per_group"
+                }
+            },
+            "Project Health Check": {
+                "id": "%5BgUd",
+                "type": "formula",
+                "formula": {
+                    "type": "string",
+                    "string": "Not A Sprint Project\n\ud83d\udfe0You have 1 parent tasks without date. You May NEED Set Up A Project DueDate.\n\ud83d\udfe2No Subtask"
+                }
+            },
+            "Time": {
+                "id": "_FKj",
+                "type": "formula",
+                "formula": {
+                    "type": "string",
+                    "string": "\ud83d\udd57 20:45\n\u2705Completed"
+                }
+            },
+            "Location": {
+                "id": "bDfh",
+                "type": "rich_text",
+                "rich_text": [
+                    {
+                        "type": "text",
+                        "text": {
+                            "content": "",
+                            "link": null
+                        },
+                        "annotations": {
+                            "bold": false,
+                            "italic": false,
+                            "strikethrough": false,
+                            "underline": false,
+                            "code": false,
+                            "color": "default"
+                        },
+                        "plain_text": "",
+                        "href": null
+                    }
+                ]
+            },
+            "Date": {
+                "id": "hi%3B%3F",
+                "type": "date",
+                "date": {
+                    "start": "2024-05-22T20:45:00.000+08:00",
+                    "end": "2024-05-22T21:45:00.000+08:00",
+                    "time_zone": null
+                }
+            },
+            "Last Date of Sub Tasks": {
+                "id": "jyHF",
+                "type": "rollup",
+                "rollup": {
+                    "type": "date",
+                    "date": null,
+                    "function": "latest_date"
+                }
+            },
+            "Sum Planned Hours of Sub Tasks": {
+                "id": "kexs",
+                "type": "rollup",
+                "rollup": {
+                    "type": "number",
+                    "number": 0,
+                    "function": "sum"
+                }
+            },
+            "Parent Task": {
+                "id": "lTrr",
+                "type": "relation",
+                "relation": [
+                    {
+                        "id": "5114e443-fbab-4a71-8d55-a669934bedcd"
+                    }
+                ],
+                "has_more": false
+            },
+            "Story Point": {
+                "id": "nyS%3A",
+                "type": "formula",
+                "formula": {
+                    "type": "string",
+                    "string": "This Task Need 1 Working Hours\nYou Have It Completed"
+                }
+            },
+            "Expected Project Hours": {
+                "id": "o%5EcU",
+                "type": "number",
+                "number": null
+            },
+            "URL": {
+                "id": "peV%7C",
+                "type": "url",
+                "url": null
+            },
+            "Parent Project Health Check": {
+                "id": "r%5CRg",
+                "type": "rollup",
+                "rollup": {
+                    "type": "array",
+                    "array": [
+                        {
+                            "type": "formula",
+                            "formula": {
+                                "type": "string",
+                                "string": "This project priority is classified as High or Med and also is in progress -> A Sprint Project\n\ud83d\udfe0You have 1 parent tasks without date. You May NEED Set Up A Project DueDate.\n\ud83d\udfe0Not Complete All Subtasks (1 of 84 Hours and 100% Count)\n\ud83d\udfe2Project Start At @May 22, 2024 8:45 PM (GMT+8), and End At @May 22, 2024 9:45 PM (GMT+8)"
+                            }
+                        }
+                    ],
+                    "function": "show_original"
+                }
+            },
+            "Sub Task": {
+                "id": "uI~U",
+                "type": "relation",
+                "relation": [],
+                "has_more": false
+            },
+            "Priority": {
+                "id": "xApB",
+                "type": "select",
+                "select": {
+                    "id": "79cb3d26-bd87-4e6a-a9db-6c091bd845aa",
+                    "name": "\u203c\ufe0fHigh",
+                    "color": "red"
+                }
+            },
+            "Person": {
+                "id": "zIl%5D",
+                "type": "people",
+                "people": [
+                    {
+                        "object": "user",
+                        "id": "7ac81501-452c-4a39-ac0e-97af88e80ffa",
+                        "name": "Huixin",
+                        "avatar_url": "https://s3-us-west-2.amazonaws.com/public.notion-static.com/abe0c2d1-f3f4-4275-9381-538bf55398a9/IMG_0015.png",
+                        "type": "person",
+                        "person": {
+                            "email": "22922504@student.uwa.edu.au"
+                        }
+                    }
+                ]
+            },
+            "AUD": {
+                "id": "%7D%5CcZ",
+                "type": "number",
+                "number": null
+            },
+            "Task Name": {
+                "id": "title",
+                "type": "title",
+                "title": [
+                    {
+                        "type": "text",
+                        "text": {
+                            "content": "CS50\u2019s SQL Week05",
+                            "link": null
+                        },
+                        "annotations": {
+                            "bold": false,
+                            "italic": false,
+                            "strikethrough": false,
+                            "underline": false,
+                            "code": false,
+                            "color": "default"
+                        },
+                        "plain_text": "CS50\u2019s SQL Week05",
+                        "href": null
+                    }
+                ]
+            },
+            "Doc": {
+                "id": "33fafd36-8e7a-41c3-8c7e-435bcc08711a",
+                "type": "files",
+                "files": []
+            },
+            "GCal Event Id": {
+                "id": "435f598a-cbd6-4720-af77-a861c9f25047",
+                "type": "rich_text",
+                "rich_text": [
+                    {
+                        "type": "text",
+                        "text": {
+                            "content": "km243cd818fljt0k6ua1qvv1qc",
+                            "link": null
+                        },
+                        "annotations": {
+                            "bold": false,
+                            "italic": false,
+                            "strikethrough": false,
+                            "underline": false,
+                            "code": false,
+                            "color": "default"
+                        },
+                        "plain_text": "km243cd818fljt0k6ua1qvv1qc",
+                        "href": null
+                    }
+                ]
+            },
+            "GCal Calendar Id": {
+                "id": "55dea4c3-f2eb-4eb0-9271-9dfd2df1c53d",
+                "type": "rich_text",
+                "rich_text": [
+                    {
+                        "type": "text",
+                        "text": {
+                            "content": "1gkgj691vibfdpq1bjsis5olnc@group.calendar.google.com",
+                            "link": null
+                        },
+                        "annotations": {
+                            "bold": false,
+                            "italic": false,
+                            "strikethrough": false,
+                            "underline": false,
+                            "code": false,
+                            "color": "default"
+                        },
+                        "plain_text": "1gkgj691vibfdpq1bjsis5olnc@group.calendar.google.com",
+                        "href": null
+                    }
+                ]
+            },
+            "Type": {
+                "id": "f2fe5484-77d3-4ef0-8e3c-6b20e26f0e43",
+                "type": "select",
+                "select": {
+                    "id": "62a4f1a2-11b8-4a96-884b-e8bf7ecdd249",
+                    "name": "Task",
+                    "color": "pink"
+                }
+            },
+            "Calendar": {
+                "id": "f48db5db-885d-4548-bf5b-7a523e2f0268",
+                "type": "select",
+                "select": {
+                    "id": "831a93d2-29e8-40cb-bc23-e3fda05aee24",
+                    "name": "Learning",
+                    "color": "pink"
+                }
+            },
+            "GCal Deleted?": {
+                "id": "f551722d-dfdc-4fc6-a389-aeed568abd9f",
+                "type": "checkbox",
+                "checkbox": false
+            },
+            "Task ID": {
+                "id": "notion%3A%2F%2Ftasks%2Fauto_increment_id_property",
+                "type": "unique_id",
+                "unique_id": {
+                    "prefix": "TSK",
+                    "number": 3232
+                }
+            }
+        },
+        "url": "https://www.notion.so/CS50-s-SQL-Week05-35f6e63aabcd45dca7bdfedd12aeac7e",
+        "public_url": null
+    },
+    {
+        "object": "page",
+        "id": "0a32d542-1186-4400-aae3-7cf8825f15bf",
+        "created_time": "2024-05-24T08:33:00.000Z",
+        "last_edited_time": "2024-05-26T16:49:00.000Z",
+        "created_by": {
+            "object": "user",
+            "id": "7ac81501-452c-4a39-ac0e-97af88e80ffa"
+        },
+        "last_edited_by": {
+            "object": "user",
+            "id": "7ac81501-452c-4a39-ac0e-97af88e80ffa"
+        },
+        "cover": null,
+        "icon": {
+            "type": "emoji",
+            "emoji": "\ud83d\udc5f"
+        },
+        "parent": {
+            "type": "database_id",
+            "database_id": "05482e3c-4aca-40e0-9527-9ff2f2630e66"
+        },
+        "archived": false,
+        "in_trash": false,
+        "properties": {
+            "Last Edited Time": {
+                "id": "%3CBiP",
+                "type": "last_edited_time",
+                "last_edited_time": "2024-05-26T16:49:00.000Z"
+            },
+            "GCal Icon": {
+                "id": "%3D%3FiQ",
+                "type": "formula",
+                "formula": {
+                    "type": "string",
+                    "string": "\u2705"
+                }
+            },
+            "Initiative": {
+                "id": "Aj%7BV",
+                "type": "multi_select",
+                "multi_select": [
+                    {
+                        "id": "e2a5ea33-b128-40f6-9b02-5489b18c371f",
+                        "name": "\u4f11\u9592\u5a1b\u6a02",
+                        "color": "green"
+                    }
+                ]
+            },
+            "Planned and Completed Hours % of Sub Tasks": {
+                "id": "CGYY",
+                "type": "formula",
+                "formula": {
+                    "type": "string",
+                    "string": "\ud83d\udfe2No Project Plan for Task"
+                }
+            },
+            "Created Time": {
+                "id": "Iq%40%5C",
+                "type": "created_time",
+                "created_time": "2024-05-24T08:33:00.000Z"
+            },
+            "Completed Hours % of Sub Tasks": {
+                "id": "Iw%7Bs",
+                "type": "formula",
+                "formula": {
+                    "type": "string",
+                    "string": "\ud83d\udfe2No Project Plan for Task"
+                }
+            },
+            "Status": {
+                "id": "J%3A%3FI",
+                "type": "status",
+                "status": {
+                    "id": "e7ac84f0-e8fe-432e-bdc0-1a1891e6c30a",
+                    "name": "\u2705 Completed",
+                    "color": "green"
+                }
+            },
+            "Sum Completed Hours of Sub Tasks": {
+                "id": "K%5E%5Dk",
+                "type": "rollup",
+                "rollup": {
+                    "type": "number",
+                    "number": 0,
+                    "function": "sum"
+                }
+            },
+            "This Actual Hours": {
+                "id": "LF%5DW",
+                "type": "formula",
+                "formula": {
+                    "type": "number",
+                    "number": 1
+                }
+            },
+            "Extra Info": {
+                "id": "M%5Egc",
+                "type": "rich_text",
+                "rich_text": [
+                    {
+                        "type": "text",
+                        "text": {
+                            "content": "slippers, clear clothes, towel, bath towel, swimsuit, key, lock, bottle, earphone, rain suit.",
+                            "link": null
+                        },
+                        "annotations": {
+                            "bold": false,
+                            "italic": false,
+                            "strikethrough": false,
+                            "underline": false,
+                            "code": false,
+                            "color": "default"
+                        },
+                        "plain_text": "slippers, clear clothes, towel, bath towel, swimsuit, key, lock, bottle, earphone, rain suit.",
+                        "href": null
+                    }
+                ]
+            },
+            "Start Date of Sub Tasks": {
+                "id": "NCNV",
+                "type": "rollup",
+                "rollup": {
+                    "type": "date",
+                    "date": null,
+                    "function": "earliest_date"
+                }
+            },
+            "No. Sub Task Without Date": {
+                "id": "Qz_%3D",
+                "type": "rollup",
+                "rollup": {
+                    "type": "number",
+                    "number": 0,
+                    "function": "empty"
+                }
+            },
+            "No. Parent Task Without Date": {
+                "id": "S%3Bo%7D",
+                "type": "rollup",
+                "rollup": {
+                    "type": "number",
+                    "number": 0,
+                    "function": "empty"
+                }
+            },
+            "NTD": {
+                "id": "T%3DO%60",
+                "type": "number",
+                "number": 0
+            },
+            "This Planned Hours": {
+                "id": "YI%3CB",
+                "type": "formula",
+                "formula": {
+                    "type": "number",
+                    "number": 0
+                }
+            },
+            "No. Completed Sub Task": {
+                "id": "ZRgy",
+                "type": "rollup",
+                "rollup": {
+                    "type": "number",
+                    "number": null,
+                    "function": "percent_per_group"
+                }
+            },
+            "Project Health Check": {
+                "id": "%5BgUd",
+                "type": "formula",
+                "formula": {
+                    "type": "string",
+                    "string": "Not A Sprint Project\n\ud83d\udfe2No Subtask"
+                }
+            },
+            "Time": {
+                "id": "_FKj",
+                "type": "formula",
+                "formula": {
+                    "type": "string",
+                    "string": "\ud83d\udd57 18:00\n\u2705Completed"
+                }
+            },
+            "Location": {
+                "id": "bDfh",
+                "type": "rich_text",
+                "rich_text": [
+                    {
+                        "type": "text",
+                        "text": {
+                            "content": "",
+                            "link": null
+                        },
+                        "annotations": {
+                            "bold": false,
+                            "italic": false,
+                            "strikethrough": false,
+                            "underline": false,
+                            "code": false,
+                            "color": "default"
+                        },
+                        "plain_text": "",
+                        "href": null
+                    }
+                ]
+            },
+            "Date": {
+                "id": "hi%3B%3F",
+                "type": "date",
+                "date": {
+                    "start": "2024-05-22T18:00:00.000+08:00",
+                    "end": "2024-05-22T19:00:00.000+08:00",
+                    "time_zone": null
+                }
+            },
+            "Last Date of Sub Tasks": {
+                "id": "jyHF",
+                "type": "rollup",
+                "rollup": {
+                    "type": "date",
+                    "date": null,
+                    "function": "latest_date"
+                }
+            },
+            "Sum Planned Hours of Sub Tasks": {
+                "id": "kexs",
+                "type": "rollup",
+                "rollup": {
+                    "type": "number",
+                    "number": 0,
+                    "function": "sum"
+                }
+            },
+            "Parent Task": {
+                "id": "lTrr",
+                "type": "relation",
+                "relation": [],
+                "has_more": false
+            },
+            "Story Point": {
+                "id": "nyS%3A",
+                "type": "formula",
+                "formula": {
+                    "type": "string",
+                    "string": "This Task Need 1 Working Hours\nYou Have It Completed"
+                }
+            },
+            "Expected Project Hours": {
+                "id": "o%5EcU",
+                "type": "number",
+                "number": null
+            },
+            "URL": {
+                "id": "peV%7C",
+                "type": "url",
+                "url": null
+            },
+            "Parent Project Health Check": {
+                "id": "r%5CRg",
+                "type": "rollup",
+                "rollup": {
+                    "type": "array",
+                    "array": [],
+                    "function": "show_original"
+                }
+            },
+            "Sub Task": {
+                "id": "uI~U",
+                "type": "relation",
+                "relation": [],
+                "has_more": false
+            },
+            "Priority": {
+                "id": "xApB",
+                "type": "select",
+                "select": {
+                    "id": "f6257efa-1abb-4b01-a9df-33b8b41b3ed7",
+                    "name": "\u2757\ufe0fMedium",
+                    "color": "yellow"
+                }
+            },
+            "Person": {
+                "id": "zIl%5D",
+                "type": "people",
+                "people": [
+                    {
+                        "object": "user",
+                        "id": "7ac81501-452c-4a39-ac0e-97af88e80ffa",
+                        "name": "Huixin",
+                        "avatar_url": "https://s3-us-west-2.amazonaws.com/public.notion-static.com/abe0c2d1-f3f4-4275-9381-538bf55398a9/IMG_0015.png",
+                        "type": "person",
+                        "person": {
+                            "email": "22922504@student.uwa.edu.au"
+                        }
+                    }
+                ]
+            },
+            "AUD": {
+                "id": "%7D%5CcZ",
+                "type": "number",
+                "number": null
+            },
+            "Task Name": {
+                "id": "title",
+                "type": "title",
+                "title": [
+                    {
+                        "type": "text",
+                        "text": {
+                            "content": "Gym",
+                            "link": null
+                        },
+                        "annotations": {
+                            "bold": false,
+                            "italic": false,
+                            "strikethrough": false,
+                            "underline": false,
+                            "code": false,
+                            "color": "default"
+                        },
+                        "plain_text": "Gym",
+                        "href": null
+                    }
+                ]
+            },
+            "Doc": {
+                "id": "33fafd36-8e7a-41c3-8c7e-435bcc08711a",
+                "type": "files",
+                "files": []
+            },
+            "GCal Event Id": {
+                "id": "435f598a-cbd6-4720-af77-a861c9f25047",
+                "type": "rich_text",
+                "rich_text": [
+                    {
+                        "type": "text",
+                        "text": {
+                            "content": "9ibnhra2ingm6661rc0am6q2r4",
+                            "link": null
+                        },
+                        "annotations": {
+                            "bold": false,
+                            "italic": false,
+                            "strikethrough": false,
+                            "underline": false,
+                            "code": false,
+                            "color": "default"
+                        },
+                        "plain_text": "9ibnhra2ingm6661rc0am6q2r4",
+                        "href": null
+                    }
+                ]
+            },
+            "GCal Calendar Id": {
+                "id": "55dea4c3-f2eb-4eb0-9271-9dfd2df1c53d",
+                "type": "rich_text",
+                "rich_text": [
+                    {
+                        "type": "text",
+                        "text": {
+                            "content": "86r0miggpokqso1dnsbc2n5i8s@group.calendar.google.com",
+                            "link": null
+                        },
+                        "annotations": {
+                            "bold": false,
+                            "italic": false,
+                            "strikethrough": false,
+                            "underline": false,
+                            "code": false,
+                            "color": "default"
+                        },
+                        "plain_text": "86r0miggpokqso1dnsbc2n5i8s@group.calendar.google.com",
+                        "href": null
+                    }
+                ]
+            },
+            "Type": {
+                "id": "f2fe5484-77d3-4ef0-8e3c-6b20e26f0e43",
+                "type": "select",
+                "select": {
+                    "id": "62a4f1a2-11b8-4a96-884b-e8bf7ecdd249",
+                    "name": "Task",
+                    "color": "pink"
+                }
+            },
+            "Calendar": {
+                "id": "f48db5db-885d-4548-bf5b-7a523e2f0268",
+                "type": "select",
+                "select": {
+                    "id": "66c5c53a-56bd-4d90-afd6-0c5565a9dcbb",
+                    "name": "Life",
+                    "color": "green"
+                }
+            },
+            "GCal Deleted?": {
+                "id": "f551722d-dfdc-4fc6-a389-aeed568abd9f",
+                "type": "checkbox",
+                "checkbox": false
+            },
+            "Task ID": {
+                "id": "notion%3A%2F%2Ftasks%2Fauto_increment_id_property",
+                "type": "unique_id",
+                "unique_id": {
+                    "prefix": "TSK",
+                    "number": 2911
+                }
+            }
+        },
+        "url": "https://www.notion.so/Gym-0a32d54211864400aae37cf8825f15bf",
+        "public_url": null
+    },
+    {
+        "object": "page",
+        "id": "9d6eba26-0372-4070-9a58-7ab0829dd056",
+        "created_time": "2024-05-24T08:31:00.000Z",
+        "last_edited_time": "2024-05-26T16:49:00.000Z",
+        "created_by": {
+            "object": "user",
+            "id": "7ac81501-452c-4a39-ac0e-97af88e80ffa"
+        },
+        "last_edited_by": {
+            "object": "user",
+            "id": "7ac81501-452c-4a39-ac0e-97af88e80ffa"
+        },
+        "cover": null,
+        "icon": {
+            "type": "emoji",
+            "emoji": "\ud83c\udf92"
+        },
+        "parent": {
+            "type": "database_id",
+            "database_id": "05482e3c-4aca-40e0-9527-9ff2f2630e66"
+        },
+        "archived": false,
+        "in_trash": false,
+        "properties": {
+            "Last Edited Time": {
+                "id": "%3CBiP",
+                "type": "last_edited_time",
+                "last_edited_time": "2024-05-26T16:49:00.000Z"
+            },
+            "GCal Icon": {
+                "id": "%3D%3FiQ",
+                "type": "formula",
+                "formula": {
+                    "type": "string",
+                    "string": "\u2705"
+                }
+            },
+            "Initiative": {
+                "id": "Aj%7BV",
+                "type": "multi_select",
+                "multi_select": [
+                    {
+                        "id": "ZTH`",
+                        "name": "\u5de5\u4f5c\u6392\u7a0b",
+                        "color": "yellow"
+                    }
+                ]
+            },
+            "Planned and Completed Hours % of Sub Tasks": {
+                "id": "CGYY",
+                "type": "formula",
+                "formula": {
+                    "type": "string",
+                    "string": "\ud83d\udfe2No Project Plan for Task"
+                }
+            },
+            "Created Time": {
+                "id": "Iq%40%5C",
+                "type": "created_time",
+                "created_time": "2024-05-24T08:31:00.000Z"
+            },
+            "Completed Hours % of Sub Tasks": {
+                "id": "Iw%7Bs",
+                "type": "formula",
+                "formula": {
+                    "type": "string",
+                    "string": "\ud83d\udfe2No Project Plan for Task"
+                }
+            },
+            "Status": {
+                "id": "J%3A%3FI",
+                "type": "status",
+                "status": {
+                    "id": "e7ac84f0-e8fe-432e-bdc0-1a1891e6c30a",
+                    "name": "\u2705 Completed",
+                    "color": "green"
+                }
+            },
+            "Sum Completed Hours of Sub Tasks": {
+                "id": "K%5E%5Dk",
+                "type": "rollup",
+                "rollup": {
+                    "type": "number",
+                    "number": 0,
+                    "function": "sum"
+                }
+            },
+            "This Actual Hours": {
+                "id": "LF%5DW",
+                "type": "formula",
+                "formula": {
+                    "type": "number",
+                    "number": 8
+                }
+            },
+            "Extra Info": {
+                "id": "M%5Egc",
+                "type": "rich_text",
+                "rich_text": [
+                    {
+                        "type": "text",
+                        "text": {
+                            "content": " ",
+                            "link": null
+                        },
+                        "annotations": {
+                            "bold": false,
+                            "italic": false,
+                            "strikethrough": false,
+                            "underline": false,
+                            "code": false,
+                            "color": "default"
+                        },
+                        "plain_text": " ",
+                        "href": null
+                    }
+                ]
+            },
+            "Start Date of Sub Tasks": {
+                "id": "NCNV",
+                "type": "rollup",
+                "rollup": {
+                    "type": "date",
+                    "date": null,
+                    "function": "earliest_date"
+                }
+            },
+            "No. Sub Task Without Date": {
+                "id": "Qz_%3D",
+                "type": "rollup",
+                "rollup": {
+                    "type": "number",
+                    "number": 0,
+                    "function": "empty"
+                }
+            },
+            "No. Parent Task Without Date": {
+                "id": "S%3Bo%7D",
+                "type": "rollup",
+                "rollup": {
+                    "type": "number",
+                    "number": 0,
+                    "function": "empty"
+                }
+            },
+            "NTD": {
+                "id": "T%3DO%60",
+                "type": "number",
+                "number": 0
+            },
+            "This Planned Hours": {
+                "id": "YI%3CB",
+                "type": "formula",
+                "formula": {
+                    "type": "number",
+                    "number": 0
+                }
+            },
+            "No. Completed Sub Task": {
+                "id": "ZRgy",
+                "type": "rollup",
+                "rollup": {
+                    "type": "number",
+                    "number": null,
+                    "function": "percent_per_group"
+                }
+            },
+            "Project Health Check": {
+                "id": "%5BgUd",
+                "type": "formula",
+                "formula": {
+                    "type": "string",
+                    "string": "Not A Sprint Project\n\ud83d\udfe2No Subtask"
+                }
+            },
+            "Time": {
+                "id": "_FKj",
+                "type": "formula",
+                "formula": {
+                    "type": "string",
+                    "string": "\ud83d\udd57 09:00\n\u2705Completed"
+                }
+            },
+            "Location": {
+                "id": "bDfh",
+                "type": "rich_text",
+                "rich_text": [
+                    {
+                        "type": "text",
+                        "text": {
+                            "content": "No Location Info",
+                            "link": null
+                        },
+                        "annotations": {
+                            "bold": false,
+                            "italic": false,
+                            "strikethrough": false,
+                            "underline": false,
+                            "code": false,
+                            "color": "default"
+                        },
+                        "plain_text": "No Location Info",
+                        "href": null
+                    }
+                ]
+            },
+            "Date": {
+                "id": "hi%3B%3F",
+                "type": "date",
+                "date": {
+                    "start": "2024-05-22T09:00:00.000+08:00",
+                    "end": "2024-05-22T17:00:00.000+08:00",
+                    "time_zone": null
+                }
+            },
+            "Last Date of Sub Tasks": {
+                "id": "jyHF",
+                "type": "rollup",
+                "rollup": {
+                    "type": "date",
+                    "date": null,
+                    "function": "latest_date"
+                }
+            },
+            "Sum Planned Hours of Sub Tasks": {
+                "id": "kexs",
+                "type": "rollup",
+                "rollup": {
+                    "type": "number",
+                    "number": 0,
+                    "function": "sum"
+                }
+            },
+            "Parent Task": {
+                "id": "lTrr",
+                "type": "relation",
+                "relation": [],
+                "has_more": false
+            },
+            "Story Point": {
+                "id": "nyS%3A",
+                "type": "formula",
+                "formula": {
+                    "type": "string",
+                    "string": "This Task Need 8 Working Hours\nYou Have It Completed"
+                }
+            },
+            "Expected Project Hours": {
+                "id": "o%5EcU",
+                "type": "number",
+                "number": null
+            },
+            "URL": {
+                "id": "peV%7C",
+                "type": "url",
+                "url": null
+            },
+            "Parent Project Health Check": {
+                "id": "r%5CRg",
+                "type": "rollup",
+                "rollup": {
+                    "type": "array",
+                    "array": [],
+                    "function": "show_original"
+                }
+            },
+            "Sub Task": {
+                "id": "uI~U",
+                "type": "relation",
+                "relation": [],
+                "has_more": false
+            },
+            "Priority": {
+                "id": "xApB",
+                "type": "select",
+                "select": {
+                    "id": "79cb3d26-bd87-4e6a-a9db-6c091bd845aa",
+                    "name": "\u203c\ufe0fHigh",
+                    "color": "red"
+                }
+            },
+            "Person": {
+                "id": "zIl%5D",
+                "type": "people",
+                "people": [
+                    {
+                        "object": "user",
+                        "id": "7ac81501-452c-4a39-ac0e-97af88e80ffa",
+                        "name": "Huixin",
+                        "avatar_url": "https://s3-us-west-2.amazonaws.com/public.notion-static.com/abe0c2d1-f3f4-4275-9381-538bf55398a9/IMG_0015.png",
+                        "type": "person",
+                        "person": {
+                            "email": "22922504@student.uwa.edu.au"
+                        }
+                    }
+                ]
+            },
+            "AUD": {
+                "id": "%7D%5CcZ",
+                "type": "number",
+                "number": null
+            },
+            "Task Name": {
+                "id": "title",
+                "type": "title",
+                "title": [
+                    {
+                        "type": "text",
+                        "text": {
+                            "content": "TUG 22 May",
+                            "link": null
+                        },
+                        "annotations": {
+                            "bold": false,
+                            "italic": false,
+                            "strikethrough": false,
+                            "underline": false,
+                            "code": false,
+                            "color": "default"
+                        },
+                        "plain_text": "TUG 22 May",
+                        "href": null
+                    }
+                ]
+            },
+            "Doc": {
+                "id": "33fafd36-8e7a-41c3-8c7e-435bcc08711a",
+                "type": "files",
+                "files": []
+            },
+            "GCal Event Id": {
+                "id": "435f598a-cbd6-4720-af77-a861c9f25047",
+                "type": "rich_text",
+                "rich_text": [
+                    {
+                        "type": "text",
+                        "text": {
+                            "content": "3tcjhgfk1pkspvcr6teirmlo33",
+                            "link": null
+                        },
+                        "annotations": {
+                            "bold": false,
+                            "italic": false,
+                            "strikethrough": false,
+                            "underline": false,
+                            "code": false,
+                            "color": "default"
+                        },
+                        "plain_text": "3tcjhgfk1pkspvcr6teirmlo33",
+                        "href": null
+                    }
+                ]
+            },
+            "GCal Calendar Id": {
+                "id": "55dea4c3-f2eb-4eb0-9271-9dfd2df1c53d",
+                "type": "rich_text",
+                "rich_text": [
+                    {
+                        "type": "text",
+                        "text": {
+                            "content": "3oqogk8p9b18h4fr2er0q9duf0@group.calendar.google.com",
+                            "link": null
+                        },
+                        "annotations": {
+                            "bold": false,
+                            "italic": false,
+                            "strikethrough": false,
+                            "underline": false,
+                            "code": false,
+                            "color": "default"
+                        },
+                        "plain_text": "3oqogk8p9b18h4fr2er0q9duf0@group.calendar.google.com",
+                        "href": null
+                    }
+                ]
+            },
+            "Type": {
+                "id": "f2fe5484-77d3-4ef0-8e3c-6b20e26f0e43",
+                "type": "select",
+                "select": {
+                    "id": "62a4f1a2-11b8-4a96-884b-e8bf7ecdd249",
+                    "name": "Task",
+                    "color": "pink"
+                }
+            },
+            "Calendar": {
+                "id": "f48db5db-885d-4548-bf5b-7a523e2f0268",
+                "type": "select",
+                "select": {
+                    "id": "3e12b742-84e7-4d87-bad1-6ce5c901c630",
+                    "name": "Job",
+                    "color": "yellow"
+                }
+            },
+            "GCal Deleted?": {
+                "id": "f551722d-dfdc-4fc6-a389-aeed568abd9f",
+                "type": "checkbox",
+                "checkbox": false
+            },
+            "Task ID": {
+                "id": "notion%3A%2F%2Ftasks%2Fauto_increment_id_property",
+                "type": "unique_id",
+                "unique_id": {
+                    "prefix": "TSK",
+                    "number": 2362
+                }
+            }
+        },
+        "url": "https://www.notion.so/TUG-22-May-9d6eba26037240709a587ab0829dd056",
+        "public_url": null
+    }
+]
