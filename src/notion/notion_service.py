@@ -26,7 +26,7 @@ nt = notion_token.Notion()
 def get_notion_task():
     try:
         logger.info(
-            f"Reading Notion database with ID: {nt.DATABASE_ID} from {nt.DATE_NOTION_NAME}: {nt.AFTER_DATE} to {nt.BEFORE_DATE} (not inclusive)"
+            f"Reading Notion database with ID: {nt.DATABASE_ID} from {nt.DATE_NOTION_NAME}: {nt.AFTER_DATE} to {nt.BEFORE_DATE}"
         )
         return nt.NOTION.databases.query(
             database_id=nt.DATABASE_ID,
@@ -34,7 +34,7 @@ def get_notion_task():
                 "and": [
                     {
                         "property": nt.DATE_NOTION_NAME,
-                        "date": {"before": nt.BEFORE_DATE},
+                        "date": {"on_or_before": nt.BEFORE_DATE},
                     },
                     {
                         "property": nt.DATE_NOTION_NAME,
@@ -116,7 +116,31 @@ def update_notion_task(page_id, gcal_event):
         logging.error(f"Error updating Notion page: {e}")
         return None
 
-
+def update_notion_task_for_new_gcal_event_id(page_id, new_gcal_event_id):
+    try:
+        nt.NOTION.pages.update(
+            page_id=page_id,
+            properties={
+                nt.LASTUPDATEDTIME_NOTION_NAME: {
+                    "type": "date",
+                    "date": {
+                        "start": get_current_time(),
+                        "end": None,
+                    },
+                },
+                nt.GCAL_EVENTID_NOTION_NAME: {
+                    "type": "rich_text",
+                    "rich_text": [{
+                        "text": {
+                            "content": new_gcal_event_id
+                        }
+                    }],
+                },
+            },
+        )
+    except Exception as e:
+        logging.error(f"Error updating Notion page: {e}")
+        return None
 # Create notion with google description as extra information
 def create_notion_task(gcal_event):
     try:
@@ -234,4 +258,6 @@ if __name__ == "__main__":
 
     # Open the file in write mode and dump JSON data
     with log_path.open("w") as output:
-        json.dump(get_notion_task(), output, indent=4)
+        data = get_notion_task()
+        json.dump(data, output, indent=4)
+    print(f"Notion Task Num. {len(data)}, from {nt.AFTER_DATE} to {nt.BEFORE_DATE}")
