@@ -1,7 +1,7 @@
 import logging
 import json
 import sys
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 import emoji
 
@@ -54,6 +54,14 @@ def get_notion_task():
 # That action will lose rich notion information
 def update_notion_task(page_id, gcal_event, new_gcal_sync_time):
     summary_without_emojis = remove_emojis(gcal_event.get("summary", ""))
+
+    gcal_event_start_datetime = get_event_time(gcal_event, "start")
+    gcal_event_end_datetime = get_event_time(gcal_event, "end")
+
+    # Adjust end date if it is in the date format. All day event will be the same day
+    if "date" in gcal_event["end"]:
+        gcal_event_end_datetime = adjust_end_date_if_needed(gcal_event_end_datetime)
+
     try:
         nt.NOTION.pages.update(
             page_id=page_id,
@@ -70,8 +78,8 @@ def update_notion_task(page_id, gcal_event, new_gcal_sync_time):
                 nt.DATE_NOTION_NAME: {
                     "type": "date",
                     "date": {
-                        "start": gcal_event.get("start", {}).get("dateTime", ""),
-                        "end": gcal_event.get("end", {}).get("dateTime", ""),
+                        "start": gcal_event_start_datetime,
+                        "end": gcal_event_end_datetime,
                     },
                 },
                 nt.LOCATION_NOTION_NAME: {
@@ -246,6 +254,19 @@ def get_current_time():
     """Helper function to get the current time in the Notion format."""
     return parse_date_in_notion_format(datetime.now())
 
+
+def get_event_time(event, key):
+    return event.get(key, {}).get("dateTime") or event.get(key, {}).get("date", "")
+
+
+def adjust_end_date_if_needed(end_date):
+    try:
+        end_date_obj = datetime.strptime(end_date, "%Y-%m-%d")
+        adjusted_end_date_obj = end_date_obj - timedelta(days=1)
+        return adjusted_end_date_obj.strftime("%Y-%m-%d")
+    except ValueError:
+        # If the end_date is not in "YYYY-MM-DD" format, return it as is
+        return end_date
 
 def remove_emojis(text):
     return emoji.replace_emoji(text, replace="")
