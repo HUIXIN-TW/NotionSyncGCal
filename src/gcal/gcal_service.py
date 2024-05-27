@@ -65,9 +65,13 @@ def get_gcal_event():
 
 def update_gcal_event(notion_task, existing_gcal_cal_id, existing_gcal_event_id):
     event = make_event_body(notion_task)
-    gt.service.events().update(
+    gcal_event = (gt.service.events().update(
         calendarId=existing_gcal_cal_id, eventId=existing_gcal_event_id, body=event
     ).execute()
+    )
+
+    sync_time = gcal_event.get("updated")
+    return sync_time
 
 
 def create_gcal_event(notion_task, new_gcal_calendar_id=nt.GCAL_DEFAULT_ID):

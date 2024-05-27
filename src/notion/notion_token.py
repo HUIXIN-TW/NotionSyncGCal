@@ -107,6 +107,7 @@ class Notion:
             self.CURRENT_CALENDAR_ID_NOTION_NAME = page_property["GCal_Id_Notion_Name"]
             self.DELETE_NOTION_NAME = page_property["Delete_Notion_Name"]
             self.STATUS_NOTION_NAME = page_property["Status_Notion_Name"]
+            self.GCAL_SYNC_TIME_NOTION_NAME = page_property["GCal_Sync_Time_Notion_Name"]
             self.COMPLETEICON_NOTION_NAME = page_property["CompleteIcon_Notion_Name"]
         except KeyError as e:
             self.logger.error(f"Failed to apply setting: {e}")
@@ -179,7 +180,7 @@ class Notion:
         )
         print(f"DELETE_NOTION_NAME: {self.DELETE_NOTION_NAME}")
         print(f"STATUS_NOTION_NAME: {self.STATUS_NOTION_NAME}")
-        print(f"PAGE_ID_NOTION_NAME: {self.PAGE_ID_NOTION_NAME}")
+        print(f"GCAL_SYNC_TIME_NOTION_NAME: {self.GCAL_SYNC_TIME_NOTION_NAME}")
         print(f"COMPLETEICON_NOTION_NAME: {self.COMPLETEICON_NOTION_NAME}")
         logger.info("--- Token Notion Activated ---")
 

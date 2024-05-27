@@ -132,9 +132,10 @@ def main():
                     logger.info(
                         f"Notion Task: Updating the event in Google Calendar for task '{notion_task_name}'"
                     )
-                    gcal_service.update_gcal_event(
+                    gcal_sync_time = gcal_service.update_gcal_event(
                         notion_task, notion_gcal_cal_id, notion_gcal_event_id
                     )
+                    notion_service.update_notion_task_for_new_gcal_sync_time(notion_task_page_id, gcal_sync_time)
                 elif notion_task_last_edited_time < gcal_event_updated_time:
                     logger.info(
                         f"Notion Task Edited Time: '{notion_task_last_edited_time}' vs Google Calendar Event Updated Time: '{gcal_event_updated_time}'"

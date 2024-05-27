@@ -122,7 +122,22 @@ def update_notion_task_for_new_gcal_event_id(page_id, new_gcal_event_id):
     except Exception as e:
         logging.error(f"Error updating Notion page when updating for new GCal Event ID: {e}")
         return None
+    
 
+def update_notion_task_for_new_gcal_sync_time(page_id, new_gcal_sync_time):
+    try:
+        nt.NOTION.pages.update(
+            page_id=page_id,
+            properties={
+                nt.GCAL_SYNC_TIME_NOTION_NAME: {
+                    "type": "rich_text",
+                    "rich_text": [{"text": {"content": new_gcal_sync_time}}],
+                },
+            },
+        )
+    except Exception as e:
+        logging.error(f"Error updating Notion page when updating for new GCal sync time: {e}")
+        return None
 
 # Create notion with google description as extra information
 def create_notion_task(gcal_event):
