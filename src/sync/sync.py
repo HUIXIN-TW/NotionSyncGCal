@@ -45,7 +45,9 @@ def main():
 
     # Check if Notion Task is in Google Calendar
     for notion_task in notion_task_list:
-
+        '''
+        Notion Task properties & Google Calendar Event properties
+        '''
         # Notion Task properties for comparison: Notion Page ID and Google Calendar Event ID
         notion_task_page_id = notion_task.get("id")
         notion_gcal_cal_name = notion_task["properties"][
@@ -69,11 +71,16 @@ def main():
         ]["title"][0]["plain_text"]
 
         # Notion Task properties for sync status
-        notion_gcal_sync_time = notion_task["properties"][notion_service.nt.GCAL_SYNC_TIME_NOTION_NAME]["rich_text"][0]["plain_text"]
+        try:
+            notion_gcal_sync_time = notion_task["properties"][notion_service.nt.GCAL_SYNC_TIME_NOTION_NAME]["rich_text"][0]["plain_text"]
+        except:
+            notion_gcal_sync_time = None
 
-        # logger.info(
-        #     f"Loop Notion Task {notion_task_name} with Notion Page ID: {notion_task_page_id} GCal Event ID: {notion_gcal_event_id}"
-        # )
+        notion_task_last_edited_time = notion_task.get("last_edited_time")
+
+        '''
+        Sync Logic: Notion Actions or Google Calendar Actions
+        '''
 
         # Notion Task without Google Calendar Event ID - Create a new event in Google Calendar
         if not notion_gcal_event_id:
@@ -103,16 +110,13 @@ def main():
             gcal_event_summary = gcal_event.get("summary", "")
             gcal_event_id = gcal_event.get("id", "")
 
-            # logger.info(
-            #     f"Google Calendar Event {gcal_event_summary} with GCal Event ID: {gcal_event_id}"
-            # )
+            # Google Calendar Event Updated Time
+            gcal_event_updated_time = gcal_event.get("updated")
 
             # Compare the Google Calendar Event ID with the Notion Task Google Calendar Event ID
             if notion_gcal_event_id == gcal_event_id:
 
                 # Get the last edited time of the Notion Task and the updated time of the Google Calendar Event
-                notion_task_last_edited_time = notion_task.get("last_edited_time")
-                gcal_event_updated_time = gcal_event.get("updated")
                 same_timezone = compare_timezones(
                     notion_task_last_edited_time, gcal_event_updated_time
                 )
@@ -128,15 +132,24 @@ def main():
                     logger.warning("Timezones are different. Stopping the program.")
                     sys.exit(1)
 
-                # Compare Notion's gcal sync time with Google Calendar's updated time
-                # BUG: sync time is not updated in notion, it should be auto clear when notion updated in notion database or
-                #     it will never run again after the first sync and google doesn't update the event
-                # if notion_gcal_sync_time == gcal_event_updated_time:
-                #     logger.info(
-                #         f"Notion Task '{notion_task_name}' and Google Calendar Event '{gcal_event_summary}' are in sync"
-                #     )
-                #     break
-                # This time should compare with notion last edited time again
+                # scenario: notion has a last edited time, and google calendar event has an updated time
+                # first time, I will compare last edited time of notion and updated time of google calendar event
+                # the older versino will be updated to the newer version
+                # then google calendar service return the updated time, then I add sync time to notion. 
+                # so updated time is the same as sync time if google calendar event is not updated after sync
+                # next time, I will compare last edited time of notion and sync time of notion, and updated time of google calendar event
+                # if sync time is newer than last edited time of notion, and sync time is newer than updated time of google calendar event, then do not update
+                # if run sync, then sync time will be updated to the updated time of google calendar event in notion
+                # Example 1. sync time is the newest -> do not update
+                # Example 2. edited time is newer than sync time-> need update
+                # Example 3. sync time is null -> need update
+
+                if notion_gcal_sync_time and notion_gcal_sync_time >= gcal_event_updated_time and notion_gcal_sync_time > notion_task_last_edited_time:
+                    logger.info(
+                        f"Notion Task '{notion_task_name}' and Google Calendar Event '{gcal_event_summary}' are in sync"
+                    )
+                    break
+
 
                 if notion_task_last_edited_time > gcal_event_updated_time:
                     logger.info(
