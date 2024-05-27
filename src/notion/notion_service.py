@@ -59,22 +59,18 @@ def update_notion_task(page_id, gcal_event):
             page_id=page_id,
             properties={
                 nt.TASK_NOTION_NAME: {
-                    "type":
-                    "title",
+                    "type": "title",
                     "title": [
                         {
                             "type": "text",
-                            "text": {
-                                "content": summary_without_emojis
-                            },
+                            "text": {"content": summary_without_emojis},
                         },
                     ],
                 },
                 nt.DATE_NOTION_NAME: {
                     "type": "date",
                     "date": {
-                        "start": gcal_event.get("start",
-                                                {}).get("dateTime", ""),
+                        "start": gcal_event.get("start", {}).get("dateTime", ""),
                         "end": gcal_event.get("end", {}).get("dateTime", ""),
                     },
                 },
@@ -86,34 +82,29 @@ def update_notion_task(page_id, gcal_event):
                     },
                 },
                 nt.LOCATION_NOTION_NAME: {
-                    "type":
-                    "rich_text",
-                    "rich_text": [{
-                        "text": {
-                            "content": gcal_event.get("location", "")
-                        }
-                    }],
+                    "type": "rich_text",
+                    "rich_text": [
+                        {"text": {"content": gcal_event.get("location", "")}}
+                    ],
                 },
                 nt.GCAL_EVENTID_NOTION_NAME: {
                     "type": "rich_text",
-                    "rich_text": [{
-                        "text": {
-                            "content": gcal_event.get("id", "")
-                        }
-                    }],
+                    "rich_text": [{"text": {"content": gcal_event.get("id", "")}}],
                 },
                 nt.CURRENT_CALENDAR_ID_NOTION_NAME: {
-                    "rich_text": [{
-                        "text": {
-                            "content":
-                            gcal_event.get("organizer", {}).get("email", "")
+                    "rich_text": [
+                        {
+                            "text": {
+                                "content": gcal_event.get("organizer", {}).get(
+                                    "email", ""
+                                )
+                            }
                         }
-                    }]
+                    ]
                 },
                 nt.CURRENT_CALENDAR_NAME_NOTION_NAME: {
                     "select": {
-                        "name":
-                        gcal_event.get("organizer", {}).get("displayName", "")
+                        "name": gcal_event.get("organizer", {}).get("displayName", "")
                     },
                 },
             },
@@ -121,6 +112,7 @@ def update_notion_task(page_id, gcal_event):
     except Exception as e:
         logging.error(f"Error updating Notion page: {e}")
         return None
+
 
 def update_notion_task_for_new_gcal_event_id(page_id, new_gcal_event_id):
     try:
@@ -136,17 +128,15 @@ def update_notion_task_for_new_gcal_event_id(page_id, new_gcal_event_id):
                 },
                 nt.GCAL_EVENTID_NOTION_NAME: {
                     "type": "rich_text",
-                    "rich_text": [{
-                        "text": {
-                            "content": new_gcal_event_id
-                        }
-                    }],
+                    "rich_text": [{"text": {"content": new_gcal_event_id}}],
                 },
             },
         )
     except Exception as e:
         logging.error(f"Error updating Notion page: {e}")
         return None
+
+
 # Create notion with google description as extra information
 def create_notion_task(gcal_event):
     try:
@@ -154,8 +144,7 @@ def create_notion_task(gcal_event):
             parent={"database_id": nt.DATABASE_ID},
             properties={
                 nt.TASK_NOTION_NAME: {
-                    "type":
-                    "title",
+                    "type": "title",
                     "title": [
                         {
                             "type": "text",
@@ -181,34 +170,30 @@ def create_notion_task(gcal_event):
                 },
                 nt.EXTRAINFO_NOTION_NAME: {
                     "type": "rich_text",
-                    "rich_text": [{
-                        "text": {
-                            "content": gcal_event.get("description", "")
-                        }
-                    }],
+                    "rich_text": [
+                        {"text": {"content": gcal_event.get("description", "")}}
+                    ],
                 },
                 nt.LOCATION_NOTION_NAME: {
                     "type": "rich_text",
-                    "rich_text": [{
-                        "text": {
-                            "content": gcal_event.get("location", "")
-                        }
-                    }],
+                    "rich_text": [
+                        {"text": {"content": gcal_event.get("location", "")}}
+                    ],
                 },
                 nt.GCAL_EVENTID_NOTION_NAME: {
                     "type": "rich_text",
-                    "rich_text": [{
-                        "text": {
-                            "content": gcal_event.get("id", "")
-                        }
-                    }],
+                    "rich_text": [{"text": {"content": gcal_event.get("id", "")}}],
                 },
                 nt.CURRENT_CALENDAR_ID_NOTION_NAME: {
-                    "rich_text": [{
-                        "text": {
-                            "content": gcal_event.get("organizer", {}).get("email", "")
+                    "rich_text": [
+                        {
+                            "text": {
+                                "content": gcal_event.get("organizer", {}).get(
+                                    "email", ""
+                                )
+                            }
                         }
-                    }]
+                    ]
                 },
                 nt.CURRENT_CALENDAR_NAME_NOTION_NAME: {
                     "select": {
@@ -217,24 +202,26 @@ def create_notion_task(gcal_event):
                 },
             },
         )
-        logging.info(f"Event {gcal_event.get('summary', '')} created in Notion successfully.")
+        logging.info(
+            f"Event {gcal_event.get('summary', '')} created in Notion successfully."
+        )
     except Exception as e:
-        logging.error(f"Failed to sync event {gcal_event.get('summary', '')} to Notion: {e}")
+        logging.error(
+            f"Failed to sync event {gcal_event.get('summary', '')} to Notion: {e}"
+        )
         return None
 
 
 def delete_notion_task(page_id):
     try:
         nt.NOTION.pages.update(
-            page_id=page_id,
-            properties={nt.DELETE_NOTION_NAME: {
-                "checkbox": true
-            }})
-        logging.info(
-            f"Event {page_id} marked as deletion in Notion successfully.")
+            page_id=page_id, properties={nt.DELETE_NOTION_NAME: {"checkbox": true}}
+        )
+        logging.info(f"Event {page_id} marked as deletion in Notion successfully.")
     except Exception as e:
         logging.error(f"Failed to marked as deletion {page_id} to Notion: {e}")
         return None
+
 
 def parse_date_in_notion_format(date_obj):
     """Helper function to notion format dates."""
@@ -245,15 +232,19 @@ def parse_date_in_notion_format(date_obj):
         formatted_date = None
     return formatted_date
 
+
 def get_notion_setting_data():
     return nt
+
 
 def get_current_time():
     """Helper function to get the current time in the Notion format."""
     return parse_date_in_notion_format(datetime.now())
 
+
 def remove_emojis(text):
-    return emoji.replace_emoji(text, replace='')
+    return emoji.replace_emoji(text, replace="")
+
 
 if __name__ == "__main__":
     # Ensure the directory exists

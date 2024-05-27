@@ -50,7 +50,8 @@ class Notion:
         self.logger = logging.getLogger("Notion")
         handler = logging.StreamHandler()
         formatter = logging.Formatter(
-            "%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+            "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+        )
         handler.setFormatter(formatter)
         self.logger.addHandler(handler)
         self.logger.setLevel(logging.INFO)
@@ -66,10 +67,11 @@ class Notion:
             # Date range settings
             # ISO format for Notion API
             self.AFTER_DATE = (
-                date.today() +
-                timedelta(days=-self.data["goback_days"])).strftime("%Y-%m-%d")
-            self.BEFORE_DATE = (date.today() + timedelta(
-                days=self.data["goforward_days"])).strftime("%Y-%m-%d")
+                date.today() + timedelta(days=-self.data["goback_days"])
+            ).strftime("%Y-%m-%d")
+            self.BEFORE_DATE = (
+                date.today() + timedelta(days=self.data["goforward_days"])
+            ).strftime("%Y-%m-%d")
 
             # ISO format for Google Calendar API
             self.GOOGLE_TIMEMIN = (
@@ -86,7 +88,8 @@ class Notion:
             # Google calendar settings
             self.GCAL_DIC = self.data["gcal_dic"][0]
             self.GCAL_DIC_KEY_TO_VALUE = self.convert_key_to_value(
-                self.data["gcal_dic"][0])
+                self.data["gcal_dic"][0]
+            )
             self.GCAL_DEFAULT_NAME = list(self.GCAL_DIC)[0]
             self.GCAL_DEFAULT_ID = list(self.GCAL_DIC_KEY_TO_VALUE)[0]
 
@@ -94,23 +97,17 @@ class Notion:
             page_property = self.data["page_property"][0]
             self.TASK_NOTION_NAME = page_property["Task_Notion_Name"]
             self.DATE_NOTION_NAME = page_property["Date_Notion_Name"]
-            self.INITIATIVE_NOTION_NAME = page_property[
-                "Initiative_Notion_Name"]
+            self.INITIATIVE_NOTION_NAME = page_property["Initiative_Notion_Name"]
             self.EXTRAINFO_NOTION_NAME = page_property["ExtraInfo_Notion_Name"]
             self.LOCATION_NOTION_NAME = page_property["Location_Notion_Name"]
-            self.GCAL_EVENTID_NOTION_NAME = page_property[
-                "GCal_EventId_Notion_Name"]
-            self.LASTUPDATEDTIME_NOTION_NAME = page_property[
-                "Last_Updated_Time_Notion_Name"]
+            self.GCAL_EVENTID_NOTION_NAME = page_property["GCal_EventId_Notion_Name"]
             self.CURRENT_CALENDAR_NAME_NOTION_NAME = page_property[
-                "GCal_Name_Notion_Name"]
-            self.CURRENT_CALENDAR_ID_NOTION_NAME = page_property[
-                "GCal_Id_Notion_Name"]
+                "GCal_Name_Notion_Name"
+            ]
+            self.CURRENT_CALENDAR_ID_NOTION_NAME = page_property["GCal_Id_Notion_Name"]
             self.DELETE_NOTION_NAME = page_property["Delete_Notion_Name"]
             self.STATUS_NOTION_NAME = page_property["Status_Notion_Name"]
-            self.PAGE_ID_NOTION_NAME = page_property["Page_ID_Notion_Name"]
-            self.COMPLETEICON_NOTION_NAME = page_property[
-                "CompleteIcon_Notion_Name"]
+            self.COMPLETEICON_NOTION_NAME = page_property["CompleteIcon_Notion_Name"]
         except KeyError as e:
             self.logger.error(f"Failed to apply setting: {e}")
             raise SettingError(f"Failed to apply setting: {e}")
@@ -174,8 +171,7 @@ class Notion:
         print(f"EXTRAINFO_NOTION_NAME: {self.EXTRAINFO_NOTION_NAME}")
         print(f"LOCATION_NOTION_NAME: {self.LOCATION_NOTION_NAME}")
         print(f"GCAL_EVENTID_NOTION_NAME: {self.GCAL_EVENTID_NOTION_NAME}")
-        print(
-            f"LASTUPDATEDTIME_NOTION_NAME: {self.LASTUPDATEDTIME_NOTION_NAME}")
+        print(f"LASTUPDATEDTIME_NOTION_NAME: {self.LASTUPDATEDTIME_NOTION_NAME}")
         print(
             f"CURRENT_CALENDAR_NAME_NOTION_NAME: {self.CURRENT_CALENDAR_NAME_NOTION_NAME}"
         )
