@@ -68,6 +68,9 @@ def main():
             notion_service.nt.TASK_NOTION_NAME
         ]["title"][0]["plain_text"]
 
+        # Notion Task properties for sync status
+        notion_gcal_sync_time = notion_task["properties"][notion_service.nt.GCAL_SYNC_TIME_NOTION_NAME]["rich_text"][0]["plain_text"]
+
         # logger.info(
         #     f"Loop Notion Task {notion_task_name} with Notion Page ID: {notion_task_page_id} GCal Event ID: {notion_gcal_event_id}"
         # )
@@ -125,6 +128,16 @@ def main():
                     logger.warning("Timezones are different. Stopping the program.")
                     sys.exit(1)
 
+                # Compare Notion's gcal sync time with Google Calendar's updated time
+                # BUG: sync time is not updated in notion, it should be auto clear when notion updated in notion database or
+                #     it will never run again after the first sync and google doesn't update the event
+                # if notion_gcal_sync_time == gcal_event_updated_time:
+                #     logger.info(
+                #         f"Notion Task '{notion_task_name}' and Google Calendar Event '{gcal_event_summary}' are in sync"
+                #     )
+                #     break
+                # This time should compare with notion last edited time again
+
                 if notion_task_last_edited_time > gcal_event_updated_time:
                     logger.info(
                         f"Notion Task Edited Time: '{notion_task_last_edited_time}' vs Google Calendar Event Updated Time: '{gcal_event_updated_time}'"
@@ -145,6 +158,7 @@ def main():
                     )
                     notion_service.update_notion_task(notion_task_page_id, gcal_event)
                 else:
+                    # Cause of notion has less time precision than google calendar, so this is impossible to happen
                     logger.info(
                         f"Notion Task '{notion_task_name}' and Google Calendar Event '{gcal_event_summary}' are in sync"
                     )
