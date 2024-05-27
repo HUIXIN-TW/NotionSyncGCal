@@ -52,7 +52,7 @@ def get_notion_task():
 # Update specific properties in notion
 # Note: Never update Extra info from google cal to notion
 # That action will lose rich notion information
-def update_notion_task(page_id, gcal_event):
+def update_notion_task(page_id, gcal_event, new_gcal_sync_time):
     summary_without_emojis = remove_emojis(gcal_event.get("summary", ""))
     try:
         nt.NOTION.pages.update(
@@ -80,6 +80,10 @@ def update_notion_task(page_id, gcal_event):
                         {"text": {"content": gcal_event.get("location", "")}}
                     ],
                 },
+                nt.GCAL_SYNC_TIME_NOTION_NAME: {
+                    "type": "rich_text",
+                    "rich_text": [{"text": {"content": new_gcal_sync_time}}],
+                },
                 nt.GCAL_EVENTID_NOTION_NAME: {
                     "type": "rich_text",
                     "rich_text": [{"text": {"content": gcal_event.get("id", "")}}],
@@ -94,7 +98,7 @@ def update_notion_task(page_id, gcal_event):
                                 )
                             }
                         }
-                    ]
+                    ],
                 },
                 nt.CURRENT_CALENDAR_NAME_NOTION_NAME: {
                     "select": {
@@ -120,9 +124,11 @@ def update_notion_task_for_new_gcal_event_id(page_id, new_gcal_event_id):
             },
         )
     except Exception as e:
-        logging.error(f"Error updating Notion page when updating for new GCal Event ID: {e}")
+        logging.error(
+            f"Error updating Notion page when updating for new GCal Event ID: {e}"
+        )
         return None
-    
+
 
 def update_notion_task_for_new_gcal_sync_time(page_id, new_gcal_sync_time):
     try:
@@ -136,8 +142,11 @@ def update_notion_task_for_new_gcal_sync_time(page_id, new_gcal_sync_time):
             },
         )
     except Exception as e:
-        logging.error(f"Error updating Notion page when updating for new GCal sync time: {e}")
+        logging.error(
+            f"Error updating Notion page when updating for new GCal sync time: {e}"
+        )
         return None
+
 
 # Create notion with google description as extra information
 def create_notion_task(gcal_event):
@@ -189,7 +198,7 @@ def create_notion_task(gcal_event):
                                 )
                             }
                         }
-                    ]
+                    ],
                 },
                 nt.CURRENT_CALENDAR_NAME_NOTION_NAME: {
                     "select": {

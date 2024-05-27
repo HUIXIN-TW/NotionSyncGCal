@@ -29,6 +29,7 @@ def read_json():
         print(json.dumps(data, indent=2))
     return data
 
+
 def main():
     # check if the user want to modify json file
     data = read_json()

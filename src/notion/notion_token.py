@@ -28,7 +28,6 @@ class SettingError(Exception):
 
 
 class Notion:
-
     def __init__(self):
         self.filepath = NOTION_SETTINGS_PATH
         self.data = self.load_settings()
@@ -107,7 +106,9 @@ class Notion:
             self.CURRENT_CALENDAR_ID_NOTION_NAME = page_property["GCal_Id_Notion_Name"]
             self.DELETE_NOTION_NAME = page_property["Delete_Notion_Name"]
             self.STATUS_NOTION_NAME = page_property["Status_Notion_Name"]
-            self.GCAL_SYNC_TIME_NOTION_NAME = page_property["GCal_Sync_Time_Notion_Name"]
+            self.GCAL_SYNC_TIME_NOTION_NAME = page_property[
+                "GCal_Sync_Time_Notion_Name"
+            ]
             self.COMPLETEICON_NOTION_NAME = page_property["CompleteIcon_Notion_Name"]
         except KeyError as e:
             self.logger.error(f"Failed to apply setting: {e}")
