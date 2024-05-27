@@ -61,9 +61,7 @@ def main():
             notion_gcal_event_id = None
 
         # Notion Task properties for deletion
-        notion_deletion = notion_task["properties"][
-            notion_service.nt.DELETE_NOTION_NAME
-        ]["checkbox"]
+        notion_deletion = notion_task["properties"][notion_service.nt.DELETE_NOTION_NAME]["checkbox"]
 
         # Notion Task properties for debugging
         notion_task_name = notion_task["properties"][
@@ -129,12 +127,18 @@ def main():
 
                 if notion_task_last_edited_time > gcal_event_updated_time:
                     logger.info(
+                        f"Notion Task Edited Time: '{notion_task_last_edited_time}' vs Google Calendar Event Updated Time: '{gcal_event_updated_time}'"
+                    )
+                    logger.info(
                         f"Notion Task: Updating the event in Google Calendar for task '{notion_task_name}'"
                     )
                     gcal_service.update_gcal_event(
                         notion_task, notion_gcal_cal_id, notion_gcal_event_id
                     )
                 elif notion_task_last_edited_time < gcal_event_updated_time:
+                    logger.info(
+                        f"Notion Task Edited Time: '{notion_task_last_edited_time}' vs Google Calendar Event Updated Time: '{gcal_event_updated_time}'"
+                    )
                     logger.info(
                         f"Google Calendar: Updating the task in Notion for event '{gcal_event_summary}'"
                     )

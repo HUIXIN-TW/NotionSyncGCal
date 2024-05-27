@@ -9,3 +9,5 @@
 /src/__pycache__
 
 /src/logs
+src/notion/__pycache__/*.pyc
+src/sync/__pycache__/*.pyc

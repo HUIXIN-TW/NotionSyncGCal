@@ -74,13 +74,6 @@ def update_notion_task(page_id, gcal_event):
                         "end": gcal_event.get("end", {}).get("dateTime", ""),
                     },
                 },
-                nt.LASTUPDATEDTIME_NOTION_NAME: {
-                    "type": "date",
-                    "date": {
-                        "start": get_current_time(),
-                        "end": None,
-                    },
-                },
                 nt.LOCATION_NOTION_NAME: {
                     "type": "rich_text",
                     "rich_text": [
@@ -92,6 +85,7 @@ def update_notion_task(page_id, gcal_event):
                     "rich_text": [{"text": {"content": gcal_event.get("id", "")}}],
                 },
                 nt.CURRENT_CALENDAR_ID_NOTION_NAME: {
+                    "type": "rich_text",
                     "rich_text": [
                         {
                             "text": {
@@ -110,7 +104,7 @@ def update_notion_task(page_id, gcal_event):
             },
         )
     except Exception as e:
-        logging.error(f"Error updating Notion page: {e}")
+        logging.error(f"Error updating Notion page when updating Notion Task: {e}")
         return None
 
 
@@ -119,13 +113,6 @@ def update_notion_task_for_new_gcal_event_id(page_id, new_gcal_event_id):
         nt.NOTION.pages.update(
             page_id=page_id,
             properties={
-                nt.LASTUPDATEDTIME_NOTION_NAME: {
-                    "type": "date",
-                    "date": {
-                        "start": get_current_time(),
-                        "end": None,
-                    },
-                },
                 nt.GCAL_EVENTID_NOTION_NAME: {
                     "type": "rich_text",
                     "rich_text": [{"text": {"content": new_gcal_event_id}}],
@@ -133,7 +120,7 @@ def update_notion_task_for_new_gcal_event_id(page_id, new_gcal_event_id):
             },
         )
     except Exception as e:
-        logging.error(f"Error updating Notion page: {e}")
+        logging.error(f"Error updating Notion page when updating for new GCal Event ID: {e}")
         return None
 
 
@@ -161,13 +148,6 @@ def create_notion_task(gcal_event):
                         "end": gcal_event.get("end", {}).get("dateTime", ""),
                     },
                 },
-                nt.LASTUPDATEDTIME_NOTION_NAME: {
-                    "type": "date",
-                    "date": {
-                        "start": get_current_time(),
-                        "end": None,
-                    },
-                },
                 nt.EXTRAINFO_NOTION_NAME: {
                     "type": "rich_text",
                     "rich_text": [
@@ -185,6 +165,7 @@ def create_notion_task(gcal_event):
                     "rich_text": [{"text": {"content": gcal_event.get("id", "")}}],
                 },
                 nt.CURRENT_CALENDAR_ID_NOTION_NAME: {
+                    "type": "rich_text",
                     "rich_text": [
                         {
                             "text": {
@@ -215,7 +196,7 @@ def create_notion_task(gcal_event):
 def delete_notion_task(page_id):
     try:
         nt.NOTION.pages.update(
-            page_id=page_id, properties={nt.DELETE_NOTION_NAME: {"checkbox": true}}
+            page_id=page_id, properties={nt.DELETE_NOTION_NAME: {"checkbox": True}}
         )
         logging.info(f"Event {page_id} marked as deletion in Notion successfully.")
     except Exception as e:
