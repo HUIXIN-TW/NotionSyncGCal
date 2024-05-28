@@ -92,10 +92,14 @@ def move_gcal_event(gcal_event_id, new_gcal_calendar_id, existing_gcal_cal_id):
 
 def delete_gcal_event(gcal_calendar_id, gcal_event_id):
     try:
-        gt.service.events().delete(calendarId=gcal_calendar_id, eventId=gcal_event_id).execute()
+        gt.service.events().delete(
+            calendarId=gcal_calendar_id, eventId=gcal_event_id
+        ).execute()
         logger.info(f"Successfully deleted event with ID: {gcal_event_id}")
     except Exception as e:
-        logger.error(f"An error occurred while deleting event with ID: {gcal_event_id}: {e}")
+        logger.error(
+            f"An error occurred while deleting event with ID: {gcal_event_id}: {e}"
+        )
         sys.exit(1)
 
 

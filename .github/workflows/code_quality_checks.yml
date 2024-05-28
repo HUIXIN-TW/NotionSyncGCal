@@ -1,0 +1,32 @@
+name: Code Quality Checks
+
+on: push
+
+jobs:
+  formatting:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v3
+        with:
+          python-version: "3.11"
+
+      - name: Install Black
+        run: pip install black
+
+      - name: Check Python formatting with Black
+        run: black --check .
+
+      - name: Install Node.js for Prettier
+        uses: actions/setup-node@v3
+        with:
+          node-version: "20" # Specify the Node.js version.
+
+      - name: Install Prettier
+        run: npm install --save-dev prettier
+
+      - name: Check code formatting with Prettier
+        run: npx prettier --check .

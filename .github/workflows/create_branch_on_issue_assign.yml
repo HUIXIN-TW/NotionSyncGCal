@@ -1,0 +1,54 @@
+name: Create Branch and Add Branch Link on Issue Assign
+
+on:
+  issues:
+    types: [assigned]
+
+jobs:
+  create-branch-and-add-link:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Create Branch for Issue
+        id: create_branch
+        run: |
+          ISSUE_NUMBER="${{ github.event.issue.number }}"
+          ISSUE_TITLE="${{ github.event.issue.title }}"
+          BRANCH_NAME="issue-$ISSUE_NUMBER-${ISSUE_TITLE// /-}"
+
+          # Ensure branch name is URL safe
+          BRANCH_NAME="${BRANCH_NAME//[^a-zA-Z0-9-]/-}"
+          BRANCH_NAME="${BRANCH_NAME,,}" # Convert to lowercase
+
+          echo "Creating branch: $BRANCH_NAME"
+          git config --global user.email "action@github.com"
+          git config --global user.name "GitHub Action"
+          git checkout -b "$BRANCH_NAME"
+          git push origin "$BRANCH_NAME"
+          echo "::set-output name=branch::$BRANCH_NAME"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Add branch link to issue body
+        if: steps.create_branch.outputs.branch != ''
+        uses: actions/github-script@v5
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const branchName = "${{ steps.create_branch.outputs.branch }}";
+            const branchLink = `[View branch](${{ github.server_url }}/${{ github.repository }}/tree/${branchName})`;
+            const issueNumber = ${{ github.event.issue.number }};
+            const issue = await github.rest.issues.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issueNumber
+            });
+            const newBody = issue.data.body + "\n\n" + branchLink;
+            await github.rest.issues.update({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issueNumber,
+              body: newBody
+            });
