@@ -215,10 +215,13 @@ def adjust_notion_dates(start_date_str, end_date_str=None):
     if end_date_str:
         end_date = isoparse(end_date_str)
     else:
-        if "T" in start_date_str:  # datetime format
-            end_date = start_date + timedelta(hours=nt.DEFAULT_EVENT_LENGTH)
-        else:  # date format
-            end_date = start_date + timedelta(days=1)
+        end_date = start_date
+
+    if "T" in start_date_str and end_date == start_date:  # datetime format
+        print("start_date", start_date)
+        end_date = start_date + timedelta(minutes=nt.DEFAULT_EVENT_LENGTH)
+    elif "T" not in start_date_str and end_date == start_date:  # date format
+        end_date = start_date + timedelta(days=1)
 
     if "T" in start_date_str:
         start_date_str = start_date.strftime("%Y-%m-%dT%H:%M:%S%z")
@@ -226,7 +229,6 @@ def adjust_notion_dates(start_date_str, end_date_str=None):
     else:
         start_date_str = start_date.strftime("%Y-%m-%d")
         end_date_str = end_date.strftime("%Y-%m-%d")
-
     return start_date_str, end_date_str
 
 

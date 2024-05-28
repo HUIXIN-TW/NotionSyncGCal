@@ -52,7 +52,7 @@ def get_notion_task():
 # Update specific properties in notion
 # Note: Never update Extra info from google cal to notion
 # That action will lose rich notion information
-def update_notion_task(page_id, gcal_event, new_gcal_sync_time):
+def update_notion_task(page_id, gcal_event, gcal_cal_name, new_gcal_sync_time):
     summary_without_emojis = remove_emojis(gcal_event.get("summary", ""))
 
     gcal_event_start_datetime = get_event_time(gcal_event, "start")
@@ -110,7 +110,7 @@ def update_notion_task(page_id, gcal_event, new_gcal_sync_time):
                 },
                 nt.CURRENT_CALENDAR_NAME_NOTION_NAME: {
                     "select": {
-                        "name": gcal_event.get("organizer", {}).get("displayName", "")
+                        "name": gcal_cal_name
                     },
                 },
             },
@@ -155,9 +155,30 @@ def update_notion_task_for_new_gcal_sync_time(page_id, new_gcal_sync_time):
         )
         return None
 
+def update_notion_task_for_default_calendar(page_id, default_calendar_id, default_calendar_name):
+    try:
+        nt.NOTION.pages.update(
+            page_id=page_id,
+            properties={
+                nt.CURRENT_CALENDAR_ID_NOTION_NAME: {
+                    "type": "rich_text",
+                    "rich_text": [{"text": {"content": default_calendar_id}}],
+                },
+                nt.CURRENT_CALENDAR_NAME_NOTION_NAME: {
+                    "select": {
+                        "name": default_calendar_name
+                    },
+                },
+            },
+        )
+    except Exception as e:
+        logging.error(
+            f"Error updating Notion page when updating for default calendar: {e}"
+        )
+        return None
 
 # Create notion with google description as extra information
-def create_notion_task(gcal_event):
+def create_notion_task(gcal_event, gcal_cal_name):
     try:
         nt.NOTION.pages.create(
             parent={"database_id": nt.DATABASE_ID},
@@ -194,7 +215,7 @@ def create_notion_task(gcal_event):
                 },
                 nt.GCAL_EVENTID_NOTION_NAME: {
                     "type": "rich_text",
-                    "rich_text": [{"text": {"content": gcal_event.get("id", "")}}],
+                    "rich_text": [{"text": {"content": gcal_event.get("id")}}],
                 },
                 nt.CURRENT_CALENDAR_ID_NOTION_NAME: {
                     "type": "rich_text",
@@ -210,7 +231,7 @@ def create_notion_task(gcal_event):
                 },
                 nt.CURRENT_CALENDAR_NAME_NOTION_NAME: {
                     "select": {
-                        "name": gcal_event.get("organizer", {}).get("displayName", "")
+                        "name": gcal_cal_name
                     },
                 },
             },
