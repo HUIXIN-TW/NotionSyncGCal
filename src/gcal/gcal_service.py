@@ -212,7 +212,7 @@ def adjust_notion_dates(start_date_str, end_date_str=None):
         end_date = isoparse(end_date_str)
     else:
         if "T" in start_date_str:  # datetime format
-            end_date = start_date + timedelta(hours=1)
+            end_date = start_date + timedelta(hours=nt.DEFAULT_EVENT_LENGTH)
         else:  # date format
             end_date = start_date + timedelta(days=1)
 

@@ -36,7 +36,7 @@ def main():
     # Handling no arguments case
     if not args.timestamp and not args.google and not args.notion:
         print("Running sync with no arguments")
-        # Implement your logic for syncing with no arguments here
+        sync.synchronize_notion_and_google_calendar()
 
     # Handling optional -t flag for syncing by timestamp
     if args.timestamp:
