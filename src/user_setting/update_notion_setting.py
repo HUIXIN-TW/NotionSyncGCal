@@ -15,10 +15,7 @@ def update_date_range(goback_value, goforward_days):
     print(
         f"Modified goback_days to {goback_value} and goforward_days to {goforward_days} in notion_setting.json"
     )
-    with open(NOTION_SETTINGS_PATH, "w") as file:
-        json.dump(data, file, indent=2)
-        print("Updated notion_setting.json:")
-        print(json.dumps(data, indent=2))
+    write_json(data)
 
 def update_page_property(page_property, page_property_value):
     """Modify the page_property in notion_setting.json"""
@@ -27,10 +24,7 @@ def update_page_property(page_property, page_property_value):
     print(
         f"Modified page_property: {page_property} as {page_property_value} in notion_setting.json"
     )
-    with open(NOTION_SETTINGS_PATH, "w") as file:
-        json.dump(data, file, indent=2)
-        print("Updated notion_setting.json:")
-        print(json.dumps(data, indent=2))
+    write_json(data)
 
 def update_notion_token(notion_token):
     """Modify the notion_token in notion_setting.json"""
@@ -39,10 +33,7 @@ def update_notion_token(notion_token):
     print(
         f"Modified notion_token to {notion_token} in notion_setting.json"
     )
-    with open(NOTION_SETTINGS_PATH, "w") as file:
-        json.dump(data, file, indent=2)
-        print("Updated notion_setting.json:")
-        print(json.dumps(data, indent=2))
+    write_json(data)
 
 def update_urlroot(urlroot):
     """Modify the notion_database_id in notion_setting.json"""
@@ -51,17 +42,20 @@ def update_urlroot(urlroot):
     print(
         f"Modified urlroot to {urlroot} in notion_setting.json"
     )
-    with open(NOTION_SETTINGS_PATH, "w") as file:
-        json.dump(data, file, indent=2)
-        print("Updated notion_setting.json:")
-        print(json.dumps(data, indent=2))
+    write_json(data)
 
 def read_json():
     with open(NOTION_SETTINGS_PATH, "r") as file:
         data = json.load(file)
-        print("Current notion_setting.json:")
-        print(json.dumps(data, indent=2))
+        print("Current notion_setting.json")
+        # print(json.dumps(data, indent=2))
     return data
+
+def write_json(data):
+    with open(NOTION_SETTINGS_PATH, "w") as file:
+        json.dump(data, file, indent=2)
+        print("Updated notion_setting.json")
+        # print(json.dumps(data, indent=2))
     
 
 if __name__ == "__main__":
