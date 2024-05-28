@@ -9,27 +9,27 @@ jobs:
       issues: write
       pull-requests: write
     steps:
-    - uses: actions/first-interaction@v1
-      with:
-        repo-token: ${{ secrets.GITHUB_TOKEN }}
-        issue-message: >
-          🎉 **Welcome to the repository!** 🎉
+      - uses: actions/first-interaction@v1
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          issue-message: >
+            🎉 **Welcome to the repository!** 🎉
 
-          Thank you for opening your first issue! We appreciate your feedback and are here to assist you. Our team will review your issue and get back to you as soon as possible.
+            Thank you for opening your first issue! We appreciate your feedback and are here to assist you. Our team will review your issue and get back to you as soon as possible.
 
-          In the meantime, please ensure you've provided all the necessary details to help us address your issue efficiently. If you have any questions, feel free to ask.
+            In the meantime, please ensure you've provided all the necessary details to help us address your issue efficiently. If you have any questions, feel free to ask.
 
-          Happy contributing!
-        pr-message: >
-          👋 **Hello and Welcome!** 👋
+            Happy contributing!
+          pr-message: >
+            👋 **Hello and Welcome!** 👋
 
-          Thank you for submitting your first pull request! We appreciate your contribution to the project. Our team will review your PR and provide feedback shortly.
+            Thank you for submitting your first pull request! We appreciate your contribution to the project. Our team will review your PR and provide feedback shortly.
 
-          While you wait, please ensure that:
-          - Your PR description is clear and detailed.
-          - You have followed the coding guidelines and best practices.
-          - All tests are passing, and you have added new tests if applicable.
+            While you wait, please ensure that:
+            - Your PR description is clear and detailed.
+            - You have followed the coding guidelines and best practices.
+            - All tests are passing, and you have added new tests if applicable.
 
-          If you have any questions or need assistance, don't hesitate to ask.
+            If you have any questions or need assistance, don't hesitate to ask.
 
-          Happy coding!
+            Happy coding!
