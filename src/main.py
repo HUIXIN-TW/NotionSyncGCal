@@ -13,7 +13,7 @@ def main():
     args = parser.parse_args()
 
     # Handling no arguments case
-    if not args.timestamp and not args.google and not args.notion and not args.user_command:
+    if not args.timestamp and not args.google and not args.notion:
         print("Running sync with no arguments")
         # Implement your logic for syncing with no arguments here
     
