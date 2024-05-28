@@ -67,10 +67,22 @@ def synchronize_notion_and_google_calendar(
         """
         # Notion Task properties for comparison: Notion Page ID and Google Calendar Event ID
         notion_task_page_id = notion_task.get("id")
-        notion_gcal_cal_name = notion_task["properties"][
-            notion_service.nt.CURRENT_CALENDAR_NAME_NOTION_NAME
-        ]["select"]["name"]
-        notion_gcal_cal_id = notion_service.nt.get_cal_id(notion_gcal_cal_name)
+
+        try:
+            notion_gcal_cal_name = notion_task["properties"][
+                notion_service.nt.CURRENT_CALENDAR_NAME_NOTION_NAME
+            ]["select"]["name"]
+            notion_gcal_cal_id = notion_service.nt.get_cal_id(notion_gcal_cal_name)
+        except:
+            logger.warning(
+                f"Calendar name not found. Use the default calendar: {notion_service.nt.GCAL_DEFAULT_NAME}"
+            )
+            notion_gcal_cal_name = notion_service.nt.GCAL_DEFAULT_NAME
+            notion_gcal_cal_id = notion_service.nt.GCAL_DEFAULT_ID
+            logger.info("Update Notion Task for default calendar id and calendar name")
+            notion_service.update_notion_task_for_default_calendar(
+                notion_task_page_id, notion_gcal_cal_id, notion_gcal_cal_name
+            )
 
         try:
             notion_gcal_event_id = notion_task["properties"][
@@ -132,6 +144,11 @@ def synchronize_notion_and_google_calendar(
 
             # Google Calendar Event Updated Time
             gcal_event_updated_time = gcal_event.get("updated")
+
+            # Google Calendar Display Name
+            gcal_cal_name = notion_service.nt.get_cal_name(
+                gcal_event.get("organizer", {}).get("email")
+            )
 
             # Compare the Google Calendar Event ID with the Notion Task Google Calendar Event ID
             if notion_gcal_event_id == gcal_event_id:
@@ -197,7 +214,10 @@ def synchronize_notion_and_google_calendar(
                         f"📅 Google Calendar: Updating the task in Notion for event '{gcal_event_summary}'"
                     )
                     notion_service.update_notion_task(
-                        notion_task_page_id, gcal_event, current_gcal_sync_time
+                        notion_task_page_id,
+                        gcal_event,
+                        gcal_cal_name,
+                        current_gcal_sync_time,
                     )
                 else:
                     # Cause of notion has less time precision than google calendar, so this is impossible to happen
@@ -220,7 +240,7 @@ def synchronize_notion_and_google_calendar(
             logger.info(
                 f"Google Calendar: Creating a new task in Notion for event '{gcal_event.get('summary', '')}'"
             )
-            notion_service.create_notion_task(gcal_event)
+            notion_service.create_notion_task(gcal_event, gcal_cal_name)
 
 
 def force_update_notion_tasks_by_google_event_and_ignore_time():
