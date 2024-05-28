@@ -218,7 +218,6 @@ def adjust_notion_dates(start_date_str, end_date_str=None):
         end_date = start_date
 
     if "T" in start_date_str and end_date == start_date:  # datetime format
-        print("start_date", start_date)
         end_date = start_date + timedelta(minutes=nt.DEFAULT_EVENT_LENGTH)
     elif "T" not in start_date_str and end_date == start_date:  # date format
         end_date = start_date + timedelta(days=1)
