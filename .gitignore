@@ -12,3 +12,4 @@
 src/notion/__pycache__/*.pyc
 src/sync/__pycache__/*.pyc
 src/gcal/__pycache__/*.pyc
+src/user_setting/__pycache__/*.pyc
