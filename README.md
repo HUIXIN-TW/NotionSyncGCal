@@ -37,12 +37,15 @@ cd src
 ```
 
 ## Basic Synchronization
+
 To run the basic synchronization between Notion and Google Calendar:
 
 ```bash
 python3 main.py
 ```
+
 ## Synchronization with Specific Date Range
+
 To synchronize events based on a specific date range, use the following command:
 
 ```bash
@@ -54,6 +57,7 @@ python3 main.py -t <look_back_days> <look_ahead_days>
 `<look_ahead_days>`: Number of days to look forward from the current date.
 
 ## Force Sync Options
+
 ### Sync from Google Calendar to Notion
 
 To force an update of Notion tasks from Google Calendar events within a specified date range, use the following command:

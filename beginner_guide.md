@@ -93,7 +93,7 @@
     <img src="./assets/multiplecal.png" width="600" height="auto">
 
   - The following items are column names in notion based on my template. The `page_property` section is setting these column name.
-  
+
     - "Task_Notion_Name": "Task Name",
     - "Date_Notion_Name": "Date",
     - "Initiative_Notion_Name": "Initiative",
