@@ -36,6 +36,7 @@ def main():
     if not args.timestamp and not args.google and not args.notion:
         print("Running sync with no arguments")
         from sync import sync
+
         sync.synchronize_notion_and_google_calendar()
 
     # Handling optional -t flag for syncing by timestamp
@@ -43,6 +44,7 @@ def main():
         print(f"Running sync with timestamp: {args.timestamp}")
         update_notion_setting.update_date_range(args.timestamp[0], args.timestamp[1])
         from sync import sync
+
         sync.synchronize_notion_and_google_calendar()
 
     # Handling optional -g flag for syncing from Google Calendar to Notion
@@ -50,6 +52,7 @@ def main():
         print(f"Running sync with Google Calendar to Notion: {args.google}")
         update_notion_setting.update_date_range(args.google[0], args.google[1])
         from sync import sync
+
         sync.force_update_notion_tasks_by_google_event_and_ignore_time()
 
     # Handling optional -n flag for syncing from Notion to Google Calendar
@@ -57,6 +60,7 @@ def main():
         print(f"Running sync with Notion to Google Calendar: {args.notion}")
         update_notion_setting.update_date_range(args.notion[0], args.notion[1])
         from sync import sync
+
         sync.force_update_google_event_by_notion_task_and_ignore_time()
 
 
