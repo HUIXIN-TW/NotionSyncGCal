@@ -1,4 +1,3 @@
-<!-- TODO: Need update -->
 ## How to install the app
 
 - Step1: Fork or Clone git repository
@@ -72,7 +71,7 @@
   - "notion_token": "Paste your Internal Integration Token which starts with `secret*...`",
     <img src="./assets/secrets.png" width="600" height="auto">
 
-  - "urlroot": "https://www.notion.so/{YOURNOTIONNAME}/{databaseID}?XXXXX",
+  - "urlroot": "https://www.notion.so/{YOURNOTIONNAME}/{databaseID}&pvs=",
     <img src="./assets/copylink.png" width="600" height="auto">
 
   - the following items is up to you. If you are the first time using terminal or python, I recommend you to use 1 or 2 fir "goforward_days". This mean that the code will synchromise the events from 1 day before to 2 days after today. If you are familar with python, you can change them as you want.
@@ -80,11 +79,9 @@
     - "timecode": "+08:00",
     - "timezone": "Asia/Taipei",
     - "goback_days": 1,
-    - "goforward_days": 2,
-    - "delete_option": 0,
+    - "goforward_days": 1,
     - "event_length": 60,
     - "start_time": 8,
-    - "allday_option": 0,
 
   - Go to your google calendar page, and then click `Settings` on the top-right, next, scroll the left bar to find `Setting for my calendar`. Click it, calendar `Name` is on the top, and scroll down to find `Calendar ID`
 
@@ -96,22 +93,20 @@
     <img src="./assets/multiplecal.png" width="600" height="auto">
 
   - The following items are column names in notion based on my template. The `page_property` section is setting these column name.
-
+  
     - "Task_Notion_Name": "Task Name",
     - "Date_Notion_Name": "Date",
     - "Initiative_Notion_Name": "Initiative",
-    - "ExtraInfo_Notion_Name": "Extra Info",
-    - "Location_Notion_Name": "Location",
-    - "On_GCal_Notion_Name": "On GCal?",
-    - "NeedGCalUpdate_Notion_Name": "NeedGCalUpdate",
-    - "GCAL_EVENTID_NOTION_NAME": "GCal Event Id",
-    - "LastUpdatedTime_Notion_Name" : "Last Updated Time",
-    - "CURRENT_CALENDAR_NAME_NOTION_NAME": "Calendar",
-    - "Current_Calendar_Id_Notion_Name": "Current Calendar Id",
-    - "Delete_Notion_Name": "Done?",
     - "Status_Notion_Name": "Status",
-    - "Page_ID_Notion_Name": "PageID",
-    - "CompleteIcon_Notion_Name": "CompleteIcon"
+    - "Location_Notion_Name": "Location",
+    - "ExtraInfo_Notion_Name": "Extra Info",
+    - "GCal_Name_Notion_Name": "Calendar",
+    - "GCal_Id_Notion_Name": "GCal Calendar Id",
+    - "GCal_EventId_Notion_Name": "GCal Event Id",
+    - "GCal_Sync_Time_Notion_Name": "GCal Sync Time",
+    - "Delete_Notion_Name": "GCal Deleted?",
+    - "CompleteIcon_Notion_Name": "GCal Icon"
+
       You can change the column name without modifying the main code zone as long as you alter this section and notion columns consistently.
 
 - Step5: Create a google token, and make sure your scope include google calendar
