@@ -240,6 +240,11 @@ def synchronize_notion_and_google_calendar(
             logger.info(
                 f"Google Calendar: Creating a new task in Notion for event '{gcal_event.get('summary', '')}'"
             )
+
+            # Google Calendar Display Name
+            gcal_cal_name = notion_service.nt.get_cal_name(
+                gcal_event.get("organizer", {}).get("email")
+            )
             notion_service.create_notion_task(gcal_event, gcal_cal_name)
 
 
