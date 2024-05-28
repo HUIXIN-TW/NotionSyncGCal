@@ -1,4 +1,3 @@
-<!-- TODO: Need update -->
 ## How to install the app
 
 - Step1: Fork or Clone git repository

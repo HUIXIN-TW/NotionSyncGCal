@@ -1,0 +1,39 @@
+name: Update PR Title
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+
+jobs:
+  update-title:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Extract branch name and update PR title
+        run: |
+          # Use GitHub CLI to get the actual head branch name of the PR
+          branch_name=$(gh pr view ${{ github.event.pull_request.number }} --json headRefName --jq .headRefName)
+          echo "Branch name: $branch_name"
+
+          # Convert branch name to lowercase to handle case insensitivity
+          lower_branch_name="${branch_name,,}"
+
+          # Construct a new PR title using a case-insensitive approach
+          if [[ "$lower_branch_name" =~ ^(issue-[0-9]+)-(.*)$ ]]; then
+            issue_part="${BASH_REMATCH[1]}"
+            remainder="${BASH_REMATCH[2]}"
+            pr_title="[$issue_part]: $remainder"
+          else
+            pr_title="$branch_name"
+          fi
+
+          # Convert the entire PR title to uppercase
+          pr_title="${pr_title^^}"
+
+          echo "New PR Title: $pr_title"
+          # Update the PR title using GitHub CLI
+          gh pr edit ${{ github.event.pull_request.number }} --title "$pr_title"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

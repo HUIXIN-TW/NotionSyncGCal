@@ -1,0 +1,20 @@
+# Ignore all files in the build directory
+build/
+
+# Ignore all JavaScript files in the dist directory
+dist/**/*.js
+
+# Ignore specific files
+src/ignore-this-file.js
+public/ignore-this-file.html
+
+# Ignore all files with specific extensions
+*.min.js
+*.bundle.js
+
+# Ignore all files in a specific directory and its subdirectories
+node_modules/
+.venv/
+
+# Ignore all Markdown files in a specific directory
+docs/**/*.md
