@@ -40,10 +40,14 @@ def get_current_time_in_iso_format():
 
 def remove_gcal_event_from_list(gcal_event_list, gcal_event, gcal_event_summary):
     gcal_event_list.remove(gcal_event)
-    logger.info(f"Google Calendar: Event '{gcal_event_summary}' removed from the list, {len(gcal_event_list)} events remaining\n")
+    logger.info(
+        f"Google Calendar: Event '{gcal_event_summary}' removed from the list, {len(gcal_event_list)} events remaining\n"
+    )
 
 
-def synchronize_notion_and_google_calendar(compare_time=True, should_update_notion_tasks=True, should_update_google_events=True):
+def synchronize_notion_and_google_calendar(
+    compare_time=True, should_update_notion_tasks=True, should_update_google_events=True
+):
     # Get the Google Calendar and Notion events
     try:
         gcal_event_list = gcal_service.get_gcal_event()
@@ -133,7 +137,9 @@ def synchronize_notion_and_google_calendar(compare_time=True, should_update_noti
             if notion_gcal_event_id == gcal_event_id:
                 if compare_time:
                     # Get the last edited time of the Notion Task and the updated time of the Google Calendar Event
-                    compare_timezones(notion_task_last_edited_time, gcal_event_updated_time)
+                    compare_timezones(
+                        notion_task_last_edited_time, gcal_event_updated_time
+                    )
 
                     if not notion_task_last_edited_time or not gcal_event_updated_time:
                         logger.warning(
@@ -150,7 +156,9 @@ def synchronize_notion_and_google_calendar(compare_time=True, should_update_noti
                             f"⚪️Already Done. Sync Time: {notion_gcal_sync_time}\nNotion '{notion_task_name}-{notion_task_last_edited_time}' vs Event '{gcal_event_summary}-{gcal_event_updated_time}'"
                         )
                         # Remove the processed Google Calendar event from the list
-                        remove_gcal_event_from_list(gcal_event_list, gcal_event, gcal_event_summary)
+                        remove_gcal_event_from_list(
+                            gcal_event_list, gcal_event, gcal_event_summary
+                        )
                         break
 
                 current_gcal_sync_time = get_current_time_in_iso_format()
@@ -158,7 +166,10 @@ def synchronize_notion_and_google_calendar(compare_time=True, should_update_noti
                 # Update Google Calendar if Notion is newer or force update
                 # synchronize_notion_and_google_calendar(compare_time=False, should_update_notion_tasks=False)
                 # True and (True or ______) = True the logic will update the google event no matter time
-                if should_update_google_events and (not compare_time or (notion_task_last_edited_time > gcal_event_updated_time)):
+                if should_update_google_events and (
+                    not compare_time
+                    or (notion_task_last_edited_time > gcal_event_updated_time)
+                ):
                     logger.info(
                         f"Notion Task Edited Time: '{notion_task_last_edited_time}' vs Google Calendar Event Updated Time: '{gcal_event_updated_time}'"
                     )
@@ -175,7 +186,10 @@ def synchronize_notion_and_google_calendar(compare_time=True, should_update_noti
                 # Update Notion if Google Calendar is newer or force update
                 # synchronize_notion_and_google_calendar(compare_time=False, should_update_google_events=False)
                 # True and (True or ______) = True the logic will update the notion task no matter time
-                elif should_update_notion_tasks and (not compare_time or (notion_task_last_edited_time < gcal_event_updated_time)):
+                elif should_update_notion_tasks and (
+                    not compare_time
+                    or (notion_task_last_edited_time < gcal_event_updated_time)
+                ):
                     logger.info(
                         f"Google Calendar Event Updated Time: '{gcal_event_updated_time}' vs Notion Task Edited Time: '{notion_task_last_edited_time}'"
                     )
@@ -192,7 +206,9 @@ def synchronize_notion_and_google_calendar(compare_time=True, should_update_noti
                     )
 
                 # Remove the processed Google Calendar event from the list
-                remove_gcal_event_from_list(gcal_event_list, gcal_event, gcal_event_summary)
+                remove_gcal_event_from_list(
+                    gcal_event_list, gcal_event, gcal_event_summary
+                )
                 break
 
     # Create new tasks in Notion for the remaining Google Calendar events
@@ -211,13 +227,19 @@ def force_update_notion_tasks_by_google_event_and_ignore_time():
     # -ga
     # Only update notion tasks
     # Do not update google events (Keep the google events as it is)
-    synchronize_notion_and_google_calendar(compare_time=False, should_update_google_events=False)
+    synchronize_notion_and_google_calendar(
+        compare_time=False, should_update_google_events=False
+    )
+
 
 def force_update_google_event_by_notion_task_and_ignore_time():
     # -na
     # Only update google events
     # Do not update notion tasks (Keep the notion tasks as it is)
-    synchronize_notion_and_google_calendar(compare_time=False, should_update_notion_tasks=False)
+    synchronize_notion_and_google_calendar(
+        compare_time=False, should_update_notion_tasks=False
+    )
+
 
 if __name__ == "__main__":
     synchronize_notion_and_google_calendar()

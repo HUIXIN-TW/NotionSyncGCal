@@ -1,6 +1,6 @@
 {
   "docker": false,
-  "goback_days": 7,
+  "goback_days": 0,
   "goforward_days": 0,
   "notion_token": "secret_",
   "urlroot": "https://www.notion.so/<urlroot>&p=",
@@ -20,13 +20,12 @@
       "Initiative_Notion_Name": "Initiative",
       "ExtraInfo_Notion_Name": "Extra Info",
       "Location_Notion_Name": "Location",
-      "Last_Updated_Time_Notion_Name": "Last Updated Time",
-      "GCal_EventId_Notion_Name": "GCal Event Id",
+      "Status_Notion_Name": "Status",
+      "GCal_Sync_Time_Notion_Name": "GCal Sync Time",
       "GCal_Name_Notion_Name": "Calendar",
       "GCal_Id_Notion_Name": "GCal Calendar Id",
+      "GCal_EventId_Notion_Name": "GCal Event Id",
       "Delete_Notion_Name": "GCal Deleted?",
-      "Status_Notion_Name": "Status",
-      "Page_ID_Notion_Name": "Page Id",
       "CompleteIcon_Notion_Name": "GCal Icon"
     }
   ]

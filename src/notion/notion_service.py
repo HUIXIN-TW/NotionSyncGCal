@@ -268,6 +268,7 @@ def adjust_end_date_if_needed(end_date):
         # If the end_date is not in "YYYY-MM-DD" format, return it as is
         return end_date
 
+
 def remove_emojis(text):
     return emoji.replace_emoji(text, replace="")
 
