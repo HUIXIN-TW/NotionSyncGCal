@@ -1,0 +1,114 @@
+[
+    {
+        "kind": "calendar#event",
+        "etag": "\"3433484129498000\"",
+        "id": "3tcjhgfk1pkspvcr6teirmlo33",
+        "status": "confirmed",
+        "htmlLink": "https://www.google.com/calendar/event?eid=M3RjamhnZmsxcGtzcHZjcjZ0ZWlybWxvMzMgM29xb2drOHA5YjE4aDRmcjJlcjBxOWR1ZjBAZw",
+        "created": "2024-05-18T12:47:41.000Z",
+        "updated": "2024-05-26T16:47:44.749Z",
+        "summary": "\ud83c\udf92\u2705TUG 22 May",
+        "description": "Initiative: \u5de5\u4f5c\u6392\u7a0b \nTask Status: \u2705 Completed \n ",
+        "location": "No Location Info",
+        "creator": {
+            "email": "anguesin@gmail.com"
+        },
+        "organizer": {
+            "email": "3oqogk8p9b18h4fr2er0q9duf0@group.calendar.google.com",
+            "displayName": "Job",
+            "self": true
+        },
+        "start": {
+            "dateTime": "2024-05-22T09:00:00+08:00",
+            "timeZone": "Asia/Taipei"
+        },
+        "end": {
+            "dateTime": "2024-05-22T17:00:00+08:00",
+            "timeZone": "Asia/Taipei"
+        },
+        "iCalUID": "3tcjhgfk1pkspvcr6teirmlo33@google.com",
+        "sequence": 2,
+        "reminders": {
+            "useDefault": true
+        },
+        "source": {
+            "url": "https://www.notion.so/TUG-22-May-b0543fea07f24929abb537799d7bd20f",
+            "title": "Notion Link"
+        },
+        "eventType": "default"
+    },
+    {
+        "kind": "calendar#event",
+        "etag": "\"3433127514171000\"",
+        "id": "km243cd818fljt0k6ua1qvv1qc",
+        "status": "confirmed",
+        "htmlLink": "https://www.google.com/calendar/event?eid=a20yNDNjZDgxOGZsanQwazZ1YTFxdnYxcWMgMWdrZ2o2OTF2aWJmZHBxMWJqc2lzNW9sbmNAZw",
+        "created": "2024-04-08T14:27:50.000Z",
+        "updated": "2024-05-26T16:47:43.652Z",
+        "summary": "\ud83d\udca1\u2705CS50\u2019s SQL Week05",
+        "description": "Initiative: \u7a0b\u5f0f\u5b78\u7fd2 \nTask Status: \u2705 Completed",
+        "creator": {
+            "email": "anguesin@gmail.com"
+        },
+        "organizer": {
+            "email": "1gkgj691vibfdpq1bjsis5olnc@group.calendar.google.com",
+            "displayName": "Learning",
+            "self": true
+        },
+        "start": {
+            "dateTime": "2024-05-22T20:45:00+08:00",
+            "timeZone": "Asia/Taipei"
+        },
+        "end": {
+            "dateTime": "2024-05-22T21:45:00+08:00",
+            "timeZone": "Asia/Taipei"
+        },
+        "iCalUID": "km243cd818fljt0k6ua1qvv1qc@google.com",
+        "sequence": 61,
+        "reminders": {
+            "useDefault": true
+        },
+        "source": {
+            "url": "https://www.notion.so/CS50-s-SQL-Week05-af4b8dd57f9240f4a39299574d3b87db",
+            "title": "Notion Link"
+        },
+        "eventType": "default"
+    },
+    {
+        "kind": "calendar#event",
+        "etag": "\"3433484125048000\"",
+        "id": "9ibnhra2ingm6661rc0am6q2r4",
+        "status": "confirmed",
+        "htmlLink": "https://www.google.com/calendar/event?eid=OWlibmhyYTJpbmdtNjY2MXJjMGFtNnEycjQgODZyMG1pZ2dwb2txc28xZG5zYmMybjVpOHNAZw",
+        "created": "2024-05-09T14:41:06.000Z",
+        "updated": "2024-05-26T16:47:42.524Z",
+        "summary": "\ud83d\udc5f\u2705Gym",
+        "description": "Initiative: \u4f11\u9592\u5a1b\u6a02 \nTask Status: \u2705 Completed \nslippers, clear clothes, towel, bath towel, swimsuit, key, lock, bottle, earphone, rain suit.",
+        "creator": {
+            "email": "anguesin@gmail.com"
+        },
+        "organizer": {
+            "email": "86r0miggpokqso1dnsbc2n5i8s@group.calendar.google.com",
+            "displayName": "Life",
+            "self": true
+        },
+        "start": {
+            "dateTime": "2024-05-22T18:00:00+08:00",
+            "timeZone": "Asia/Taipei"
+        },
+        "end": {
+            "dateTime": "2024-05-22T19:00:00+08:00",
+            "timeZone": "Asia/Taipei"
+        },
+        "iCalUID": "9ibnhra2ingm6661rc0am6q2r4@google.com",
+        "sequence": 7,
+        "reminders": {
+            "useDefault": true
+        },
+        "source": {
+            "url": "https://www.notion.so/Gym-e4d418776bf84bd8ab57d2909a2e53fc",
+            "title": "Notion Link"
+        },
+        "eventType": "default"
+    }
+]
