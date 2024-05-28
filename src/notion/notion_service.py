@@ -109,9 +109,7 @@ def update_notion_task(page_id, gcal_event, gcal_cal_name, new_gcal_sync_time):
                     ],
                 },
                 nt.CURRENT_CALENDAR_NAME_NOTION_NAME: {
-                    "select": {
-                        "name": gcal_cal_name
-                    },
+                    "select": {"name": gcal_cal_name},
                 },
             },
         )
@@ -155,7 +153,10 @@ def update_notion_task_for_new_gcal_sync_time(page_id, new_gcal_sync_time):
         )
         return None
 
-def update_notion_task_for_default_calendar(page_id, default_calendar_id, default_calendar_name):
+
+def update_notion_task_for_default_calendar(
+    page_id, default_calendar_id, default_calendar_name
+):
     try:
         nt.NOTION.pages.update(
             page_id=page_id,
@@ -165,9 +166,7 @@ def update_notion_task_for_default_calendar(page_id, default_calendar_id, defaul
                     "rich_text": [{"text": {"content": default_calendar_id}}],
                 },
                 nt.CURRENT_CALENDAR_NAME_NOTION_NAME: {
-                    "select": {
-                        "name": default_calendar_name
-                    },
+                    "select": {"name": default_calendar_name},
                 },
             },
         )
@@ -176,6 +175,7 @@ def update_notion_task_for_default_calendar(page_id, default_calendar_id, defaul
             f"Error updating Notion page when updating for default calendar: {e}"
         )
         return None
+
 
 # Create notion with google description as extra information
 def create_notion_task(gcal_event, gcal_cal_name):
@@ -230,9 +230,7 @@ def create_notion_task(gcal_event, gcal_cal_name):
                     ],
                 },
                 nt.CURRENT_CALENDAR_NAME_NOTION_NAME: {
-                    "select": {
-                        "name": gcal_cal_name
-                    },
+                    "select": {"name": gcal_cal_name},
                 },
             },
         )
