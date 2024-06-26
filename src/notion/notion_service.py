@@ -247,7 +247,7 @@ def create_notion_task(gcal_event, gcal_cal_name):
 def delete_notion_task(page_id):
     try:
         nt.NOTION.pages.update(
-            page_id=page_id, 
+            page_id=page_id,
             properties={
                 nt.DELETE_NOTION_NAME: {"checkbox": True},
                 nt.GCAL_SYNC_TIME_NOTION_NAME: {
@@ -260,14 +260,9 @@ def delete_notion_task(page_id):
                 },
                 nt.CURRENT_CALENDAR_ID_NOTION_NAME: {
                     "type": "rich_text",
-                    "rich_text": [
-                        {
-                            "text": {
-                                "content": ""
-                            }
-                        }
-                    ],
-                },}
+                    "rich_text": [{"text": {"content": ""}}],
+                },
+            },
         )
         logging.info(f"Event {page_id} marked as deletion in Notion successfully.")
     except Exception as e:
