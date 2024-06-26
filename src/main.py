@@ -65,5 +65,6 @@ def main():
 
     print("Sync executed successfully!")
 
+
 if __name__ == "__main__":
     main()
