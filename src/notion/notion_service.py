@@ -96,18 +96,6 @@ def update_notion_task(page_id, gcal_event, gcal_cal_name, new_gcal_sync_time):
                     "type": "rich_text",
                     "rich_text": [{"text": {"content": gcal_event.get("id", "")}}],
                 },
-                nt.CURRENT_CALENDAR_ID_NOTION_NAME: {
-                    "type": "rich_text",
-                    "rich_text": [
-                        {
-                            "text": {
-                                "content": gcal_event.get("organizer", {}).get(
-                                    "email", ""
-                                )
-                            }
-                        }
-                    ],
-                },
                 nt.CURRENT_CALENDAR_NAME_NOTION_NAME: {
                     "select": {"name": gcal_cal_name},
                 },
@@ -118,7 +106,9 @@ def update_notion_task(page_id, gcal_event, gcal_cal_name, new_gcal_sync_time):
         return None
 
 
-def update_notion_task_for_new_gcal_event_id(page_id, new_gcal_event_id):
+def update_notion_task_for_new_gcal_event_id(
+    page_id, new_gcal_event_id, notion_gcal_cal_id
+):
     try:
         nt.NOTION.pages.update(
             page_id=page_id,
@@ -161,10 +151,6 @@ def update_notion_task_for_default_calendar(
         nt.NOTION.pages.update(
             page_id=page_id,
             properties={
-                nt.CURRENT_CALENDAR_ID_NOTION_NAME: {
-                    "type": "rich_text",
-                    "rich_text": [{"text": {"content": default_calendar_id}}],
-                },
                 nt.CURRENT_CALENDAR_NAME_NOTION_NAME: {
                     "select": {"name": default_calendar_name},
                 },
@@ -217,18 +203,6 @@ def create_notion_task(gcal_event, gcal_cal_name):
                     "type": "rich_text",
                     "rich_text": [{"text": {"content": gcal_event.get("id")}}],
                 },
-                nt.CURRENT_CALENDAR_ID_NOTION_NAME: {
-                    "type": "rich_text",
-                    "rich_text": [
-                        {
-                            "text": {
-                                "content": gcal_event.get("organizer", {}).get(
-                                    "email", ""
-                                )
-                            }
-                        }
-                    ],
-                },
                 nt.CURRENT_CALENDAR_NAME_NOTION_NAME: {
                     "select": {"name": gcal_cal_name},
                 },
@@ -247,7 +221,18 @@ def create_notion_task(gcal_event, gcal_cal_name):
 def delete_notion_task(page_id):
     try:
         nt.NOTION.pages.update(
-            page_id=page_id, properties={nt.DELETE_NOTION_NAME: {"checkbox": True}}
+            page_id=page_id,
+            properties={
+                nt.DELETE_NOTION_NAME: {"checkbox": True},
+                nt.GCAL_SYNC_TIME_NOTION_NAME: {
+                    "type": "rich_text",
+                    "rich_text": [{"text": {"content": ""}}],
+                },
+                nt.GCAL_EVENTID_NOTION_NAME: {
+                    "type": "rich_text",
+                    "rich_text": [{"text": {"content": ""}}],
+                },
+            },
         )
         logging.info(f"Event {page_id} marked as deletion in Notion successfully.")
     except Exception as e:

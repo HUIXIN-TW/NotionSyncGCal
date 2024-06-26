@@ -103,7 +103,6 @@ class Notion:
             self.CURRENT_CALENDAR_NAME_NOTION_NAME = page_property[
                 "GCal_Name_Notion_Name"
             ]
-            self.CURRENT_CALENDAR_ID_NOTION_NAME = page_property["GCal_Id_Notion_Name"]
             self.DELETE_NOTION_NAME = page_property["Delete_Notion_Name"]
             self.STATUS_NOTION_NAME = page_property["Status_Notion_Name"]
             self.GCAL_SYNC_TIME_NOTION_NAME = page_property[
@@ -175,9 +174,6 @@ class Notion:
         print(f"GCAL_EVENTID_NOTION_NAME: {self.GCAL_EVENTID_NOTION_NAME}")
         print(
             f"CURRENT_CALENDAR_NAME_NOTION_NAME: {self.CURRENT_CALENDAR_NAME_NOTION_NAME}"
-        )
-        print(
-            f"CURRENT_CALENDAR_ID_NOTION_NAME: {self.CURRENT_CALENDAR_ID_NOTION_NAME}"
         )
         print(f"DELETE_NOTION_NAME: {self.DELETE_NOTION_NAME}")
         print(f"STATUS_NOTION_NAME: {self.STATUS_NOTION_NAME}")

@@ -124,7 +124,7 @@ def synchronize_notion_and_google_calendar(
                 notion_task, notion_gcal_cal_id
             )
             notion_service.update_notion_task_for_new_gcal_event_id(
-                notion_task_page_id, new_gcal_event_id
+                notion_task_page_id, new_gcal_event_id, notion_gcal_cal_id
             )
             continue
 
@@ -145,10 +145,11 @@ def synchronize_notion_and_google_calendar(
             # Google Calendar Event Updated Time
             gcal_event_updated_time = gcal_event.get("updated")
 
+            # Google Calendar Current ID
+            gcal_cal_id = gcal_event.get("organizer", {}).get("email")
+
             # Google Calendar Display Name
-            gcal_cal_name = notion_service.nt.get_cal_name(
-                gcal_event.get("organizer", {}).get("email")
-            )
+            gcal_cal_name = notion_service.nt.get_cal_name(gcal_cal_id)
 
             # Compare the Google Calendar Event ID with the Notion Task Google Calendar Event ID
             if notion_gcal_event_id == gcal_event_id:
@@ -193,9 +194,18 @@ def synchronize_notion_and_google_calendar(
                     logger.info(
                         f"🥐 Notion Task: Updating the event in Google Calendar for task '{notion_task_name}'"
                     )
-                    gcal_service.update_gcal_event(
-                        notion_task, notion_gcal_cal_id, notion_gcal_event_id
-                    )
+
+                    if notion_gcal_cal_id == gcal_cal_id:
+                        gcal_service.update_gcal_event(
+                            notion_task, notion_gcal_cal_id, notion_gcal_event_id
+                        )
+                    else:
+                        gcal_service.move_and_update_gcal_event(
+                            notion_task,
+                            notion_gcal_event_id,
+                            notion_gcal_cal_id,
+                            gcal_cal_id,
+                        )
 
                     notion_service.update_notion_task_for_new_gcal_sync_time(
                         notion_task_page_id, current_gcal_sync_time
