@@ -82,12 +82,15 @@ def create_gcal_event(notion_task, new_gcal_calendar_id=nt.GCAL_DEFAULT_ID):
     return event_id
 
 
-def move_gcal_event(gcal_event_id, new_gcal_calendar_id, existing_gcal_cal_id):
+def move_and_update_gcal_event(
+    notion_task, existing_gcal_event_id, new_gcal_calendar_id, existing_gcal_cal_id
+):
     gt.service.events().move(
         calendarId=existing_gcal_cal_id,
-        eventId=gcal_event_id,
+        eventId=existing_gcal_event_id,
         destination=new_gcal_calendar_id,
     ).execute()
+    update_gcal_event(notion_task, new_gcal_calendar_id, existing_gcal_event_id)
 
 
 def delete_gcal_event(gcal_calendar_id, gcal_event_id):
