@@ -103,7 +103,6 @@ def delete_gcal_event(gcal_calendar_id, gcal_event_id):
         logger.error(
             f"An error occurred while deleting event with ID: {gcal_event_id}: {e}"
         )
-        sys.exit(1)
 
 
 def make_event_body(notion_task):

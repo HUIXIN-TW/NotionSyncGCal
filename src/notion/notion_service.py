@@ -231,7 +231,7 @@ def delete_notion_task(page_id):
                 nt.GCAL_EVENTID_NOTION_NAME: {
                     "type": "rich_text",
                     "rich_text": [{"text": {"content": ""}}],
-                },
+                }
             },
         )
         logging.info(f"Event {page_id} marked as deletion in Notion successfully.")
