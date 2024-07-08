@@ -300,4 +300,4 @@ if __name__ == "__main__":
     with log_path.open("w") as output:
         data = get_notion_task()
         json.dump(data, output, indent=4)
-    print(f"Notion Task Num. {len(data)}, from {nt.AFTER_DATE} to {nt.BEFORE_DATE}")
+    logging.info(f"Notion Task Num. {len(data)}, from {nt.AFTER_DATE} to {nt.BEFORE_DATE} (exclusive)")
