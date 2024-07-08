@@ -29,7 +29,7 @@ def get_notion_task():
     # TODO: Notion has no filter for start date and end date, so add extra column: GCAL_END_DATE_NOTION_NAME
     try:
         logger.info(
-            f"Reading Notion database with ID: {nt.DATABASE_ID} from {nt.DATE_NOTION_NAME}: {nt.AFTER_DATE} to {nt.GCAL_END_DATE_NOTION_NAME}: {nt.BEFORE_DATE} (exclusive)"
+            f"Reading Notion database with ID: {nt.DATABASE_ID} from {nt.GCAL_END_DATE_NOTION_NAME}: {nt.AFTER_DATE} to {nt.DATE_NOTION_NAME}: {nt.BEFORE_DATE} (exclusive)"
         )
         return nt.NOTION.databases.query(
             database_id=nt.DATABASE_ID,
@@ -301,5 +301,5 @@ if __name__ == "__main__":
         data = get_notion_task()
         json.dump(data, output, indent=4)
     logging.info(
-        f"Notion Task Count. {len(data)}, from {nt.DATE_NOTION_NAME}: {nt.AFTER_DATE} to {nt.GCAL_END_DATE_NOTION_NAME}: {nt.BEFORE_DATE} (exclusive)"
+        f"Notion Task Count. {len(data)}, from {nt.GCAL_END_DATE_NOTION_NAME}: {nt.AFTER_DATE} to {nt.DATE_NOTION_NAME}: {nt.BEFORE_DATE} (exclusive)"
     )
