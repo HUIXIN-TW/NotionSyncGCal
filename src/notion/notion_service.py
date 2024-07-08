@@ -27,6 +27,10 @@ nt = notion_token.Notion()
 def get_notion_task():
 
     # TODO: Notion has no filter for start date and end date, so add extra column: GCAL_END_DATE_NOTION_NAME
+
+    before_date_with_time_zone = nt.BEFORE_DATE + 'T00:00:00.000' + nt.TIMECODE
+    after_date_with_time_zone = nt.AFTER_DATE + 'T00:00:00.000' + nt.TIMECODE
+
     try:
         logger.info(
             f"Reading Notion database with ID: {nt.DATABASE_ID} from {nt.GCAL_END_DATE_NOTION_NAME}: {nt.AFTER_DATE} to {nt.DATE_NOTION_NAME}: {nt.BEFORE_DATE} (exclusive)"
@@ -37,11 +41,11 @@ def get_notion_task():
                 "and": [
                     {
                         "property": nt.DATE_NOTION_NAME,
-                        "date": {"before": nt.BEFORE_DATE},
+                        "date": {"before": before_date_with_time_zone},
                     },
                     {
                         "property": nt.GCAL_END_DATE_NOTION_NAME,
-                        "formula": {"date": {"on_or_after": nt.AFTER_DATE}},
+                        "formula": {"date": {"on_or_after": after_date_with_time_zone}},
                     },
                 ]
             },
