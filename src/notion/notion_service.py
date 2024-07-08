@@ -25,6 +25,8 @@ nt = notion_token.Notion()
 
 
 def get_notion_task():
+
+    #TODO: Notion has no filter for start date and end date, so add extra column: GCAL_END_DATE_NOTION_NAME
     try:
         logger.info(
             f"Reading Notion database with ID: {nt.DATABASE_ID} from {nt.DATE_NOTION_NAME}: {nt.AFTER_DATE} to {nt.BEFORE_DATE} (exclusive)"
@@ -38,7 +40,7 @@ def get_notion_task():
                         "date": {"before": nt.BEFORE_DATE},
                     },
                     {
-                        "property": nt.DATE_NOTION_NAME,
+                        "property": nt.GCAL_END_DATE_NOTION_NAME,
                         "date": {"on_or_after": nt.AFTER_DATE},
                     },
                 ]
@@ -165,6 +167,14 @@ def update_notion_task_for_default_calendar(
 
 # Create notion with google description as extra information
 def create_notion_task(gcal_event, gcal_cal_name):
+
+    gcal_event_start_datetime = get_event_time(gcal_event, "start")
+    gcal_event_end_datetime = get_event_time(gcal_event, "end")
+
+    # Adjust end date if it is in the date format. All day event will be the same day
+    if "date" in gcal_event["end"]:
+        gcal_event_end_datetime = adjust_end_date_if_needed(gcal_event_end_datetime)
+
     try:
         nt.NOTION.pages.create(
             parent={"database_id": nt.DATABASE_ID},
@@ -183,8 +193,8 @@ def create_notion_task(gcal_event, gcal_cal_name):
                 nt.DATE_NOTION_NAME: {
                     "type": "date",
                     "date": {
-                        "start": gcal_event.get("start", {}).get("dateTime", ""),
-                        "end": gcal_event.get("end", {}).get("dateTime", ""),
+                        "start": gcal_event_start_datetime,
+                        "end": gcal_event_end_datetime,
                     },
                 },
                 nt.EXTRAINFO_NOTION_NAME: {
