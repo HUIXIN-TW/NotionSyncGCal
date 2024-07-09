@@ -104,6 +104,7 @@
     - "GCal_Id_Notion_Name": "GCal Calendar Id",
     - "GCal_EventId_Notion_Name": "GCal Event Id",
     - "GCal_Sync_Time_Notion_Name": "GCal Sync Time",
+    - "GCal_End_Date_Notion_Name": "GCal End Date",
     - "Delete_Notion_Name": "GCal Deleted?",
     - "CompleteIcon_Notion_Name": "GCal Icon"
 

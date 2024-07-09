@@ -25,9 +25,15 @@ nt = notion_token.Notion()
 
 
 def get_notion_task():
+
+    # TODO: Notion has no filter for start date and end date, so add extra column: GCAL_END_DATE_NOTION_NAME
+
+    before_date_with_time_zone = nt.BEFORE_DATE + "T00:00:00.000" + nt.TIMECODE
+    after_date_with_time_zone = nt.AFTER_DATE + "T00:00:00.000" + nt.TIMECODE
+
     try:
         logger.info(
-            f"Reading Notion database with ID: {nt.DATABASE_ID} from {nt.DATE_NOTION_NAME}: {nt.AFTER_DATE} to {nt.BEFORE_DATE} (exclusive)"
+            f"Reading Notion database with ID: {nt.DATABASE_ID} from {nt.GCAL_END_DATE_NOTION_NAME}: {nt.AFTER_DATE} to {nt.DATE_NOTION_NAME}: {nt.BEFORE_DATE} (exclusive)"
         )
         return nt.NOTION.databases.query(
             database_id=nt.DATABASE_ID,
@@ -35,11 +41,11 @@ def get_notion_task():
                 "and": [
                     {
                         "property": nt.DATE_NOTION_NAME,
-                        "date": {"before": nt.BEFORE_DATE},
+                        "date": {"before": before_date_with_time_zone},
                     },
                     {
-                        "property": nt.DATE_NOTION_NAME,
-                        "date": {"on_or_after": nt.AFTER_DATE},
+                        "property": nt.GCAL_END_DATE_NOTION_NAME,
+                        "formula": {"date": {"on_or_after": after_date_with_time_zone}},
                     },
                 ]
             },
@@ -165,6 +171,14 @@ def update_notion_task_for_default_calendar(
 
 # Create notion with google description as extra information
 def create_notion_task(gcal_event, gcal_cal_name):
+
+    gcal_event_start_datetime = get_event_time(gcal_event, "start")
+    gcal_event_end_datetime = get_event_time(gcal_event, "end")
+
+    # Adjust end date if it is in the date format. All day event will be the same day
+    if "date" in gcal_event["end"]:
+        gcal_event_end_datetime = adjust_end_date_if_needed(gcal_event_end_datetime)
+
     try:
         nt.NOTION.pages.create(
             parent={"database_id": nt.DATABASE_ID},
@@ -183,8 +197,8 @@ def create_notion_task(gcal_event, gcal_cal_name):
                 nt.DATE_NOTION_NAME: {
                     "type": "date",
                     "date": {
-                        "start": gcal_event.get("start", {}).get("dateTime", ""),
-                        "end": gcal_event.get("end", {}).get("dateTime", ""),
+                        "start": gcal_event_start_datetime,
+                        "end": gcal_event_end_datetime,
                     },
                 },
                 nt.EXTRAINFO_NOTION_NAME: {
@@ -290,4 +304,6 @@ if __name__ == "__main__":
     with log_path.open("w") as output:
         data = get_notion_task()
         json.dump(data, output, indent=4)
-    print(f"Notion Task Num. {len(data)}, from {nt.AFTER_DATE} to {nt.BEFORE_DATE}")
+    logging.info(
+        f"Notion Task Count. {len(data)}, from {nt.GCAL_END_DATE_NOTION_NAME}: {nt.AFTER_DATE} to {nt.DATE_NOTION_NAME}: {nt.BEFORE_DATE} (exclusive)"
+    )

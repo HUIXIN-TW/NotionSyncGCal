@@ -22,6 +22,7 @@
       "Location_Notion_Name": "Location",
       "Status_Notion_Name": "Status",
       "GCal_Sync_Time_Notion_Name": "GCal Sync Time",
+      "GCal_End_Date_Notion_Name": "GCal End Date",
       "GCal_Name_Notion_Name": "Calendar",
       "GCal_EventId_Notion_Name": "GCal Event Id",
       "Delete_Notion_Name": "GCal Deleted?",
