@@ -28,8 +28,8 @@ def get_notion_task():
 
     # TODO: Notion has no filter for start date and end date, so add extra column: GCAL_END_DATE_NOTION_NAME
 
-    before_date_with_time_zone = nt.BEFORE_DATE + 'T00:00:00.000' + nt.TIMECODE
-    after_date_with_time_zone = nt.AFTER_DATE + 'T00:00:00.000' + nt.TIMECODE
+    before_date_with_time_zone = nt.BEFORE_DATE + "T00:00:00.000" + nt.TIMECODE
+    after_date_with_time_zone = nt.AFTER_DATE + "T00:00:00.000" + nt.TIMECODE
 
     try:
         logger.info(
