@@ -195,7 +195,7 @@ def synchronize_notion_and_google_calendar(
                         and notion_gcal_sync_time > notion_task_last_edited_time
                     ):
                         logger.info(
-                            f"⚪️Already Done. Sync Time: {notion_gcal_sync_time}\nNotion '{notion_task_name}-{notion_task_last_edited_time}' vs Event '{gcal_event_summary}-{gcal_event_updated_time}'"
+                            f"⚪️Already Done. Sync Time: {notion_gcal_sync_time}\nNotion '{notion_task_name}-{notion_task_last_edited_time}' vs Event '{gcal_event_summary}-{gcal_event_updated_time}'\nEvent ID: {gcal_event_id}"
                         )
                         # Remove the processed Google Calendar event from the list
                         remove_gcal_event_from_list(
