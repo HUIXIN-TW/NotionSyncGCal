@@ -55,6 +55,9 @@ def get_gcal_event_from_list(gcal_event_list, gcal_event_id):
 def synchronize_notion_and_google_calendar(
     compare_time=True, should_update_notion_tasks=True, should_update_google_events=True
 ):
+    # freeze the datetime of the gcal event and notion task status
+    current_gcal_sync_time = get_current_time_in_iso_format()
+
     # Get the Google Calendar and Notion events
     try:
         gcal_event_list = gcal_service.get_gcal_event()
@@ -202,8 +205,6 @@ def synchronize_notion_and_google_calendar(
                             gcal_event_list, gcal_event, gcal_event_summary
                         )
                         break
-
-                current_gcal_sync_time = get_current_time_in_iso_format()
 
                 # Update Google Calendar if Notion is newer or force update
                 # synchronize_notion_and_google_calendar(compare_time=False, should_update_notion_tasks=False)
