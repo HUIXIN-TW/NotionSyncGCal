@@ -63,8 +63,5 @@ def main():
 
         sync.force_update_google_event_by_notion_task_and_ignore_time()
 
-    print("Sync executed successfully!")
-
-
 if __name__ == "__main__":
     main()

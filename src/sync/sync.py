@@ -10,6 +10,9 @@ from notion import notion_service
 logging.basicConfig(filename="sync.log", level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+# Notion API Task Limit
+NOTION_TASK_LIMIT = 100
+
 
 def compare_timezones(notion_time_str, google_time_str):
     # Parse the time strings into datetime objects
@@ -62,13 +65,15 @@ def synchronize_notion_and_google_calendar(
     try:
         gcal_event_list = gcal_service.get_gcal_event()
         notion_task_list = notion_service.get_notion_task()
+        task_count = len(notion_task_list)
+        logging.info(f"Notion Task Count: {task_count}")
+        # Check if task count exceeds the limit
+        if task_count > NOTION_TASK_LIMIT:
+            logging.warning(f"Task count exceeds {NOTION_TASK_LIMIT}. Sync process stopped to avoid overloading the Notion database.")
+            sys.exit(1)
     except Exception as e:
         logger.error(f"Error retrieving events or tasks: {e}")
         sys.exit(1)
-
-    logger.info(
-        "\n\n        -------------------------------Sync------------------------------        \n\n"
-    )
 
     # Check if Notion Task is in Google Calendar
     for notion_task in notion_task_list:
