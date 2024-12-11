@@ -65,10 +65,11 @@ def synchronize_notion_and_google_calendar(
     try:
         gcal_event_list = gcal_service.get_gcal_event()
         notion_task_list = notion_service.get_notion_task()
+        event_count = len(gcal_event_list)
         task_count = len(notion_task_list)
         logging.info(f"Notion Task Count: {task_count}")
         # Check if task count exceeds the limit
-        if task_count > NOTION_TASK_LIMIT:
+        if task_count > NOTION_TASK_LIMIT or event_count > NOTION_TASK_LIMIT:
             logging.warning(
                 f"Task count exceeds {NOTION_TASK_LIMIT}. Sync process stopped to avoid overloading the Notion database."
             )
