@@ -55,6 +55,25 @@ def get_notion_task():
         return None
 
 
+def get_notion_task_by_gcal_event_id(gcal_event_id):
+    try:
+        logger.info(
+            f"Reading Notion database by Google event ID: {gcal_event_id}"
+        )
+        return nt.NOTION.databases.query(
+            database_id=nt.DATABASE_ID,
+            filter={
+                "property": nt.GCAL_EVENTID_NOTION_NAME,
+                "rich_text": {
+                    "equals": gcal_event_id
+                }
+            },
+        )["results"]
+    except Exception as e:
+        logger.error(f"Error reading Notion table: {e}")
+        return None
+
+
 # Update specific properties in notion
 # Note: Never update Extra info from google cal to notion
 # That action will lose rich notion information
@@ -113,7 +132,7 @@ def update_notion_task(page_id, gcal_event, gcal_cal_name, new_gcal_sync_time):
 
 
 def update_notion_task_for_new_gcal_event_id(
-    page_id, new_gcal_event_id, notion_gcal_cal_id
+    page_id, new_gcal_event_id
 ):
     try:
         nt.NOTION.pages.update(
@@ -307,3 +326,7 @@ if __name__ == "__main__":
     logging.info(
         f"Notion Task Count. {len(data)}, from {nt.GCAL_END_DATE_NOTION_NAME}: {nt.AFTER_DATE} to {nt.DATE_NOTION_NAME}: {nt.BEFORE_DATE} (exclusive)"
     )
+
+    import rich
+    result = get_notion_task_by_gcal_event_id('ut1r5daqll0kdsi5ke9m4s2514')
+    rich.print(result)
