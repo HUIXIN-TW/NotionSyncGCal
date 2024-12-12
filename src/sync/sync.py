@@ -160,12 +160,18 @@ def synchronize_notion_and_google_calendar(
                 gcal_service.delete_gcal_event(notion_gcal_cal_id, notion_gcal_event_id)
                 notion_service.delete_notion_task(notion_task_page_id)
 
-                duplicate_notion_task_list = notion_service.get_notion_task_by_gcal_event_id(notion_gcal_event_id)
-                
+                duplicate_notion_task_list = (
+                    notion_service.get_notion_task_by_gcal_event_id(
+                        notion_gcal_event_id
+                    )
+                )
+
                 if duplicate_notion_task_list != None:
                     for duplicate_notion_task in duplicate_notion_task_list:
                         duplicate_notion_task_page_id = duplicate_notion_task["id"]
-                        logger.info(f"Duplicate Notion Task Page ID: {duplicate_notion_task_page_id}")
+                        logger.info(
+                            f"Duplicate Notion Task Page ID: {duplicate_notion_task_page_id}"
+                        )
                         notion_service.delete_notion_task(duplicate_notion_task_page_id)
 
                 deleted_gcal_event = get_gcal_event_from_list(

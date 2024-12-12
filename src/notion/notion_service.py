@@ -57,16 +57,12 @@ def get_notion_task():
 
 def get_notion_task_by_gcal_event_id(gcal_event_id):
     try:
-        logger.info(
-            f"Reading Notion database by Google event ID: {gcal_event_id}"
-        )
+        logger.info(f"Reading Notion database by Google event ID: {gcal_event_id}")
         return nt.NOTION.databases.query(
             database_id=nt.DATABASE_ID,
             filter={
                 "property": nt.GCAL_EVENTID_NOTION_NAME,
-                "rich_text": {
-                    "equals": gcal_event_id
-                }
+                "rich_text": {"equals": gcal_event_id},
             },
         )["results"]
     except Exception as e:
@@ -131,9 +127,7 @@ def update_notion_task(page_id, gcal_event, gcal_cal_name, new_gcal_sync_time):
         return None
 
 
-def update_notion_task_for_new_gcal_event_id(
-    page_id, new_gcal_event_id
-):
+def update_notion_task_for_new_gcal_event_id(page_id, new_gcal_event_id):
     try:
         nt.NOTION.pages.update(
             page_id=page_id,
@@ -328,5 +322,6 @@ if __name__ == "__main__":
     )
 
     import rich
-    result = get_notion_task_by_gcal_event_id('ut1r5daqll0kdsi5ke9m4s2514')
+
+    result = get_notion_task_by_gcal_event_id("ut1r5daqll0kdsi5ke9m4s2514")
     rich.print(result)
