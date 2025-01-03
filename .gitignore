@@ -5,8 +5,6 @@
 
 /node_modules
 
-/venv
-
 /src/__pycache__
 /src/logs
 /src/notion/logs
@@ -19,3 +17,4 @@ src/gcal/__pycache__/*.pyc
 src/user_setting/__pycache__/*.pyc
 
 /.venv
+/lambda_layer/**
