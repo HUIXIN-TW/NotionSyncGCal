@@ -14,12 +14,20 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      # Step 2: Package the Lambda function (excluding dependencies)
-      - name: Package Lambda function
+      # Step 2: Prepare the package by copying src and lambda_function.py
+      - name: Prepare Lambda Package
         run: |
-          zip -r lambda_function.zip src/
+          mkdir -p package  # Create a package directory
+          cp lambda_function.py package/  # Copy lambda_function.py to the package directory
+          cp -r src/* package/  # Copy everything from the src folder into the package directory
 
-      # Step 3: Deploy Lambda function to AWS
+      # Step 3: Zip the package directory
+      - name: Zip Lambda package
+        run: |
+          cd package
+          zip -r ../lambda_function.zip .  # Zip the package directory contents
+
+      # Step 4: Deploy Lambda function to AWS
       - name: Deploy Lambda to AWS
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
