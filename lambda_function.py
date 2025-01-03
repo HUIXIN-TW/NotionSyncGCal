@@ -1,7 +1,7 @@
 import json
 from datetime import datetime, timezone
 import pytz
-from src.main import main as run_sync_notion_and_google
+from main import main as run_sync_notion_and_google
 
 
 def lambda_handler(event, context):
@@ -22,9 +22,7 @@ def lambda_handler(event, context):
         perth_time = now_perth.strftime("%H:%M:%S")
         perth_zone = now_perth.tzname()
 
-        # Simulate the command-line arguments: -t 3 90
-        cli_args = ["main.py", "-t", "3", "90"]
-        run_sync_notion_and_google(cli_args)
+        run_sync_notion_and_google()
 
         return {
             "statusCode": 200,
