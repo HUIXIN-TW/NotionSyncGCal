@@ -19,7 +19,7 @@ jobs:
         run: |
           mkdir -p package  # Create a package directory
           cp lambda_function.py package/  # Copy lambda_function.py to the package directory
-          cp -r src/* package/  # Copy everything from the src folder into the package directory
+          cp -r src/ package/  # Copy the src folder into the package directory
 
       # Step 3: Zip the package directory
       - name: Zip Lambda package

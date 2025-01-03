@@ -1,7 +1,7 @@
 import json
 from datetime import datetime, timezone
 import pytz
-from main import main as run_sync_notion_and_google
+from src.main import main as run_sync_notion_and_google
 
 
 def lambda_handler(event, context):
