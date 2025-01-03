@@ -28,15 +28,17 @@ def lambda_handler(event, context):
 
         return {
             "statusCode": 200,
-            "body": json.dumps({
-                "status": "Sync completed",
-                "utc_date": utc_date,
-                "utc_time": utc_time,
-                "utc_time_zone": utc_zone,
-                "perth_date": perth_date,
-                "perth_time": perth_time,
-                "perth_time_zone": perth_zone,
-            }),
+            "body": json.dumps(
+                {
+                    "status": "Sync completed",
+                    "utc_date": utc_date,
+                    "utc_time": utc_time,
+                    "utc_time_zone": utc_zone,
+                    "perth_date": perth_date,
+                    "perth_time": perth_time,
+                    "perth_time_zone": perth_zone,
+                }
+            ),
         }
     except Exception as e:
         return {
