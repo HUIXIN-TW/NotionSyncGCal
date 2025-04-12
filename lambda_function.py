@@ -1,13 +1,13 @@
-import sys
 import os
+import sys
+import json
+from datetime import datetime, timezone
+import pytz
 
 # Add the 'src' folder to sys.path so that Python can find modules inside it
 sys.path.append(os.path.join(os.getcwd(), "src"))
 
-import json
-from datetime import datetime, timezone
-import pytz
-from src.main import main as run_sync_notion_and_google
+from src.main import main as run_sync_notion_and_google  # noqa: E402
 
 
 def lambda_handler(event, context):

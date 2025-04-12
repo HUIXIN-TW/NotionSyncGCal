@@ -5,7 +5,8 @@ LAMBDA_LAYER_NAME := NotionSyncDeps
 # Lint: Run Prettier and Black
 lint:
 	prettier --write .
-	black src/ --line-length 120 
+	black src/ lambda_function.py --line-length 120
+	flake8 src/ lambda_function.py --max-line-length 120
 
 # Upload token files to S3
 upload-s3:
