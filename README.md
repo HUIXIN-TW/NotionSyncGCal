@@ -1,10 +1,16 @@
 # Notion Task Two-Way Synchronise with Google Calendar Event
 
+![Python](https://img.shields.io/badge/Python-3.8%2B-blue)
+![Lambda](https://img.shields.io/badge/Serverless-AWS%20Lambda-orange)
+![Deploy Status](https://github.com/HUIXIN-TW/NotionSyncGCal/actions/workflows/deploy_lambda.yml/badge.svg)
+
 > Command-line interface to sync data between Notion Task and Google Calendar Event.
 
 Do you find yourself juggling between Notion and Google Calendar to manage your events? Fret not! This awesome code is here to save your day. It magically extracts event details from your Notion Database and seamlessly integrates them into your Google Calendar events. There's more! It even adds a handy URL to your GCal event, so you can effortlessly jump back to the specific Notion Page related to the event. How cool is that?
 
 **Warning**: Proceed with caution! This repo wields the power to make changes to your Notion database and Google Calendar. So, if you're not confident about what you're doing, buckle up and brace yourself for some unexpected surprises.
+
+🆕 [View Release v2.0.0 →](https://github.com/HUIXIN-TW/NotionSyncGCal/releases)
 
 ## What You Will Need to Get Started
 
@@ -40,11 +46,10 @@ Do you find yourself juggling between Notion and Google Calendar to manage your 
 Go to the terminal and run the following commands:
 
 ```bash
-git clone git@github.com:HUIXIN-TW/NotionSyncGCal.git
+git clone https://github.com/HUIXIN-TW/NotionSyncGCal.git
 cd NotionSyncGCal
 pip install -r src/requirements.txt
-cd src
-python3 main.py
+python3 src/main.py
 ```
 
 Configure Notion and Google Calendar
