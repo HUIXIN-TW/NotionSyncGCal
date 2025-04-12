@@ -28,12 +28,8 @@ S3_CREDENTIALS_PATH = os.environ.get("S3_CREDENTIALS_PATH")
 USE_S3 = bool(S3_BUCKET_NAME and S3_CLIENT_SECRET_PATH and S3_CREDENTIALS_PATH)
 
 # Construct the absolute file paths within the container
-CLIENT_SECRET_PATH = Path(
-    os.environ.get("CLIENT_SECRET_PATH", CURRENT_DIR / "../../token/client_secret.json")
-)
-CREDENTIALS_PATH = Path(
-    os.environ.get("CREDENTIALS_PATH", CURRENT_DIR / "../../token/token.pkl")
-)
+CLIENT_SECRET_PATH = Path(os.environ.get("CLIENT_SECRET_PATH", CURRENT_DIR / "../../token/client_secret.json"))
+CREDENTIALS_PATH = Path(os.environ.get("CREDENTIALS_PATH", CURRENT_DIR / "../../token/token.pkl"))
 
 
 class Google:
@@ -93,9 +89,7 @@ class Google:
             logger.error(f"Error refreshing token: {e}")
             if USE_S3:
                 logger.error("Running on Lambda/S3 — cannot re-auth. Exiting.")
-                logger.error(
-                    "Please trigger a manual re-authentication from a local machine."
-                )
+                logger.error("Please trigger a manual re-authentication from a local machine.")
                 # TODO: Handle re-auth flow for Lambda/S3 by sending an email.
                 # raise RuntimeError("Refresh token expired and cannot prompt user for auth")
                 sys.exit(1)
@@ -105,9 +99,7 @@ class Google:
 
     def perform_oauth_flow(self):
         scopes = ["https://www.googleapis.com/auth/calendar"]
-        flow = InstalledAppFlow.from_client_secrets_file(
-            str(CLIENT_SECRET_PATH), scopes
-        )
+        flow = InstalledAppFlow.from_client_secrets_file(str(CLIENT_SECRET_PATH), scopes)
         try:
             logger.info("Running OAuth flow...")
             credentials = flow.run_local_server(

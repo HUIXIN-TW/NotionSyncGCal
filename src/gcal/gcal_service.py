@@ -48,9 +48,7 @@ def get_gcal_event():
 
             if response.get("items"):
                 events.extend(response["items"])
-            logger.info(
-                f"Retrieved {len(response.get('items', []))} events from calendar ID {cal_id}"
-            )
+            logger.info(f"Retrieved {len(response.get('items', []))} events from calendar ID {cal_id}")
 
         logger.info(f"Total events retrieved: {len(events)}")
         return events
@@ -61,26 +59,18 @@ def get_gcal_event():
 
 def update_gcal_event(notion_task, existing_gcal_cal_id, existing_gcal_event_id):
     event = make_event_body(notion_task)
-    gt.service.events().update(
-        calendarId=existing_gcal_cal_id, eventId=existing_gcal_event_id, body=event
-    ).execute()
+    gt.service.events().update(calendarId=existing_gcal_cal_id, eventId=existing_gcal_event_id, body=event).execute()
 
 
 def create_gcal_event(notion_task, new_gcal_calendar_id=nt.GCAL_DEFAULT_ID):
     event = make_event_body(notion_task)
-    gcal_event = (
-        gt.service.events()
-        .insert(calendarId=new_gcal_calendar_id, body=event)
-        .execute()
-    )
+    gcal_event = gt.service.events().insert(calendarId=new_gcal_calendar_id, body=event).execute()
     # get the event id and update the notion task by query page id
     event_id = gcal_event.get("id")
     return event_id
 
 
-def move_and_update_gcal_event(
-    notion_task, existing_gcal_event_id, new_gcal_calendar_id, existing_gcal_cal_id
-):
+def move_and_update_gcal_event(notion_task, existing_gcal_event_id, new_gcal_calendar_id, existing_gcal_cal_id):
     gt.service.events().move(
         calendarId=existing_gcal_cal_id,
         eventId=existing_gcal_event_id,
@@ -91,23 +81,16 @@ def move_and_update_gcal_event(
 
 def delete_gcal_event(gcal_calendar_id, gcal_event_id):
     try:
-        gt.service.events().delete(
-            calendarId=gcal_calendar_id, eventId=gcal_event_id
-        ).execute()
+        gt.service.events().delete(calendarId=gcal_calendar_id, eventId=gcal_event_id).execute()
         logger.info(f"Successfully deleted event with ID: {gcal_event_id}")
     except Exception as e:
-        logger.error(
-            f"An error occurred while deleting event with ID: {gcal_event_id}: {e}"
-        )
+        logger.error(f"An error occurred while deleting event with ID: {gcal_event_id}: {e}")
 
 
 def make_event_body(notion_task):
     # set icone and task name
     event_icon = (
-        notion_task.get("properties", {})
-        .get(nt.COMPLETEICON_NOTION_NAME, {})
-        .get("formula", {})
-        .get("string", "❓")
+        notion_task.get("properties", {}).get(nt.COMPLETEICON_NOTION_NAME, {}).get("formula", {}).get("string", "❓")
     )
     event_name = (
         notion_task.get("properties", {})
@@ -128,21 +111,11 @@ def make_event_body(notion_task):
     # to_utc(event_start_date).strftime("%Y-%m-%dT%H:%M:%S")
     # to_utc(event_start_date).strftime("%Y-%m-%d")
     notion_task_start_date = (
-        notion_task.get("properties", {})
-        .get(nt.DATE_NOTION_NAME, {})
-        .get("date", {})
-        .get("start", "")
+        notion_task.get("properties", {}).get(nt.DATE_NOTION_NAME, {}).get("date", {}).get("start", "")
     )
-    notion_task_end_date = (
-        notion_task.get("properties", {})
-        .get(nt.DATE_NOTION_NAME, {})
-        .get("date", {})
-        .get("end", "")
-    )
+    notion_task_end_date = notion_task.get("properties", {}).get(nt.DATE_NOTION_NAME, {}).get("date", {}).get("end", "")
     # Adjust and convert dates to UTC
-    event_start_date, event_end_date = adjust_notion_dates(
-        notion_task_start_date, notion_task_end_date
-    )
+    event_start_date, event_end_date = adjust_notion_dates(notion_task_start_date, notion_task_end_date)
 
     # set location
     try:
