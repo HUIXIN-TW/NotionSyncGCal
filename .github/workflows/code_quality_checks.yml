@@ -14,11 +14,11 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: Install Black
-        run: pip install black
+      - name: Install Flake8
+        run: pip install flake8
 
-      - name: Check Python formatting with Black
-        run: black --check .
+      - name: Check Python code quality with Flake8
+        run: flake8 --max-line-length=120 .
 
       - name: Install Node.js for Prettier
         uses: actions/setup-node@v3

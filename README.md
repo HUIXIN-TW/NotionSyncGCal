@@ -1,42 +1,62 @@
-# Notion Task Synchronise with Google Calendar Event
+# Notion Task Two-Way Synchronise with Google Calendar Event
 
-> command-line interface to sync data between Notion Task and Google Calendar Event.
+> Command-line interface to sync data between Notion Task and Google Calendar Event.
 
 Do you find yourself juggling between Notion and Google Calendar to manage your events? Fret not! This awesome code is here to save your day. It magically extracts event details from your Notion Database and seamlessly integrates them into your Google Calendar events. There's more! It even adds a handy URL to your GCal event, so you can effortlessly jump back to the specific Notion Page related to the event. How cool is that?
 
 **Warning**: Proceed with caution! This repo wields the power to make changes to your Notion database and Google Calendar. So, if you're not confident about what you're doing, buckle up and brace yourself for some unexpected surprises.
 
-## What you will need to get started
+## What You Will Need to Get Started
 
 - Google account
 - Notion account
+- Python 3.8+
 - GitHub account (optional)
-- python3
+- AWS account (for serverless mode)
 
-## Current Capabilities:
+## Current Capabilities
 
-- update from google cal to notion task
-- update from notion task to google cal
+- Update from Google Calendar to Notion task
+- Update from Notion task to Google Calendar
+- Automatically deletes GCal events when marked as deleted in Notion
+- Timezone and date range customization in `notion_setting.json`
+- Sync across _multiple calendars_ and choose which calendar you would like to sync by changing `gcal_dic` in `notion_setting.json`
+- Custom Notion column names
+- Google Calendar OAuth integration
+- S3 and Lambda integration for serverless execution
 
-### Functions:
+## Functions You Can Configure
 
 - Ability to change timezones by changing `timecode` and `timezone` in `notion_setting`
 - Ability to change the date range by changing `goback_days` and `goforward_days` in `notion_setting.json` (If you are new here, please use 1 and 2 days respectively before you understand the code)
 - Able to decide the default length of new GCal events by changing `default_event_length` in `notion_setting.json`
-- Option to delete gCal events if checked off as `GCal Deleted?` column in Notion
+- Option to delete GCal events if checked off as `GCal Deleted?` column in Notion
 - Sync across _multiple calendars_ and choose which calendar you would like to sync by changing `gcal_dic` in `notion_setting.json`
 - Able to name the required Notion columns whatever you want and have the code work by changing `page_property` in `notion_setting.json`
-- credential and OAuth consent screen with google calendar scope
+- Credential and OAuth consent screen with Google Calendar scope
 
-# Sychronise Notion with Google Calendar
+## Local Usage
 
-Go to the terminal, and change the folder to where these script are:
+Go to the terminal and run the following commands:
 
 ```bash
+git clone git@github.com:HUIXIN-TW/NotionSyncGCal.git
+cd NotionSyncGCal
+pip install -r src/requirements.txt
 cd src
+python3 main.py
 ```
 
-## Basic Synchronization
+Configure Notion and Google Calendar
+
+- Duplicate the [Notion Template](https://huixin.notion.site/aa639e48cfee4216976756f33cf57c8e?v=6db9353f3bc54029807c539ffc3dfdb4).
+- Set up a Notion integration and connect it to your database.
+- Enable the Google Calendar API and download the `client_secret.json` file.
+- Complete the `notion_setting.json` file in the `token` folder.
+
+You found the above topic is unfamiliar? No worries! Just follow the [Beginner Guide](beginner_guide.md) to set up your Notion and Google Calendar integration.
+
+### Basic Synchronization
 
 To run the basic synchronization between Notion and Google Calendar:
 
@@ -44,7 +64,7 @@ To run the basic synchronization between Notion and Google Calendar:
 python3 main.py
 ```
 
-## Synchronization with Specific Date Range
+### Synchronization with Specific Date Range
 
 To synchronize events based on a specific date range, use the following command:
 
@@ -56,9 +76,9 @@ python3 main.py -t <look_back_days> <look_ahead_days>
 
 `<look_ahead_days>`: Number of days to look forward from the current date.
 
-## Force Sync Options
+### Force Sync Options
 
-### Sync from Google Calendar to Notion
+#### Sync from Google Calendar to Notion
 
 To force an update of Notion tasks from Google Calendar events within a specified date range, use the following command:
 
@@ -66,7 +86,7 @@ To force an update of Notion tasks from Google Calendar events within a specifie
 python3 main.py -g <look_back_days> <look_ahead_days>
 ```
 
-### Sync from Notion to Google Calendar
+#### Sync from Notion to Google Calendar
 
 To force an update of Google Calendar events from Notion tasks within a specified date range, use the following command:
 
@@ -74,10 +94,80 @@ To force an update of Google Calendar events from Notion tasks within a specifie
 python3 main.py -n <look_back_days> <look_ahead_days>
 ```
 
-## Test
+## AWS Lambda Integration
 
-Change the folder to where these script are:
+### How It Works
+
+- Stores `token.pkl`, `client_secret.json`, and `notion_setting.json` in S3.
+- Lambda reads these files at runtime using environment variables.
+- Automatically refreshes expired tokens and saves them back to S3.
+
+### Environment Variables
+
+Set the following variables in your Lambda configuration or `.env` file:
 
 ```bash
-cd tests
+export S3_BUCKET_NAME='your-bucket-name'
+export S3_CLIENT_SECRET_PATH='<foldername>/client_secret.json'
+export S3_CREDENTIALS_PATH='<foldername>/token.pkl'
+export S3_NOTION_SETTINGS_PATH='<foldername>/notion_setting.json'
 ```
+
+Note: When using Lambda, no CLI arguments are passed. You must configure your `notion_setting.json` values (e.g., `goback_days`, `goforward_days`) to control the sync range.
+
+### IAM Permissions Required for Lambda Role
+
+```json
+{
+  "Effect": "Allow",
+  "Action": ["s3:GetObject", "s3:PutObject"],
+  "Resource": "arn:aws:s3:::your-bucket-name/your-folder/*"
+}
+```
+
+### Deploying to Lambda
+
+Use GitHub Actions:
+
+- Create a GitHub Action to build and deploy your Lambda function.
+- Use the provided `deploy_lambda.yml` file in the `.github/workflows` directory.
+
+## Testing and Monitoring
+
+### Local Testing
+
+Run the local mock Lambda handler:
+
+```bash
+python lambda_function.py
+```
+
+You should see log output from both Notion and Google token readers, calendar events fetched, and sync logs.
+
+## Monitoring with AWS CloudWatch
+
+View logs in CloudWatch:
+
+```bash
+aws logs describe-log-streams \
+  --log-group-name /aws/lambda/NotionSyncGCal \
+  --order-by LastEventTime \
+  --descending \
+  --limit 1
+
+aws logs get-log-events \
+  --log-group-name /aws/lambda/NotionSyncGCal \
+  --log-stream-name <log-stream-name>
+```
+
+## Tips for First-Time Users
+
+- Start with a small date range:
+  ```json
+  "goback_days": 1,
+  "goforward_days": 2
+  ```
+- Test the tool locally before deploying to Lambda.
+- Use the provided Notion template to avoid configuration issues.
+
+Happy syncing! ✨

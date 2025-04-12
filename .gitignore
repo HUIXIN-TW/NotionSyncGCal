@@ -19,3 +19,4 @@ src/user_setting/__pycache__/*.pyc
 /.venv
 /lambda_layer/**
 .env
+*.zip

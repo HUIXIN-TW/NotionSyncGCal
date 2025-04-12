@@ -43,3 +43,4 @@ tomli==2.0.1
 typing_extensions==4.12.0
 uritemplate==4.1.1
 urllib3==2.2.1
+boto3==1.34.46
