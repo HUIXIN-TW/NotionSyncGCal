@@ -3,9 +3,7 @@ from user_setting import update_notion_setting
 
 
 def main():
-    parser = argparse.ArgumentParser(
-        description="Welcome to Notion-Google Calendar Sync CLI!"
-    )
+    parser = argparse.ArgumentParser(description="Welcome to Notion-Google Calendar Sync CLI!")
 
     # Adding optional arguments
     parser.add_argument(

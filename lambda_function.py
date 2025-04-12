@@ -1,18 +1,18 @@
-import sys
 import os
+import sys
+import json
+from datetime import datetime, timezone
+import pytz
 
 # Add the 'src' folder to sys.path so that Python can find modules inside it
 sys.path.append(os.path.join(os.getcwd(), "src"))
 
-import json
-from datetime import datetime, timezone
-import pytz
-from src.main import main as run_sync_notion_and_google
+from src.main import main as run_sync_notion_and_google  # noqa: E402
 
 
 def lambda_handler(event, context):
     """
-    AWS Lambda Handler to always run the CLI with -t 3 90 and include Perth timezone information.
+    AWS Lambda Handler to always run the CLI without any parameters and include Perth timezone information.
     """
     try:
         # Get the current date, time, and timezone in UTC

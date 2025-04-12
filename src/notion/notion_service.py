@@ -11,7 +11,7 @@ PROJECT_ROOT = CURRENT_DIR.parent.parent
 if PROJECT_ROOT not in sys.path:
     sys.path.append(str(PROJECT_ROOT))
 
-from . import notion_token
+from . import notion_token  # noqa: E402
 
 # Configure logging
 logging.basicConfig(filename="notion_services.log", level=logging.INFO)
@@ -26,14 +26,15 @@ nt = notion_token.Notion()
 
 def get_notion_task():
 
-    # TODO: Notion has no filter for start date and end date, so add extra column: GCAL_END_DATE_NOTION_NAME
+    # TODO: Notion has no filter for start date and end date
+    # so add extra column: GCAL_END_DATE_NOTION_NAME
 
     before_date_with_time_zone = nt.BEFORE_DATE + "T00:00:00.000" + nt.TIMECODE
     after_date_with_time_zone = nt.AFTER_DATE + "T00:00:00.000" + nt.TIMECODE
 
     try:
         logger.info(
-            f"Reading Notion database with ID: {nt.DATABASE_ID} from {nt.GCAL_END_DATE_NOTION_NAME}: {nt.AFTER_DATE} to {nt.DATE_NOTION_NAME}: {nt.BEFORE_DATE} (exclusive)"
+            f"Reading Notion database with ID: {nt.DATABASE_ID} from {nt.GCAL_END_DATE_NOTION_NAME}: {nt.AFTER_DATE} to {nt.DATE_NOTION_NAME}: {nt.BEFORE_DATE} (exclusive)"  # noqa: E501
         )
         return nt.NOTION.databases.query(
             database_id=nt.DATABASE_ID,
@@ -105,9 +106,7 @@ def update_notion_task(page_id, gcal_event, gcal_cal_name, new_gcal_sync_time):
                 },
                 nt.LOCATION_NOTION_NAME: {
                     "type": "rich_text",
-                    "rich_text": [
-                        {"text": {"content": gcal_event.get("location", "")}}
-                    ],
+                    "rich_text": [{"text": {"content": gcal_event.get("location", "")}}],
                 },
                 nt.GCAL_SYNC_TIME_NOTION_NAME: {
                     "type": "rich_text",
@@ -139,9 +138,7 @@ def update_notion_task_for_new_gcal_event_id(page_id, new_gcal_event_id):
             },
         )
     except Exception as e:
-        logging.error(
-            f"Error updating Notion page when updating for new GCal Event ID: {e}"
-        )
+        logging.error(f"Error updating Notion page when updating for new GCal Event ID: {e}")
         return None
 
 
@@ -157,15 +154,11 @@ def update_notion_task_for_new_gcal_sync_time(page_id, new_gcal_sync_time):
             },
         )
     except Exception as e:
-        logging.error(
-            f"Error updating Notion page when updating for new GCal sync time: {e}"
-        )
+        logging.error(f"Error updating Notion page when updating for new GCal sync time: {e}")
         return None
 
 
-def update_notion_task_for_default_calendar(
-    page_id, default_calendar_id, default_calendar_name
-):
+def update_notion_task_for_default_calendar(page_id, default_calendar_id, default_calendar_name):
     try:
         nt.NOTION.pages.update(
             page_id=page_id,
@@ -176,9 +169,7 @@ def update_notion_task_for_default_calendar(
             },
         )
     except Exception as e:
-        logging.error(
-            f"Error updating Notion page when updating for default calendar: {e}"
-        )
+        logging.error(f"Error updating Notion page when updating for default calendar: {e}")
         return None
 
 
@@ -216,15 +207,11 @@ def create_notion_task(gcal_event, gcal_cal_name):
                 },
                 nt.EXTRAINFO_NOTION_NAME: {
                     "type": "rich_text",
-                    "rich_text": [
-                        {"text": {"content": gcal_event.get("description", "")}}
-                    ],
+                    "rich_text": [{"text": {"content": gcal_event.get("description", "")}}],
                 },
                 nt.LOCATION_NOTION_NAME: {
                     "type": "rich_text",
-                    "rich_text": [
-                        {"text": {"content": gcal_event.get("location", "")}}
-                    ],
+                    "rich_text": [{"text": {"content": gcal_event.get("location", "")}}],
                 },
                 nt.GCAL_EVENTID_NOTION_NAME: {
                     "type": "rich_text",
@@ -235,13 +222,9 @@ def create_notion_task(gcal_event, gcal_cal_name):
                 },
             },
         )
-        logging.info(
-            f"Event {gcal_event.get('summary', '')} created in Notion successfully."
-        )
+        logging.info(f"Event {gcal_event.get('summary', '')} created in Notion successfully.")
     except Exception as e:
-        logging.error(
-            f"Failed to sync event {gcal_event.get('summary', '')} to Notion: {e}"
-        )
+        logging.error(f"Failed to sync event {gcal_event.get('summary', '')} to Notion: {e}")
         return None
 
 
@@ -318,7 +301,7 @@ if __name__ == "__main__":
         data = get_notion_task()
         json.dump(data, output, indent=4)
     logging.info(
-        f"Notion Task Count. {len(data)}, from {nt.GCAL_END_DATE_NOTION_NAME}: {nt.AFTER_DATE} to {nt.DATE_NOTION_NAME}: {nt.BEFORE_DATE} (exclusive)"
+        f"Notion Task Count. {len(data)}, from {nt.GCAL_END_DATE_NOTION_NAME}: {nt.AFTER_DATE} to {nt.DATE_NOTION_NAME}: {nt.BEFORE_DATE} (exclusive)"  # noqa: E501
     )
 
     import rich

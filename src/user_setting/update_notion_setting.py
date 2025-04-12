@@ -12,9 +12,7 @@ def update_date_range(goback_value, goforward_days):
     """Modify the goback_days and goforward_days in notion_setting.json"""
     data = read_json()
     data["goback_days"], data["goforward_days"] = goback_value, goforward_days
-    print(
-        f"Modified goback_days to {goback_value} and goforward_days to {goforward_days} in notion_setting.json"
-    )
+    print(f"Modified goback_days to {goback_value} and goforward_days to {goforward_days} in notion_setting.json")
     write_json(data)
 
 
@@ -22,9 +20,7 @@ def update_page_property(page_property, page_property_value):
     """Modify the page_property in notion_setting.json"""
     data = read_json()
     data["page_property"][0][page_property] = page_property_value
-    print(
-        f"Modified page_property: {page_property} as {page_property_value} in notion_setting.json"
-    )
+    print(f"Modified page_property: {page_property} as {page_property_value} in notion_setting.json")
     write_json(data)
 
 
@@ -62,6 +58,4 @@ def write_json(data):
 if __name__ == "__main__":
     # update_date_range(0,1)
     # update_page_property("Task_Notion_Name", "YOUR NEW TASK NAME HERE")
-    print(
-        "You can update the notion_setting.json file by calling the functions in update_notion_setting.py"
-    )
+    print("You can update the notion_setting.json file by calling the functions in update_notion_setting.py")
