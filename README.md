@@ -144,20 +144,68 @@ python lambda_function.py
 
 You should see log output from both Notion and Google token readers, calendar events fetched, and sync logs.
 
-## Monitoring with AWS CloudWatch
+### Monitoring with AWS CloudWatch
 
 View logs in CloudWatch:
 
 ```bash
 aws logs describe-log-streams \
-  --log-group-name /aws/lambda/NotionSyncGCal \
+  --log-group-name /aws/lambda/<lambda-function-name> \
   --order-by LastEventTime \
   --descending \
   --limit 1
 
 aws logs get-log-events \
-  --log-group-name /aws/lambda/NotionSyncGCal \
+  --log-group-name /aws/lambda/<lambda-function-name> \
   --log-stream-name <log-stream-name>
+```
+
+### Setting Up CloudWatch Alarms
+
+To monitor your Lambda function effectively, you can set up CloudWatch alarms to notify you of any issues or performance metrics that exceed your thresholds.
+
+1. Go to the CloudWatch console.
+2. Select "Alarms" from the left navigation pane.
+3. Click on "Create Alarm".
+4. Choose the metric you want to monitor (e.g., "Errors", "Duration").
+5. Set the conditions for the alarm.
+6. Configure actions to notify you (e.g., via SNS).
+7. Review and create the alarm.
+
+![alt text](/assets/cloudwatch_alarms.png)
+
+### Setting Up CloudWatch Dashboard
+
+To visualize your Lambda function's performance, you can create a CloudWatch dashboard:
+
+1. Go to the CloudWatch console.
+2. Select "Dashboards" from the left navigation pane.
+3. Click on "Create dashboard".
+4. Choose a name for your dashboard.
+5. Add widgets to visualize metrics like "Invocations", "Errors", "Duration", etc.
+6. Customize the layout and save the dashboard.
+
+![alt text](/assets/cloudwatch_dashboard.png)
+
+## Cost-Effective Setup
+
+This prevents your function from being invoked in parallel, and guarantees:
+
+- Only one sync runs at a time
+- Any overlapping triggers will be throttled instead of stacking
+
+```bash
+aws lambda put-function-concurrency \
+  --function-name NotionSyncGCal \
+  --reserved-concurrent-executions 1
+```
+
+By default, CloudWatch keeps logs forever = `$$$` long-term. Set a retention policy to keep logs for 7 days.
+
+```bash
+aws logs put-retention-policy \
+  --log-group-name /aws/lambda/NotionSyncGCal \
+  --retention-in-days 7
 ```
 
 ## Tips for First-Time Users
