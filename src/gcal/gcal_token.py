@@ -20,7 +20,6 @@ CURRENT_DIR = Path(__file__).parent.resolve()
 logger.info(f"Current directory: {CURRENT_DIR}")
 
 # Construct the absolute file paths within the container
-NOTION_SETTINGS_PATH = (CURRENT_DIR / "../../token/notion_setting.json").resolve()
 CLIENT_SECRET_PATH = (CURRENT_DIR / "../../token/client_secret.json").resolve()
 CREDENTIALS_PATH = (CURRENT_DIR / "../../token/token.pkl").resolve()
 
@@ -28,21 +27,7 @@ CREDENTIALS_PATH = (CURRENT_DIR / "../../token/token.pkl").resolve()
 class Google:
     def __init__(self):
         self.service = None
-        self.DOCKER = False
-        self.load_notion_settings()
         self.init_google_service()
-
-    def load_notion_settings(self):
-        try:
-            with open(NOTION_SETTINGS_PATH, encoding="utf-8") as f:
-                data = json.load(f)
-            self.DOCKER = data.get("docker", False)
-        except FileNotFoundError as e:
-            logger.error(f"Notion settings file not found: {e}")
-        except json.JSONDecodeError as e:
-            logger.error(f"Error decoding JSON from Notion settings: {e}")
-        except Exception as e:
-            logger.error(f"Unexpected error loading Notion settings: {e}")
 
     def init_google_service(self):
         credentials = self.load_credentials()

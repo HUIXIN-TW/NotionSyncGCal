@@ -1,5 +1,4 @@
 {
-  "docker": false,
   "goback_days": 1,
   "goforward_days": 1,
   "notion_token": "secret_",

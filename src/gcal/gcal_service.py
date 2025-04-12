@@ -25,10 +25,6 @@ logger = logging.getLogger(__name__)
 # Get the absolute path to the current directory
 logger.info(f"Current directory: {CURRENT_DIR}")
 
-# Construct the absolute file paths within the container
-NOTION_SETTINGS_PATH = (CURRENT_DIR / "../../token/notion_setting.json").resolve()
-CLIENT_SECRET_PATH = (CURRENT_DIR / "../../token/client_secret.json").resolve()
-CREDENTIALS_PATH = (CURRENT_DIR / "../../token/token.pkl").resolve()
 
 # Initialize Notion and Google tokens
 nt = notion_token.Notion()
