@@ -11,7 +11,7 @@ PROJECT_ROOT = CURRENT_DIR.parent.parent
 if PROJECT_ROOT not in sys.path:
     sys.path.append(str(PROJECT_ROOT))
 
-from . import notion_token
+from . import notion_token  # noqa: E402
 
 # Configure logging
 logging.basicConfig(filename="notion_services.log", level=logging.INFO)
@@ -26,14 +26,15 @@ nt = notion_token.Notion()
 
 def get_notion_task():
 
-    # TODO: Notion has no filter for start date and end date, so add extra column: GCAL_END_DATE_NOTION_NAME
+    # TODO: Notion has no filter for start date and end date
+    # so add extra column: GCAL_END_DATE_NOTION_NAME
 
     before_date_with_time_zone = nt.BEFORE_DATE + "T00:00:00.000" + nt.TIMECODE
     after_date_with_time_zone = nt.AFTER_DATE + "T00:00:00.000" + nt.TIMECODE
 
     try:
         logger.info(
-            f"Reading Notion database with ID: {nt.DATABASE_ID} from {nt.GCAL_END_DATE_NOTION_NAME}: {nt.AFTER_DATE} to {nt.DATE_NOTION_NAME}: {nt.BEFORE_DATE} (exclusive)"
+            f"Reading Notion database with ID: {nt.DATABASE_ID} from {nt.GCAL_END_DATE_NOTION_NAME}: {nt.AFTER_DATE} to {nt.DATE_NOTION_NAME}: {nt.BEFORE_DATE} (exclusive)"  # noqa: E501
         )
         return nt.NOTION.databases.query(
             database_id=nt.DATABASE_ID,
@@ -300,7 +301,7 @@ if __name__ == "__main__":
         data = get_notion_task()
         json.dump(data, output, indent=4)
     logging.info(
-        f"Notion Task Count. {len(data)}, from {nt.GCAL_END_DATE_NOTION_NAME}: {nt.AFTER_DATE} to {nt.DATE_NOTION_NAME}: {nt.BEFORE_DATE} (exclusive)"
+        f"Notion Task Count. {len(data)}, from {nt.GCAL_END_DATE_NOTION_NAME}: {nt.AFTER_DATE} to {nt.DATE_NOTION_NAME}: {nt.BEFORE_DATE} (exclusive)"  # noqa: E501
     )
 
     import rich

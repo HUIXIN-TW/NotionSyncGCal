@@ -1,10 +1,7 @@
 import logging
 import json
-import os
 import sys
-import time
-import pytz
-from datetime import datetime, timedelta, date, timezone
+from datetime import timedelta
 from dateutil.parser import isoparse
 from pathlib import Path
 
@@ -14,9 +11,10 @@ PROJECT_ROOT = CURRENT_DIR.parent.parent
 if PROJECT_ROOT not in sys.path:
     sys.path.append(str(PROJECT_ROOT))
 
+
 # Local application/library specific imports
-from notion import notion_token
-from . import gcal_token
+from notion import notion_token  # noqa: E402
+from . import gcal_token  # noqa: E402
 
 # Configure logging
 logging.basicConfig(filename="google_services.log", level=logging.INFO)
@@ -126,7 +124,8 @@ def make_event_body(notion_task):
             .get("text", {})
             .get("content", "")
         )
-    except:
+    except Exception as e:
+        print(f"Error getting location: {e}")
         event_location = ""
 
     # set description
@@ -138,7 +137,8 @@ def make_event_body(notion_task):
             .get("text", {})
             .get("content", "")
         )
-    except:
+    except Exception as e:
+        print(f"Error getting description: {e}")
         event_description = ""
 
     # set url

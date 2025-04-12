@@ -5,7 +5,7 @@ LAMBDA_LAYER_NAME := NotionSyncDeps
 # Lint: Run Prettier and Black
 lint:
 	prettier --write .
-	black .
+	black src/ --line-length 120 
 
 # Upload token files to S3
 upload-s3:
