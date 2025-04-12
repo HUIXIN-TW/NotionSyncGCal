@@ -12,7 +12,7 @@ from src.main import main as run_sync_notion_and_google
 
 def lambda_handler(event, context):
     """
-    AWS Lambda Handler to always run the CLI with -t 3 90 and include Perth timezone information.
+    AWS Lambda Handler to always run the CLI without any parameters and include Perth timezone information.
     """
     try:
         # Get the current date, time, and timezone in UTC

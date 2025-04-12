@@ -1,6 +1,7 @@
 import os
 import re
 import json
+import boto3
 import logging
 from notion_client import Client
 from datetime import timedelta, date
@@ -16,8 +17,17 @@ logger = logging.getLogger(__name__)
 CURRENT_DIR = Path(__file__).parent.resolve()
 logger.info(f"Current directory: {CURRENT_DIR}")
 
-# Construct the absolute file paths within the container
-NOTION_SETTINGS_PATH = (CURRENT_DIR / "../../token/notion_setting.json").resolve()
+
+S3_BUCKET_NAME = os.environ.get("S3_BUCKET_NAME")
+S3_KEY = os.environ.get("S3_NOTION_SETTINGS_PATH")
+USE_S3 = bool(S3_BUCKET_NAME and S3_KEY)
+
+if not USE_S3:
+    NOTION_SETTINGS_PATH = Path(
+        os.environ.get(
+            "NOTION_SETTINGS_PATH", CURRENT_DIR / "../../token/notion_setting.json"
+        )
+    )
 
 
 class SettingError(Exception):
@@ -29,20 +39,28 @@ class SettingError(Exception):
 
 class Notion:
     def __init__(self):
-        self.filepath = NOTION_SETTINGS_PATH
         self.data = self.load_settings()
         self.set_logging()
         self.apply_settings()
         self.init_notion_client()
 
     def load_settings(self):
-        """Load settings from a JSON file."""
-        try:
-            with open(self.filepath, encoding="utf-8") as f:
-                data = json.load(f)
-                return data
-        except Exception as e:
-            raise SettingError(f"Error loading settings file: {e}")
+        """Load settings from S3 or local JSON file."""
+        if USE_S3:
+            try:
+                s3 = boto3.client("s3")
+                response = s3.get_object(Bucket=S3_BUCKET_NAME, Key=S3_KEY)
+                logger.info(f"Loading settings from S3: {S3_BUCKET_NAME}/{S3_KEY}")
+                return json.loads(response["Body"].read().decode("utf-8"))
+            except Exception as e:
+                raise SettingError(f"Error loading settings from S3: {e}")
+        else:
+            try:
+                logger.info(f"Loading settings from local file: {NOTION_SETTINGS_PATH}")
+                with open(NOTION_SETTINGS_PATH, encoding="utf-8") as f:
+                    return json.load(f)
+            except Exception as e:
+                raise SettingError(f"Error loading local settings file: {e}")
 
     def set_logging(self):
         """Sets up logging for the Notion class."""
