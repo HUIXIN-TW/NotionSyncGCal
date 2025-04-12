@@ -35,6 +35,13 @@ upload-lambda-layer:
 		--zip-file fileb://lambda_layer.zip \
 		--compatible-runtimes python3.12
 
+release-zip:
+	rm -rf dist
+	mkdir dist
+	cp -r src lambda_function.py requirements.txt dist/
+	cd dist
+	zip -r NotionSyncGCal-v2.0.0.zip .
+
 # Help: Display available commands
 help:
 	@echo "Available commands:"
