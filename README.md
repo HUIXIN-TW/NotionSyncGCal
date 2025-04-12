@@ -1,4 +1,5 @@
 # Notion Task Two-Way Synchronise with Google Calendar Event
+
 ![Python](https://img.shields.io/badge/Python-3.8%2B-blue)
 ![Lambda](https://img.shields.io/badge/Serverless-AWS%20Lambda-orange)
 ![Deploy Status](https://github.com/HUIXIN-TW/NotionSyncGCal/actions/workflows/deploy_lambda.yml/badge.svg)
