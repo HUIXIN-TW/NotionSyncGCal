@@ -40,7 +40,13 @@ check-s3-bucket:
 
 # Open AWS Profile (shortcut)
 open-aws-profile:
-	bat ~/.aws/config
+	@echo "AWS Profile: $(AWS_PROFILE)"
+	@aws configure list --profile $(AWS_PROFILE)
+	@echo "\nCredentials File:"
+	@cat ~/.aws/credentials | grep -A 3 "\[${AWS_PROFILE}\]"
+	@echo "\nConfig File:"
+	@cat ~/.aws/config | grep -A 3 "\[profile ${AWS_PROFILE}\]"
+
 
 # Edit AWS Profile (shortcut)
 edit-aws-profile:
