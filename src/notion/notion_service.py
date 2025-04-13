@@ -288,6 +288,7 @@ def remove_emojis(text):
 
 
 if __name__ == "__main__":
+    # Run python -m src.notion.notion_service
     # Ensure the directory exists
     Path("logs").mkdir(parents=True, exist_ok=True)
 
@@ -304,7 +305,10 @@ if __name__ == "__main__":
         f"Notion Task Count. {len(data)}, from {nt.GCAL_END_DATE_NOTION_NAME}: {nt.AFTER_DATE} to {nt.DATE_NOTION_NAME}: {nt.BEFORE_DATE} (exclusive)"  # noqa: E501
     )
 
-    import rich
+    from rich.console import Console
 
-    result = get_notion_task_by_gcal_event_id("ut1r5daqll0kdsi5ke9m4s2514")
-    rich.print(result)
+    console = Console()
+    event_id = "YOUR_EVENT_ID_HERE"
+    result = get_notion_task_by_gcal_event_id(event_id)
+    console.print(f"[bold cyan]Notion Task from GCal Event ID:[/] [green]{event_id}[/]")
+    console.print(result)

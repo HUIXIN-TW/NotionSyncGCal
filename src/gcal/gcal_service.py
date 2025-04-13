@@ -125,7 +125,7 @@ def make_event_body(notion_task):
             .get("content", "")
         )
     except Exception as e:
-        print(f"Error getting location: {e}")
+        logger.info(f"Error getting location: {e}. Using empty string.")
         event_location = ""
 
     # set description
@@ -138,7 +138,7 @@ def make_event_body(notion_task):
             .get("content", "")
         )
     except Exception as e:
-        print(f"Error getting description: {e}")
+        logger.info(f"Error getting description: {e}. Using empty string.")
         event_description = ""
 
     # set url
