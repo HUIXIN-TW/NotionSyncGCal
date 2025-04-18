@@ -48,7 +48,7 @@ def read_json():
 
 def write_json(data):
     with open(NOTION_SETTINGS_PATH, "w") as file:
-        json.dump(data, file, indent=2)
+        json.dump(data, file, indent=4)
 
 
 if __name__ == "__main__":

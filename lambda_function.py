@@ -28,13 +28,15 @@ def lambda_handler(event, context):
         perth_time = now_perth.strftime("%H:%M:%S")
         perth_zone = now_perth.tzname()
 
-        run_sync_notion_and_google()
+        # Run the sync function without any parameters as default
+        sync_result = run_sync_notion_and_google()
 
         return {
             "statusCode": 200,
             "body": json.dumps(
                 {
-                    "status": "Sync completed",
+                    "status": sync_result.get("status", "unknown"),
+                    "message": sync_result.get("message", ""),
                     "utc_date": utc_date,
                     "utc_time": utc_time,
                     "utc_time_zone": utc_zone,
