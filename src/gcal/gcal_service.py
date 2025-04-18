@@ -230,7 +230,6 @@ if __name__ == "__main__":
     from config.config import CONFIG  # noqa: E402
     from notion.notion_config import NotionConfig  # noqa: E402
     from gcal.gcal_token import GoogleToken  # noqa: E402
-    from gcal.gcal_service import GoogleService  # noqa: E402
 
     nt = NotionConfig(CONFIG, logger)
     gt = GoogleToken(CONFIG, logger)

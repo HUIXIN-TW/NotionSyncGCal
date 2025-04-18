@@ -124,7 +124,8 @@ def synchronize_notion_and_google_calendar(
             task_column_name_in_notion = notion_page_property["Task_Notion_Name"]
             notion_task_name = notion_task["properties"][task_column_name_in_notion]["title"][0]["plain_text"]
 
-            # Notion Task properties for sync status - the last time the task was synced between Notion and Google Calendar
+            # Notion Task properties for sync status
+            # the last time the task was synced between Notion and Google Calendar
             notion_gcal_sync_time = None
             try:
                 gcal_sync_time_column_name_in_notion = notion_page_property["GCal_Sync_Time_Notion_Name"]
@@ -172,8 +173,10 @@ def synchronize_notion_and_google_calendar(
                     remove_gcal_event_from_list(gcal_event_list, deleted_gcal_event, notion_task_name)
                 except Exception as e:
                     logger.error(
-                        f"Error deleting google calendar event ID: {notion_gcal_event_id} on {notion_gcal_cal_name}: {e}"
+                        f"Error deleting google calendar event ID: {notion_gcal_event_id} "
+                        f"on {notion_gcal_cal_name}: {e}"
                     )
+
                 continue
 
             # Notion Task with Google Calendar Event ID - Check if the event is in Google Calendar
@@ -232,8 +235,10 @@ def synchronize_notion_and_google_calendar(
                             google_service.update_gcal_event(notion_task, notion_gcal_cal_id, notion_gcal_event_id)
                         else:
                             logger.info(
-                                f"📅 Google Calendar: Moving event '{gcal_event_summary}' from '{notion_gcal_cal_id}' to '{gcal_cal_id}'"
+                                f"📅 Google Calendar: Moving event '{gcal_event_summary}' "
+                                f"from '{notion_gcal_cal_id}' to '{gcal_cal_id}'"
                             )
+
                             google_service.move_and_update_gcal_event(
                                 notion_task,
                                 notion_gcal_event_id,
