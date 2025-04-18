@@ -15,9 +15,15 @@ src/notion/__pycache__/*.pyc
 src/sync/__pycache__/*.pyc
 src/gcal/__pycache__/*.pyc
 src/user_setting/__pycache__/*.pyc
+src/config/__pycache__/*.pyc
 
 /.venv
 /lambda_layer/**
 /dist
 .env
 *.zip
+/*.log
+sync.log
+settings.json
+get_gcal_event.json
+get_notion_task.json

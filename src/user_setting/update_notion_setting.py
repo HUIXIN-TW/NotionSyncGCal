@@ -43,16 +43,12 @@ def update_urlroot(urlroot):
 def read_json():
     with open(NOTION_SETTINGS_PATH, "r") as file:
         data = json.load(file)
-        # print("Current notion_setting.json")
-        # print(json.dumps(data, indent=2))
     return data
 
 
 def write_json(data):
     with open(NOTION_SETTINGS_PATH, "w") as file:
-        json.dump(data, file, indent=2)
-        # print("Updated notion_setting.json")
-        # print(json.dumps(data, indent=2))
+        json.dump(data, file, indent=4)
 
 
 if __name__ == "__main__":
