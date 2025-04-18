@@ -101,7 +101,7 @@ def synchronize_notion_and_google_calendar(
                 notion_gcal_cal_id = gcal_name_dict.get(notion_gcal_cal_name)
             except Exception as e:
                 logger.warning(
-                    f"Calendar name not found. Use the default calendar: {user_setting["gcal_default_name"]}\n{e}"
+                    f'Calendar name not found. Use the default calendar: {user_setting["gcal_default_name"]}\n{e}'
                 )
                 notion_gcal_cal_name = user_setting["gcal_default_name"]
                 logger.info("Update Notion Task for default calendar id and calendar name")
