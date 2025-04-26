@@ -29,10 +29,7 @@ def lambda_handler(event, context):
         body = json.loads(event.get("body", "{}"))
         provided_uuid = body.get("uuid", "")
         if provided_uuid and provided_uuid not in ALLOWED_USERLIST:
-            return {
-                "statusCode": 403,
-                "body": json.dumps({"error": "Forbidden: Invalid user UUID"})
-            }
+            return {"statusCode": 403, "body": json.dumps({"error": "Forbidden: Invalid user UUID"})}
 
         # Get the current date, time, and timezone in UTC
         now_utc = datetime.now(timezone.utc)
