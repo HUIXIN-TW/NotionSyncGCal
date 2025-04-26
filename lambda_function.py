@@ -50,13 +50,14 @@ def lambda_handler(event, context):
 
         # Run the sync function without any parameters as default
         sync_result = run_sync_notion_and_google(provided_uuid)
-
+        sync_result_code = sync_result.get("statusCode", 200)
+        sync_result_body = sync_result.get("body", {})
         return {
-            "statusCode": 200,
+            "statusCode": sync_result_code,
             "body": json.dumps(
                 {
-                    "status": sync_result.get("status", "unknown"),
-                    "message": sync_result.get("message", ""),
+                    "status": sync_result_body.get("status", "unknown"),
+                    "message": sync_result_body.get("message", ""),
                     "utc_date": utc_date,
                     "utc_time": utc_time,
                     "utc_time_zone": utc_zone,
