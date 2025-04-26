@@ -288,12 +288,9 @@ def synchronize_notion_and_google_calendar(
     except Exception as e:
         logger.error(f"Error during synchronization: {e}", exc_info=True)
         return {"status": "error", "message": str(e)}
-    return {
-        "statusCode": 200,
-        "body": json.dumps(
-            {"status": "success", "message": f"Synchronization completed successfully at {notion_gcal_sync_time}"}
-        ),
-    }
+
+    message = f"Synchronization completed successfully at {notion_gcal_sync_time}, notion task count: {len(notion_task_list)}"  # noqa: E501
+    return {"statusCode": 200, "body": {"status": "success", "message": message}}
 
 
 def force_update_notion_tasks_by_google_event_and_ignore_time(user_setting, notion_service, google_service):
