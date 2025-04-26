@@ -11,6 +11,10 @@ from notion.notion_config import NotionConfig  # noqa: E402
 from gcal.gcal_token import GoogleToken  # noqa: E402
 from gcal.gcal_service import GoogleService  # noqa: E402
 
+# Provide a rich console for printing inside `main()` even when not run as __main__
+from rich.console import Console
+console = Console()
+
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -127,8 +131,5 @@ def main():
 
 if __name__ == "__main__":
     # python -m src.main
-    from rich.console import Console
-
-    console = Console()
     res = main()
     console.print(res)
