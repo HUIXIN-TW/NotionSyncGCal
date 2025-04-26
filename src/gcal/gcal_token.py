@@ -51,7 +51,7 @@ class GoogleToken:
         if self.has_s3_google:
             try:
                 s3 = boto3.client("s3")
-                response = s3.get_object(Bucket=self.config.get("s3_bucket_name"), Key=self.config.get("s3_key_google"))
+                response = s3.get_object(Bucket=self.config.get("s3_bucket_name"), Key=self.config.get("s3_credentials_path"))
                 credentials = pickle.load(BytesIO(response["Body"].read()))
                 self.logger.info("Loaded credentials from S3.")
                 return credentials
@@ -113,7 +113,7 @@ class GoogleToken:
                 s3 = boto3.client("s3")
                 s3.put_object(
                     Bucket=self.config.get("s3_bucket_name"),
-                    Key=self.config.get("s3_key_google"),
+                    Key=self.config.get("s3_credentials_path"),
                     Body=buffer.getvalue(),
                 )
                 self.logger.info("Saved credentials to S3.")
