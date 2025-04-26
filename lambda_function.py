@@ -11,6 +11,7 @@ from src.main import main as run_sync_notion_and_google  # noqa: E402
 
 # API Key
 EXPECTED_API_KEY = os.environ.get("API_KEY")
+ALLOWED_USERLIST = json.loads(os.environ.get("USERLIST", "[]"))
 
 
 def lambda_handler(event, context):
@@ -18,12 +19,21 @@ def lambda_handler(event, context):
     AWS Lambda Handler to always run the CLI without any parameters and include Perth timezone information.
     """
     try:
-        # API Key check
+        # API Key check: dynamic load from environment
         headers = event.get("headers", {})
         received_api_key = headers.get("x-api-key")
-
         if received_api_key != EXPECTED_API_KEY:
             return {"statusCode": 403, "body": json.dumps({"error": "Forbidden: Invalid API Key"})}
+
+        # User Check: load allowed list at runtime
+        body = json.loads(event.get("body", "{}"))
+        provided_uuid = body.get("uuid", "")
+        if provided_uuid and provided_uuid not in ALLOWED_USERLIST:
+            return {
+                "statusCode": 403,
+                "body": json.dumps({"error": "Forbidden: Invalid user UUID"})
+            }
+
         # Get the current date, time, and timezone in UTC
         now_utc = datetime.now(timezone.utc)
         utc_date = now_utc.strftime("%Y-%m-%d")
@@ -64,6 +74,11 @@ def lambda_handler(event, context):
 
 # Mock event and context for local testing
 if __name__ == "__main__":
-    mock_event = {"headers": {"x-api-key": EXPECTED_API_KEY}}
+    expected_key = os.environ["API_KEY"]
+    allowed_userlist = json.loads(os.environ.get("USERLIST"))[0]
+    mock_event = {
+        "headers": {"x-api-key": expected_key},
+        "body": json.dumps({"uuid": allowed_userlist}),
+    }
     mock_context = {}
     print(lambda_handler(mock_event, mock_context))
