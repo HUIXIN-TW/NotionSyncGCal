@@ -11,11 +11,6 @@ from notion.notion_config import NotionConfig  # noqa: E402
 from gcal.gcal_token import GoogleToken  # noqa: E402
 from gcal.gcal_service import GoogleService  # noqa: E402
 
-# Provide a rich console for printing inside `main()` even when not run as __main__
-from rich.console import Console
-
-console = Console()
-
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -71,7 +66,7 @@ def main():
     # Handling no arguments case
     try:
         if not args.timestamp and not args.google and not args.notion:
-            console.print("[blue]▶ Running sync with [bold]no arguments[/bold] (default range)...")
+            logger.info("▶ Running sync with no arguments (default range)...")
             from sync import sync
 
             res = sync.synchronize_notion_and_google_calendar(
@@ -86,7 +81,7 @@ def main():
 
         # Handling optional -t flag for syncing by timestamp
         if args.timestamp:
-            console.print(f"[blue]▶ Syncing with timestamp range:[/] [bold]{args.timestamp}[/]")
+            logger.info(f"▶ Syncing with timestamp range: {args.timestamp}")
             update_notion_setting.update_date_range(args.timestamp[0], args.timestamp[1])
             from sync import sync
 
@@ -102,7 +97,7 @@ def main():
 
         # Handling optional -g flag for syncing from Google Calendar to Notion
         if args.google:
-            console.print(f"[green]▶ Forcing update:[/] Notion for [bold]{args.google}[/]")
+            logger.info(f"▶ Forcing update: Notion for {args.google}")
             update_notion_setting.update_date_range(args.google[0], args.google[1])
             from sync import sync
 
@@ -115,7 +110,7 @@ def main():
 
         # Handling optional -n flag for syncing from Notion to Google Calendar
         if args.notion:
-            console.print(f"[cyan]▶ Forcing update:[/] Google Calendar for [bold]{args.notion}[/]")
+            logger.info(f"▶ Forcing update: Google Calendar for {args.notion}")
             update_notion_setting.update_date_range(args.notion[0], args.notion[1])
             from sync import sync
 
@@ -133,4 +128,4 @@ def main():
 if __name__ == "__main__":
     # python -m src.main
     res = main()
-    console.print(res)
+    print(res)
