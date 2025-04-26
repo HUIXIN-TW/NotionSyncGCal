@@ -33,4 +33,4 @@ if __name__ == "__main__":
 
     console = Console()
     console.rule("[bold green]🔧 Configuration Source")
-    pprint(generate_config("test-uuid"), max_depth=3)
+    pprint(generate_uuid_config("test-uuid"), max_depth=3)
