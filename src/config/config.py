@@ -5,6 +5,7 @@ from pathlib import Path
 CURRENT_DIR = Path(__file__).resolve().parent
 print(f"Current directory: {CURRENT_DIR}")
 
+
 def generate_uuid_config(user_uuid: str):
     """
     Dynamically generate CONFIG with user's UUID
@@ -22,10 +23,9 @@ def generate_uuid_config(user_uuid: str):
         "local_client_secret_path": Path(
             os.environ.get("LOCAL_CLIENT_SECRET_PATH", CURRENT_DIR / "../../token/client_secret.json")
         ),
-        "local_credentials_path": Path(
-            os.environ.get("LOCAL_CREDENTIALS_PATH", CURRENT_DIR / "../../token/token.pkl")
-        ),
+        "local_credentials_path": Path(os.environ.get("LOCAL_CREDENTIALS_PATH", CURRENT_DIR / "../../token/token.pkl")),
     }
+
 
 if __name__ == "__main__":
     from rich.console import Console

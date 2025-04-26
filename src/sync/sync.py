@@ -290,10 +290,9 @@ def synchronize_notion_and_google_calendar(
         return {"status": "error", "message": str(e)}
     return {
         "statusCode": 200,
-        "body": json.dumps({
-            "status": "success",
-            "message": f"Synchronization completed successfully at {notion_gcal_sync_time}"
-        })
+        "body": json.dumps(
+            {"status": "success", "message": f"Synchronization completed successfully at {notion_gcal_sync_time}"}
+        ),
     }
 
 
