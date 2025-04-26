@@ -51,10 +51,7 @@ def lambda_handler(event, context):
         # Run the sync function without any parameters as default
         sync_result = run_sync_notion_and_google(provided_uuid)
         if not sync_result:
-            sync_result = {
-                "status": "error",
-                "message": "Sync function returned no result."
-            }
+            sync_result = {"status": "error", "message": "Sync function returned no result."}
             sync_result_code = 500
         else:
             sync_result_code = sync_result.get("statusCode", 200)
