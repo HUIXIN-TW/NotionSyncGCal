@@ -25,8 +25,12 @@ def lambda_handler(event, context):
         if received_api_key != EXPECTED_API_KEY:
             return {"statusCode": 403, "body": json.dumps({"error": "Forbidden: Invalid API Key"})}
 
-        # User Check: load allowed list at runtime
-        body = json.loads(event.get("body", "{}"))
+        # User Check: parse body whether dict or JSON string
+        raw_body = event.get("body", {})
+        if isinstance(raw_body, str):
+            body = json.loads(raw_body)
+        else:
+            body = raw_body
         provided_uuid = body.get("uuid", "")
         if provided_uuid and provided_uuid not in ALLOWED_USERLIST:
             return {"statusCode": 403, "body": json.dumps({"error": "Forbidden: Invalid user UUID"})}
@@ -71,11 +75,12 @@ def lambda_handler(event, context):
 
 # Mock event and context for local testing
 if __name__ == "__main__":
-    expected_key = os.environ["API_KEY"]
-    allowed_userlist = json.loads(os.environ.get("USERLIST"))[0]
+    expected_key = os.environ.get("API_KEY", "test-api-key")
+    allowed_userlist = json.loads(os.environ.get("USERLIST", "[]"))[0]
+    # Mock event with body as dict (no JSON string)
     mock_event = {
         "headers": {"x-api-key": expected_key},
-        "body": json.dumps({"uuid": allowed_userlist}),
+        "body": {"uuid": allowed_userlist},
     }
     mock_context = {}
     print(lambda_handler(mock_event, mock_context))
