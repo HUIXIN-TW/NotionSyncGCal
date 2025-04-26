@@ -13,6 +13,7 @@ from gcal.gcal_service import GoogleService  # noqa: E402
 
 # Provide a rich console for printing inside `main()` even when not run as __main__
 from rich.console import Console
+
 console = Console()
 
 # Configure logging
