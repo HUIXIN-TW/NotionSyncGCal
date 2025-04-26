@@ -40,7 +40,13 @@ check-s3-bucket:
 
 # Open AWS Profile (shortcut)
 open-aws-profile:
-	bat ~/.aws/config
+	@echo "AWS Profile: $(AWS_PROFILE)"
+	@aws configure list --profile $(AWS_PROFILE)
+	@echo "\nCredentials File:"
+	@cat ~/.aws/credentials | grep -A 3 "\[${AWS_PROFILE}\]"
+	@echo "\nConfig File:"
+	@cat ~/.aws/config | grep -A 3 "\[profile ${AWS_PROFILE}\]"
+
 
 # Edit AWS Profile (shortcut)
 edit-aws-profile:
@@ -69,11 +75,12 @@ release-zip-v2.0.0:
 # Help: Display available commands
 help:
 	@echo "Available commands:"
-	@echo "  lint                Run Prettier and Black"
-	@echo "  upload-app-token-s3 Upload client_secret.json to S3"
-	@echo "  upload-user-token-s3 Upload token.pkl and notion_setting.json to S3"
-	@echo "  open-aws-profile    Open AWS profile configuration"
-	@echo "  edit-aws-profile    Edit AWS profile configuration"
-	@echo "  upload-lambda-layer  Zip Lambda Layer and upload to Lambda"
-	@echo "  release-zip-v2.0.0   Create a zip file for release v2.0.0"
-	@echo "  help                Display this help message"
+	@echo "  make check-env                # Check if environment variables are set"
+	@echo "  make lint                     # Run Prettier and Black"
+	@echo "  make upload-app-token-s3      # Upload client_secret.json to S3"
+	@echo "  make upload-user-token-s3     # Upload token.pkl and notion_setting.json to S3"
+	@echo "  make check-s3-bucket         # Check S3 bucket and token paths"
+	@echo "  make open-aws-profile         # Open AWS Profile (shortcut)"
+	@echo "  make edit-aws-profile         # Edit AWS Profile (shortcut)"
+	@echo "  make upload-lambda-layer      # Zip Lambda Layer and Upload to Lambda"
+	@echo "  make release-zip-v2.0.0      # Create release zip for v2.0.0"
