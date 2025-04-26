@@ -295,7 +295,7 @@ if __name__ == "__main__":
 
     # Add the src directory to the Python path
     sys.path.append(str(Path(__file__).resolve().parent.parent))
-    from config.config import CONFIG  # noqa: E402
+    from config.config import generate_uuid_config  # noqa: E402
 
     console = Console()
     Path("logs").mkdir(parents=True, exist_ok=True)
@@ -303,7 +303,8 @@ if __name__ == "__main__":
     if not log_path.exists():
         log_path.touch()
 
-    nc = NotionConfig(CONFIG, logger)
+    config = generate_uuid_config("huixinyang")
+    nc = NotionConfig(config, logger)
     token = nc.token
     user_setting = nc.user_setting
     logger.info(f"Notion User Setting: {user_setting}")

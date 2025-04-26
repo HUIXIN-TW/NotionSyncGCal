@@ -1,4 +1,5 @@
 import sys
+import json
 import logging
 from pathlib import Path
 from datetime import datetime, timezone
@@ -287,7 +288,13 @@ def synchronize_notion_and_google_calendar(
     except Exception as e:
         logger.error(f"Error during synchronization: {e}", exc_info=True)
         return {"status": "error", "message": str(e)}
-    return {"status": "success", "message": "Synchronization completed successfully"}
+    return {
+        "statusCode": 200,
+        "body": json.dumps({
+            "status": "success",
+            "message": f"Synchronization completed successfully at {notion_gcal_sync_time}"
+        })
+    }
 
 
 def force_update_notion_tasks_by_google_event_and_ignore_time(user_setting, notion_service, google_service):
@@ -325,17 +332,18 @@ if __name__ == "__main__":
     from rich.pretty import pprint
 
     sys.path.append(str(Path(__file__).resolve().parent.parent))
-    from config.config import CONFIG  # noqa: E402
+    from config.config import generate_uuid_config  # noqa: E402
     from notion.notion_service import NotionService  # noqa: E402
     from notion.notion_config import NotionConfig  # noqa: E402
     from gcal.gcal_token import GoogleToken  # noqa: E402
     from gcal.gcal_service import GoogleService  # noqa: E402
 
-    notion_config = NotionConfig(CONFIG, logger)
+    config = generate_uuid_config("huixinyang")
+    notion_config = NotionConfig(config, logger)
     notion_token = notion_config.token
     notion_user_setting = notion_config.user_setting
     notion_service = NotionService(notion_token, notion_user_setting, logger)
-    google_token = GoogleToken(CONFIG, logger)
+    google_token = GoogleToken(config, logger)
     google_service = GoogleService(notion_user_setting, google_token, logger)
     pprint(notion_config.user_setting)
     synchronize_notion_and_google_calendar(

@@ -5,7 +5,7 @@ from pathlib import Path
 
 sys.path.append(str(Path(__file__).resolve().parent))
 from user_setting import update_notion_setting  # noqa: E402
-from config.config import CONFIG  # noqa: E402
+from config.config import generate_uuid_config  # noqa: E402
 from notion.notion_service import NotionService  # noqa: E402
 from notion.notion_config import NotionConfig  # noqa: E402
 from gcal.gcal_token import GoogleToken  # noqa: E402
@@ -20,13 +20,14 @@ CURRENT_DIR = Path(__file__).parent.resolve()
 logger.info(f"Current directory: {CURRENT_DIR}")
 
 
-def main():
+def main(uuid=None):
     try:
-        notion_config = NotionConfig(CONFIG, logger)
+        config = generate_uuid_config(uuid)
+        notion_config = NotionConfig(config, logger)
         notion_token = notion_config.token
         notion_user_setting = notion_config.user_setting
         notion_service = NotionService(notion_token, notion_user_setting, logger)
-        google_token = GoogleToken(CONFIG, logger)
+        google_token = GoogleToken(config, logger)
         google_service = GoogleService(notion_user_setting, google_token, logger)
     except Exception as e:
         logger.error(f"Error initializing services: {e}")
@@ -127,5 +128,5 @@ def main():
 
 if __name__ == "__main__":
     # python -m src.main
-    res = main()
+    res = main("huixinyang")
     print(res)

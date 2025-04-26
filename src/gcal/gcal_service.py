@@ -227,12 +227,13 @@ if __name__ == "__main__":
 
     # Add the src directory to the Python path
     sys.path.append(str(Path(__file__).resolve().parent.parent))
-    from config.config import CONFIG  # noqa: E402
+    from config.config import generate_uuid_config  # noqa: E402
     from notion.notion_config import NotionConfig  # noqa: E402
     from gcal.gcal_token import GoogleToken  # noqa: E402
 
-    nt = NotionConfig(CONFIG, logger)
-    gt = GoogleToken(CONFIG, logger)
+    config = generate_uuid_config("huixinyang")
+    nt = NotionConfig(config, logger)
+    gt = GoogleToken(config, logger)
     user_setting = nt.user_setting
     gs = GoogleService(user_setting, gt, logger)
     # Open the file in write mode and dump JSON data

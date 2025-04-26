@@ -145,9 +145,10 @@ if __name__ == "__main__":
 
     # Add the src directory to the Python path
     sys.path.append(str(Path(__file__).resolve().parent.parent))
-    from config.config import CONFIG  # noqa: E402
+    from config.config import generate_uuid_config  # noqa: E402
 
-    gt = GoogleToken(CONFIG, logger)
+    config = generate_uuid_config("huixinyang")
+    gt = GoogleToken(config, logger)
     service = build("calendar", "v3", credentials=gt.token)
     if service:
         logger.info("Google Calendar service is ready to use.")

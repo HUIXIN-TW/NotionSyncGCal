@@ -49,7 +49,7 @@ def lambda_handler(event, context):
         perth_zone = now_perth.tzname()
 
         # Run the sync function without any parameters as default
-        sync_result = run_sync_notion_and_google()
+        sync_result = run_sync_notion_and_google(provided_uuid)
 
         return {
             "statusCode": 200,

@@ -115,9 +115,10 @@ if __name__ == "__main__":
     logger = logging.getLogger(__name__)
     # Add the src directory to the Python path
     sys.path.append(str(Path(__file__).resolve().parent.parent))
-    from config.config import CONFIG  # noqa: E402
+    from config.config import generate_uuid_config  # noqa: E402
 
-    notion = NotionConfig(CONFIG, logger)
+    config = generate_uuid_config("huixinyang")
+    notion = NotionConfig(config, logger)
 
     from rich.console import Console
     from rich.pretty import pprint
