@@ -50,15 +50,15 @@ class GoogleToken:
             raise SettingError("Configuration is required to load settings.")
         if self.has_s3_google:
             try:
+                # fmt: off
+                self.logger.info(f"Loaded credentials from S3: {self.config.get('s3_bucket_name')}/{self.config.get('s3_credentials_path')}")  # noqa: E501
+                # fmt: on
                 s3 = boto3.client("s3")
                 response = s3.get_object(
                     Bucket=self.config.get("s3_bucket_name"), Key=self.config.get("s3_credentials_path")
                 )
                 credentials_data = json.loads(response.get("Body").read().decode("utf-8"))
                 credentials = Credentials(**credentials_data)
-                # fmt: off
-                self.logger.info(f"Loaded credentials from S3: {self.config.get('s3_bucket_name')}/{self.config.get('s3_credentials_path')}")  # noqa: E501
-                # fmt: on
                 return credentials
             except Exception as e:
                 self.logger.error(f"Failed to load credentials from S3: {e}")
@@ -88,7 +88,7 @@ class GoogleToken:
                 self.logger.error("Running on Lambda/S3 — cannot re-auth. Exiting.")
                 self.logger.error("Please trigger a manual re-authentication from a local machine.")
                 # On Lambda/S3, raise error when refresh token is invalid
-                raise RuntimeError("Refresh token expired and cannot prompt user for auth")
+                sys.exit()
             else:
                 credentials = self.perform_oauth_flow()
         return credentials
