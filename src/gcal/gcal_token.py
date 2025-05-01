@@ -56,9 +56,9 @@ class GoogleToken:
                 )
                 credentials_data = json.loads(response.get("Body").read().decode("utf-8"))
                 credentials = Credentials(**credentials_data)
-                self.logger.info(
-                    f"Loaded credentials from S3: {self.config.get('s3_bucket_name')}/{self.config.get('s3_credentials_path')}"
-                )
+                # fmt: off
+                self.logger.info(f"Loaded credentials from S3: {self.config.get('s3_bucket_name')}/{self.config.get('s3_credentials_path')}")  # noqa: E501
+                # fmt: on
                 return credentials
             except Exception as e:
                 self.logger.error(f"Failed to load credentials from S3: {e}")
@@ -113,9 +113,6 @@ class GoogleToken:
         payload = {
             "token": credentials.token,
             "refresh_token": credentials.refresh_token,
-            "token_uri": credentials.token_uri,
-            "client_id": credentials.client_id,
-            "client_secret": credentials.client_secret,
             "scopes": credentials.scopes,
         }
         json_buffer = json.dumps(payload).encode()
