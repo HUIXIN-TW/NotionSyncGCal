@@ -23,7 +23,9 @@ def generate_uuid_config(user_uuid: str):
         "local_client_secret_path": Path(
             os.environ.get("LOCAL_CLIENT_SECRET_PATH", CURRENT_DIR / "../../token/client_secret.json")
         ),
-        "local_credentials_path": Path(os.environ.get("LOCAL_CREDENTIALS_PATH", CURRENT_DIR / "../../token/token.pkl")),
+        "local_credentials_path": Path(
+            os.environ.get("LOCAL_CREDENTIALS_PATH", CURRENT_DIR / "../../token/token.json")
+        ),
     }
 
 

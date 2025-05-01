@@ -1,12 +1,12 @@
 import logging
 import os
-import pickle
+import json
 import sys
 from datetime import datetime, timezone
 import boto3
-from io import BytesIO
 from google.auth.transport.requests import Request
 from google_auth_oauthlib.flow import InstalledAppFlow
+from google.oauth2.credentials import Credentials
 from pathlib import Path
 
 
@@ -54,8 +54,9 @@ class GoogleToken:
                 response = s3.get_object(
                     Bucket=self.config.get("s3_bucket_name"), Key=self.config.get("s3_credentials_path")
                 )
-                credentials = pickle.load(BytesIO(response["Body"].read()))
-                self.logger.info("Loaded credentials from S3.")
+                credentials_data = json.loads(response.get('Body').read().decode('utf-8'))
+                credentials = Credentials(**credentials_data)
+                self.logger.info(f"Loaded credentials from S3: {self.config.get('s3_bucket_name')}/{self.config.get('s3_credentials_path')}")
                 return credentials
             except Exception as e:
                 self.logger.error(f"Failed to load credentials from S3: {e}")
@@ -63,9 +64,10 @@ class GoogleToken:
         local_credentials_path = self.config.get("local_credentials_path")
         if local_credentials_path.exists():
             try:
-                with local_credentials_path.open("rb") as f:
-                    credentials = pickle.load(f)
-                self.logger.info("Loaded credentials from local file.")
+                with local_credentials_path.open("r") as f:
+                    credentials_data = json.load(f)
+                credentials = Credentials(**credentials_data)
+                self.logger.info(f"Loaded credentials from local file: {local_credentials_path}")
                 return credentials
             except Exception as e:
                 self.logger.error(f"Failed to load credentials from local file: {e}")
@@ -83,9 +85,8 @@ class GoogleToken:
             if self.has_s3_google:
                 self.logger.error("Running on Lambda/S3 — cannot re-auth. Exiting.")
                 self.logger.error("Please trigger a manual re-authentication from a local machine.")
-                # TODO: Handle re-auth flow for Lambda/S3 by sending an email.
-                # raise RuntimeError("Refresh token expired and cannot prompt user for auth")
-                sys.exit(1)
+                # On Lambda/S3, raise error when refresh token is invalid
+                raise RuntimeError("Refresh token expired and cannot prompt user for auth")
             else:
                 credentials = self.perform_oauth_flow()
         return credentials
@@ -106,9 +107,16 @@ class GoogleToken:
         return credentials
 
     def save_credentials(self, credentials):
-        buffer = BytesIO()
-        pickle.dump(credentials, buffer)
-        buffer.seek(0)
+        # serialize credentials as JSON
+        payload = {
+            "token": credentials.token,
+            "refresh_token": credentials.refresh_token,
+            "token_uri": credentials.token_uri,
+            "client_id": credentials.client_id,
+            "client_secret": credentials.client_secret,
+            "scopes": credentials.scopes,
+        }
+        json_buffer = json.dumps(payload).encode()
 
         if self.has_s3_google:
             try:
@@ -116,7 +124,7 @@ class GoogleToken:
                 s3.put_object(
                     Bucket=self.config.get("s3_bucket_name"),
                     Key=self.config.get("s3_credentials_path"),
-                    Body=buffer.getvalue(),
+                    Body=json_buffer,
                 )
                 self.logger.info("Saved credentials to S3.")
                 return
@@ -128,9 +136,9 @@ class GoogleToken:
             if local_credentials_path.exists():
                 os.remove(local_credentials_path)
                 self.logger.info("Removed existing credentials file.")
-            with local_credentials_path.open("wb") as token:
-                pickle.dump(credentials, token)
-                self.logger.info("Saved credentials to local file.")
+            with local_credentials_path.open("w") as token:
+                json.dump(payload, token)
+            self.logger.info("Saved credentials to local file.")
         except Exception as e:
             self.logger.error(f"Error saving credentials to local file: {e}")
 

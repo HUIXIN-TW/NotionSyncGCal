@@ -4,6 +4,7 @@ LAMBDA_LAYER_NAME := NotionSyncDeps
 
 # Check if environment variables are set
 check-env:
+	@echo "USERNAME=$(USERNAME)"
 	@echo "S3_BUCKET_NAME=$(S3_BUCKET_NAME)"
 	@echo "S3_NOTION_TOKEN_FOLDER=$(S3_NOTION_TOKEN_FOLDER)"
 	@echo "S3_GOOGLE_TOKEN_FOLDER=$(S3_GOOGLE_TOKEN_FOLDER)"
@@ -19,11 +20,11 @@ upload-app-token-s3:
 	aws s3 cp token/client_secret.json s3://$(S3_BUCKET_NAME)/
 	echo "client_secret.json uploaded to S3 bucket $(S3_BUCKET_NAME)"
 
-# Upload token files to S3
+# Upload token files to S3, export USERNAME
 upload-user-token-s3:
 	aws s3 cp token/notion_setting.json s3://$(S3_BUCKET_NAME)/$(S3_NOTION_TOKEN_FOLDER)/
-	aws s3 cp token/token.pkl s3://$(S3_BUCKET_NAME)/$(S3_GOOGLE_TOKEN_FOLDER)/
-	echo "token.pkl and notion_setting.json uploaded to S3 bucket $(S3_BUCKET_NAME)/$(S3_NOTION_TOKEN_FOLDER)"
+	aws s3 cp token/token.json s3://$(S3_BUCKET_NAME)/$(S3_GOOGLE_TOKEN_FOLDER)/
+	echo "token.json and notion_setting.json uploaded to S3 bucket $(S3_BUCKET_NAME)/$(S3_NOTION_TOKEN_FOLDER)"
 
 
 # Check S3 bucket and token paths
@@ -78,7 +79,7 @@ help:
 	@echo "  make check-env                # Check if environment variables are set"
 	@echo "  make lint                     # Run Prettier and Black"
 	@echo "  make upload-app-token-s3      # Upload client_secret.json to S3"
-	@echo "  make upload-user-token-s3     # Upload token.pkl and notion_setting.json to S3"
+	@echo "  make upload-user-token-s3     # Upload token.json and notion_setting.json to S3"
 	@echo "  make check-s3-bucket         # Check S3 bucket and token paths"
 	@echo "  make open-aws-profile         # Open AWS Profile (shortcut)"
 	@echo "  make edit-aws-profile         # Edit AWS Profile (shortcut)"

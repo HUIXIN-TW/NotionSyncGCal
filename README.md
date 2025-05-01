@@ -103,7 +103,7 @@ python3 main.py -n <look_back_days> <look_ahead_days>
 
 ### How It Works
 
-- Stores `token.pkl`, `client_secret.json`, and `notion_setting.json` in S3.
+- Stores `token.json`, `client_secret.json`, and `notion_setting.json` in S3.
 - Lambda reads these files at runtime using environment variables.
 - Automatically refreshes expired tokens and saves them back to S3.
 
@@ -114,7 +114,7 @@ Set the following variables in your Lambda configuration or `.env` file:
 ```bash
 export S3_BUCKET_NAME='your-bucket-name'
 export S3_CLIENT_SECRET_PATH='<foldername>/client_secret.json'
-export S3_CREDENTIALS_PATH='<foldername>/token.pkl'
+export S3_CREDENTIALS_PATH='<foldername>/token.json'
 export S3_NOTION_SETTINGS_PATH='<foldername>/notion_setting.json'
 ```
 
