@@ -61,7 +61,9 @@ class GoogleToken:
                 credentials = Credentials(**credentials_data)
                 return credentials
             except Exception as e:
-                self.logger.error(f"Failed to load credentials from S3: {e}")
+                # fmt: off
+                self.logger.error(f"Failed to load credentials from S3: {e}, {self.config.get('s3_bucket_name')}/{self.config.get('s3_credentials_path')}")  # noqa: E501
+                # fmt: on
 
         local_credentials_path = self.config.get("local_credentials_path")
         if local_credentials_path.exists():
