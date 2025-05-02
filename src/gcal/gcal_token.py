@@ -143,9 +143,9 @@ class GoogleToken:
                     Key=self.config.get("s3_credentials_path"),
                     Body=json_buffer,
                 )
-                self.logger.info(
-                    f"Saved credentials to S3: {self.config.get('s3_bucket_name')}/{self.config.get('s3_credentials_path')}"
-                )
+                # fmt: off
+                self.logger.info(f"Saved credentials to S3: {self.config.get('s3_bucket_name')}/{self.config.get('s3_credentials_path')}")  # noqa: E501
+                # fmt: on
             elif self.local_credentials_path.exists():
                 self.logger.debug(f"local_credentials_path type: {type(self.local_credentials_path)}")
                 self.logger.info(f"Removed existing credentials file: {self.local_credentials_path}")
