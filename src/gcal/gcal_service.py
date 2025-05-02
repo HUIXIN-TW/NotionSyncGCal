@@ -50,7 +50,7 @@ class GoogleService:
             return events
         except Exception as e:
             self.logger.error(f"Error retrieving Google Calendar events: {e}", exc_info=True)
-            return []
+            raise RuntimeError(f"Error retrieving Google Calendar events: {e}")
 
     def update_gcal_event(self, notion_task, existing_gcal_cal_id, existing_gcal_event_id):
         event = self.make_event_body(notion_task)
