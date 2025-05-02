@@ -96,12 +96,15 @@ def synchronize_notion_and_google_calendar(
                 sys.exit(1)
             if task_count == 0:
                 logger.info("No Notion tasks found.")
-                return {"statusCode": 200, "body": {"status": "success", "message": "No Notion tasks found."}}
+                return {"statusCode": 200, "body": {"status": "sync success", "message": "No Notion tasks found."}}
             if event_count == 0:
                 logger.info("No Google Calendar events found.")
-                return {"statusCode": 200, "body": {"status": "success", "message": "No Google Calendar events found."}}
+                return {
+                    "statusCode": 200,
+                    "body": {"status": "sync success", "message": "No Google Calendar events found."},
+                }
         except Exception as e:
-            return {"statusCode": 500, "body": {"status": "error", "message": str(e)}}
+            return {"statusCode": 500, "body": {"status": "sync error", "message": str(e)}}
 
         # Check if Notion Task is in Google Calendar
         for notion_task in notion_task_list:
@@ -302,10 +305,10 @@ def synchronize_notion_and_google_calendar(
                 notion_service.create_notion_task(gcal_event, gcal_cal_name)
     except Exception as e:
         logger.error(f"Error during synchronization: {e}", exc_info=True)
-        return {"statusCode": 500, "body": {"status": "error", "message": str(e)}}
+        return {"statusCode": 500, "body": {"status": "sync error", "message": str(e)}}
 
     message = f"Synchronization completed successfully at {trigger_sync_time}, notion task count: {len(notion_task_list)}"  # noqa: E501
-    return {"statusCode": 200, "body": {"status": "success", "message": message}}
+    return {"statusCode": 200, "body": {"status": "sync success", "message": message}}
 
 
 def force_update_notion_tasks_by_google_event_and_ignore_time(user_setting, notion_service, google_service):

@@ -2,6 +2,7 @@ import os
 import sys
 import json
 from datetime import datetime, timezone
+from google.auth.exceptions import RefreshError
 import pytz
 
 # Add the 'src' folder to sys.path so that Python can find modules inside it
@@ -51,15 +52,18 @@ def lambda_handler(event, context):
         # Run the sync function without any parameters as default
         sync_result = run_sync_notion_and_google(provided_uuid)
         if not sync_result:
-            return {"statusCode": 500, "body": {"status": "error", "message": "Sync function returned no result."}}
+            return {
+                "statusCode": 500,
+                "body": {"status": "lambda error", "message": "Sync function returned no result."},
+            }
         sync_result_code = (sync_result.get("statusCode", 500),)
         sync_result_body = sync_result.get("body", {})
         return {
             "statusCode": sync_result_code,
             "body": json.dumps(
                 {
-                    "status": sync_result_body.get("status", "unknown"),
-                    "message": sync_result_body.get("message", "unknown error"),
+                    "status": sync_result_body.get("status", "lambda unknown error"),
+                    "message": sync_result_body.get("message", "unknown"),
                     "utc_date": utc_date,
                     "utc_time": utc_time,
                     "utc_time_zone": utc_zone,
@@ -69,10 +73,12 @@ def lambda_handler(event, context):
                 }
             ),
         }
+    except RefreshError as e:
+        return {"statusCode": 500, "body": {"status": f"Google token refresh failed: {str(e)}"}}
     except Exception as e:
         return {
             "statusCode": 500,
-            "body": json.dumps({"status": "error", "message": str(e)}),
+            "body": json.dumps({"status": "lambda error", "message": str(e)}),
         }
 
 
