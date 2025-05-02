@@ -12,16 +12,17 @@ from notion.notion_config import NotionConfig  # noqa: E402
 from gcal.gcal_token import GoogleToken  # noqa: E402
 from gcal.gcal_service import GoogleService  # noqa: E402
 
-# Configure logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
-
-# Get the absolute path to the current directory
-CURRENT_DIR = Path(__file__).parent.resolve()
-logger.info(f"Current directory: {CURRENT_DIR}")
-
 
 def main(uuid=None):
+    # Configure logging
+    logging.basicConfig(level=logging.INFO)
+    logger = logging.getLogger(__name__)
+
+    # Get the absolute path to the current directory
+    CURRENT_DIR = Path(__file__).parent.resolve()
+    logger.info(f"Current directory: {CURRENT_DIR}")
+
+    # Check if UUID is provided
     if uuid:
         logger.info(f"You are using UUID: {uuid}, which is located in S3.")
     try:
