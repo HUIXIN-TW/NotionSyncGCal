@@ -33,7 +33,10 @@ def main(uuid=None):
         google_service = GoogleService(notion_user_setting, google_token, logger)
     except Exception as e:
         logger.error(f"Error initializing services: {e}")
-        return {"statusCode": 500, "body": {"status": "error", "message": str(e)}}  # safely converts exception to string
+        return {
+            "statusCode": 500,
+            "body": {"status": "error", "message": str(e)},
+        }  # safely converts exception to string
 
     try:
         parser = argparse.ArgumentParser(description="Welcome to Notion-Google Calendar Sync CLI!")
@@ -64,7 +67,10 @@ def main(uuid=None):
         args = parser.parse_args()
     except Exception as e:
         logger.error(f"Error parsing arguments: {e}")
-        return {"statusCode": 500, "body": {"status": "error", "message": str(e)}}  # safely converts exception to string
+        return {
+            "statusCode": 500,
+            "body": {"status": "error", "message": str(e)},
+        }  # safely converts exception to string
 
     # Handling no arguments case
     try:
@@ -125,7 +131,10 @@ def main(uuid=None):
             return res
     except Exception as e:
         logger.error(f"Error during synchronization: {e}")
-        return {"statusCode": 500, "body": {"status": "error", "message": str(e)}}  # safely converts exception to string
+        return {
+            "statusCode": 500,
+            "body": {"status": "error", "message": str(e)},
+        }  # safely converts exception to string
 
 
 if __name__ == "__main__":
