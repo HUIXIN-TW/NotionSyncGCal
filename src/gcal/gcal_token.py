@@ -7,6 +7,7 @@ import boto3
 from google.auth.transport.requests import Request
 from google_auth_oauthlib.flow import InstalledAppFlow
 from google.oauth2.credentials import Credentials
+from google.auth.exceptions import RefreshError
 from pathlib import Path
 
 
@@ -100,7 +101,7 @@ class GoogleToken:
                 self.logger.error("Running on Lambda/S3 — cannot re-auth. Exiting.")
                 self.logger.error("Please trigger a manual re-authentication from a local machine.")
                 # On Lambda/S3, raise error when refresh token is invalid
-                sys.exit()
+                raise RefreshError("Failed to refresh Google credentials on Lambda/S3")
             else:
                 credentials = self.perform_oauth_flow()
         return credentials
@@ -116,14 +117,14 @@ class GoogleToken:
             self.logger.info("Successfully fetched new tokens.")
         except Exception as e:
             self.logger.error(f"Error during OAuth flow: {e}")
-            sys.exit()
+            raise
         self.save_credentials(credentials)
         return credentials
 
     def save_credentials(self, credentials):
         # serialize credentials as JSON, all attributes of credentials
         payload = {
-            "token": credentials.token,
+            "access_token": credentials.token,
             "refresh_token": credentials.refresh_token,
             "token_uri": credentials.token_uri,
             "client_id": credentials.client_id,

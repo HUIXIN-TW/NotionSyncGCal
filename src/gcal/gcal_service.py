@@ -26,7 +26,7 @@ class GoogleService:
             self.logger.info("Google Calendar service initialized successfully.")
         except Exception as e:
             self.logger.error(f"Error initializing Google service: {e}")
-            sys.exit()
+            raise
 
     def get_gcal_event(self):
         # Calculate the start and end dates for the event range
