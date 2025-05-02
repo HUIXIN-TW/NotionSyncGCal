@@ -124,7 +124,7 @@ class GoogleToken:
         # serialize credentials as JSON, all attributes of credentials
         # refresh_token, token_uri, client_id, and client_secret
         payload = {
-            "access_token": credentials.token,
+            "token": credentials.token,
             "refresh_token": credentials.refresh_token,
             "token_uri": credentials.token_uri,
             "client_id": credentials.client_id,
@@ -178,7 +178,7 @@ class GoogleToken:
             raise SettingError("Credentials have no expiry date.")
         if not credentials.refresh_token:
             raise SettingError("No refresh token found.")
-        if not credentials.access_token:
+        if not credentials.token:
             raise SettingError("No access token found.")
         if not credentials.client_id or not credentials.client_secret:
             raise SettingError("Client ID or Client Secret is missing.")
