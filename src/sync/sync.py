@@ -3,6 +3,7 @@ import logging
 from pathlib import Path
 from datetime import datetime, timezone
 from dateutil.parser import isoparse
+import pytz
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -19,7 +20,7 @@ def compare_timezones(notion_time_str, google_time_str):
 
     notion_timezone = notion_time.tzinfo
     google_timezone = google_time.tzinfo
-
+    logger.info(f"Notion Timezone: {notion_timezone}, Google Calendar Timezone: {google_timezone}")
     if notion_timezone != google_timezone:
         logger.warning(
             f"Timezones are different: Notion {notion_timezone} and Google Calendar {google_timezone}\nStopping the program."  # noqa: E501
@@ -38,6 +39,14 @@ def get_current_time_in_iso_format():
     formatted_current_time = formatted_current_time[:-3] + "Z"
     return formatted_current_time
 
+
+def get_perth_time():
+    """
+    Returns current time in UTC
+    """
+    perth_tz = pytz.timezone("Australia/Perth")
+    current_time = datetime.now(perth_tz)
+    return current_time.strftime("Date: %Y-%m-%d Time: %H:%M:%S")
 
 def remove_gcal_event_from_list(gcal_event_list, gcal_event, gcal_event_summary):
     gcal_event_list.remove(gcal_event)
@@ -69,6 +78,7 @@ def synchronize_notion_and_google_calendar(
 
         # freeze the datetime of the gcal event and notion task status
         current_gcal_sync_time = get_current_time_in_iso_format()
+        trigger_sync_time = get_perth_time()
 
         # Get the Google Calendar and Notion events
         try:
@@ -288,7 +298,7 @@ def synchronize_notion_and_google_calendar(
         logger.error(f"Error during synchronization: {e}", exc_info=True)
         return {"status": "error", "message": str(e)}
 
-    message = f"Synchronization completed successfully at {notion_gcal_sync_time}, notion task count: {len(notion_task_list)}"  # noqa: E501
+    message = f"Synchronization completed successfully at {trigger_sync_time}, notion task count: {len(notion_task_list)}"  # noqa: E501
     return {"statusCode": 200, "body": {"status": "success", "message": message}}
 
 

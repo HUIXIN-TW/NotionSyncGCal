@@ -21,6 +21,8 @@ logger.info(f"Current directory: {CURRENT_DIR}")
 
 
 def main(uuid=None):
+    if uuid:
+        logger.info(f"You are using UUID: {uuid}, which is located in S3.")
     try:
         config = generate_uuid_config(uuid)
         notion_config = NotionConfig(config, logger)
@@ -128,5 +130,6 @@ def main(uuid=None):
 
 if __name__ == "__main__":
     # python -m src.main
-    res = main("huixinyang")
+    UUID = ""  # Replace with your UUID or leave empty for local
+    res = main(UUID)
     print(res)

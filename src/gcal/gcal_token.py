@@ -21,24 +21,23 @@ class GoogleToken:
     def __init__(self, config, logger):
         self.credentials = None
         self.config = config
-        self.has_s3_google = config.get("has_s3_google")
-        self.local_client_secret_path = config.get("local_client_secret_path")
+        self.has_s3_google = config.get("has_s3_google", "")
+        self.local_client_secret_path = config.get("local_client_secret_path", "")
+        self.local_credentials_path = config.get("local_credentials_path", "")
         self.logger = logger
         self.activate_token()
 
     def activate_token(self):
         credentials = self.load_credentials()
-        if credentials:
-            if credentials.expired and credentials.refresh_token:
-                self.logger.info("Token has expired. Refreshing tokens...")
-                credentials = self.refresh_tokens(credentials)
-            elif not credentials.valid:
-                self.logger.error("Token is invalid and cannot be refreshed.")
-                sys.exit()
-        else:
-            self.logger.error("No credentials available. Exiting.")
-            sys.exit()
-
+        if not credentials and not self.has_s3_google:
+            credentials = self.perform_oauth_flow()
+        elif not credentials and self.has_s3_google:
+            self.logger.error("No credentials found on S3. Cannot proceed `perform_oauth_flow`. Please use Web UI to re-authenticate.")
+            sys.exit(1)
+        self.logger.info(f"Credentials Expired: {credentials.expired}, Has Refresh Token: {bool(credentials.refresh_token)}")
+        if credentials.expired and credentials.refresh_token:
+            self.logger.info("Credentials has expired. Refreshing tokens...")
+            credentials = self.refresh_tokens(credentials)
         self.credentials = credentials
 
     @property
@@ -58,25 +57,30 @@ class GoogleToken:
                     Bucket=self.config.get("s3_bucket_name"), Key=self.config.get("s3_credentials_path")
                 )
                 credentials_data = json.loads(response.get("Body").read().decode("utf-8"))
+                credentials_data = self._convert_expiry(credentials_data)
                 credentials = Credentials(**credentials_data)
                 return credentials
             except Exception as e:
                 # fmt: off
                 self.logger.error(f"Failed to load credentials from S3: {e}, {self.config.get('s3_bucket_name')}/{self.config.get('s3_credentials_path')}")  # noqa: E501
                 # fmt: on
+                return None
 
-        local_credentials_path = self.config.get("local_credentials_path")
-        if local_credentials_path.exists():
+        if self.local_credentials_path and self.local_credentials_path.exists():
             try:
-                with local_credentials_path.open("r") as f:
+                self.logger.debug(f"local_credentials_path type: {type(self.local_credentials_path)}")
+                self.logger.info(f"Loaded credentials from local file: {self.local_credentials_path}")
+                with self.local_credentials_path.open("r") as f:
                     credentials_data = json.load(f)
+                credentials_data = self._convert_expiry(credentials_data)
                 credentials = Credentials(**credentials_data)
-                self.logger.info(f"Loaded credentials from local file: {local_credentials_path}")
                 return credentials
-            except Exception as e:
-                self.logger.error(f"Failed to load credentials from local file: {e}")
+            except Exception:
+                self.logger.exception(f"Failed to load credentials from local file: {e}")
+                return None
 
-        self.logger.warning("No valid credentials found.")
+        self.logger.debug(f"local_credentials_path type: {type(self.local_credentials_path)}")
+        self.logger.warning(f"No valid credentials found in either {self.local_credentials_path} or S3: {self.has_s3_google}")
         return None
 
     def refresh_tokens(self, credentials):
@@ -111,38 +115,47 @@ class GoogleToken:
         return credentials
 
     def save_credentials(self, credentials):
-        # serialize credentials as JSON
+        # serialize credentials as JSON, all attributes of credentials
         payload = {
             "token": credentials.token,
             "refresh_token": credentials.refresh_token,
+            "token_uri": credentials.token_uri,
+            "client_id": credentials.client_id,
+            "client_secret": credentials.client_secret,
             "scopes": credentials.scopes,
+            "expiry": credentials.expiry.isoformat() if credentials.expiry else None
         }
+        # convert payload to JSON
         json_buffer = json.dumps(payload).encode()
 
-        if self.has_s3_google:
-            try:
+        try:
+            if self.has_s3_google:
+                self.logger.info("Saved credentials to S3.")
                 s3 = boto3.client("s3")
                 s3.put_object(
                     Bucket=self.config.get("s3_bucket_name"),
                     Key=self.config.get("s3_credentials_path"),
                     Body=json_buffer,
                 )
-                self.logger.info("Saved credentials to S3.")
                 return
-            except Exception as e:
-                self.logger.error(f"Failed to save credentials to S3: {e}")
-
-        try:
-            local_credentials_path = self.config.get("local_credentials_path")
-            if local_credentials_path.exists():
-                os.remove(local_credentials_path)
-                self.logger.info("Removed existing credentials file.")
-            with local_credentials_path.open("w") as token:
-                json.dump(payload, token)
+            if self.local_credentials_path.exists():
+                self.logger.debug(f"local_credentials_path type: {type(self.local_credentials_path)}")
+                self.logger.info(f"Removed existing credentials file: {self.local_credentials_path}")
+                os.remove(self.local_credentials_path)
+                with self.local_credentials_path.open("w") as token:
+                    json.dump(payload, token)
             self.logger.info("Saved credentials to local file.")
         except Exception as e:
             self.logger.error(f"Error saving credentials to local file: {e}")
 
+    def _convert_expiry(self, credentials_data):
+        if "expiry" in credentials_data and isinstance(credentials_data["expiry"], str):
+            try:
+                credentials_data["expiry"] = datetime.fromisoformat(credentials_data["expiry"])
+            except ValueError as e:
+                self.logger.error(f"Error parsing expiry date: {e}")
+                credentials_data["expiry"] = None
+        return credentials_data
 
 if __name__ == "__main__":
     # python -m src.gcal.gcal_token
@@ -156,7 +169,7 @@ if __name__ == "__main__":
     sys.path.append(str(Path(__file__).resolve().parent.parent))
     from config.config import generate_uuid_config  # noqa: E402
 
-    config = generate_uuid_config("huixinyang")
+    config = generate_uuid_config("")
     gt = GoogleToken(config, logger)
     service = build("calendar", "v3", credentials=gt.token)
     if service:
