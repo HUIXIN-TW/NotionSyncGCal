@@ -10,12 +10,8 @@ def generate_uuid_config(user_uuid: str):
     """
     Dynamically generate CONFIG with user's UUID
     """
-    LOCAL_NOTION_SETTINGS_PATH = os.environ.get(
-        "LOCAL_NOTION_SETTINGS_PATH", CURRENT_DIR / "token/notion_setting.json"
-    )
-    LOCAL_CLIENT_SECRET_PATH = os.environ.get(
-        "LOCAL_CLIENT_SECRET_PATH", CURRENT_DIR / "token/client_secret.json"
-    )
+    LOCAL_NOTION_SETTINGS_PATH = os.environ.get("LOCAL_NOTION_SETTINGS_PATH", CURRENT_DIR / "token/notion_setting.json")
+    LOCAL_CLIENT_SECRET_PATH = os.environ.get("LOCAL_CLIENT_SECRET_PATH", CURRENT_DIR / "token/client_secret.json")
     LOCAL_CREDENTIALS_PATH = os.environ.get("LOCAL_CREDENTIALS_PATH", CURRENT_DIR / "token/token.json")
     S3_BUCKET_NAME = os.environ.get("S3_BUCKET_NAME")
     S3_NOTION_SETTINGS_PATH = os.environ.get("S3_NOTION_SETTINGS_PATH")
@@ -32,11 +28,17 @@ def generate_uuid_config(user_uuid: str):
     if not S3_BUCKET_NAME:
         raise ValueError(f"UUID: {user_uuid}, S3_BUCKET_NAME is not set. Please set it in your environment variables.")
     if not S3_NOTION_SETTINGS_PATH:
-        raise ValueError(f"UUID: {user_uuid}, S3_NOTION_SETTINGS_PATH is not set. Please set it in your environment variables.")
+        raise ValueError(
+            f"UUID: {user_uuid}, S3_NOTION_SETTINGS_PATH is not set. Please set it in your environment variables."
+        )
     if not S3_CREDENTIALS_PATH:
-        raise ValueError(f"UUID: {user_uuid}, S3_CREDENTIALS_PATH is not set. Please set it in your environment variables.")
+        raise ValueError(
+            f"UUID: {user_uuid}, S3_CREDENTIALS_PATH is not set. Please set it in your environment variables."
+        )
     if not S3_CLIENT_SECRET_PATH:
-        raise ValueError(f"UUID: {user_uuid}, S3_CLIENT_SECRET_PATH is not set. Please set it in your environment variables.")
+        raise ValueError(
+            f"UUID: {user_uuid}, S3_CLIENT_SECRET_PATH is not set. Please set it in your environment variables."
+        )
     return {
         "s3_bucket_name": S3_BUCKET_NAME,
         "s3_key_notion": f"{user_uuid}/{S3_NOTION_SETTINGS_PATH}",

@@ -32,9 +32,13 @@ class GoogleToken:
         if not credentials and not self.has_s3_google:
             credentials = self.perform_oauth_flow()
         elif not credentials and self.has_s3_google:
-            self.logger.error("No credentials found on S3. Cannot proceed `perform_oauth_flow`. Please use Web UI to re-authenticate.")
+            self.logger.error(
+                "No credentials found on S3. Cannot proceed `perform_oauth_flow`. Please use Web UI to re-authenticate."
+            )
             sys.exit(1)
-        self.logger.info(f"Credentials Expired: {credentials.expired}, Has Refresh Token: {bool(credentials.refresh_token)}")
+        self.logger.info(
+            f"Credentials Expired: {credentials.expired}, Has Refresh Token: {bool(credentials.refresh_token)}"
+        )
         if credentials.expired and credentials.refresh_token:
             self.logger.info("Credentials has expired. Refreshing tokens...")
             credentials = self.refresh_tokens(credentials)
@@ -80,7 +84,9 @@ class GoogleToken:
                 return None
 
         self.logger.debug(f"local_credentials_path type: {type(self.local_credentials_path)}")
-        self.logger.warning(f"No valid credentials found in either {self.local_credentials_path} or S3: {self.has_s3_google}")
+        self.logger.warning(
+            f"No valid credentials found in either {self.local_credentials_path} or S3: {self.has_s3_google}"
+        )
         return None
 
     def refresh_tokens(self, credentials):
@@ -123,7 +129,7 @@ class GoogleToken:
             "client_id": credentials.client_id,
             "client_secret": credentials.client_secret,
             "scopes": credentials.scopes,
-            "expiry": credentials.expiry.isoformat() if credentials.expiry else None
+            "expiry": credentials.expiry.isoformat() if credentials.expiry else None,
         }
         # convert payload to JSON
         json_buffer = json.dumps(payload).encode()
@@ -156,6 +162,7 @@ class GoogleToken:
                 self.logger.error(f"Error parsing expiry date: {e}")
                 credentials_data["expiry"] = None
         return credentials_data
+
 
 if __name__ == "__main__":
     # python -m src.gcal.gcal_token

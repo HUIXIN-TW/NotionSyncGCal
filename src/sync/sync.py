@@ -48,6 +48,7 @@ def get_perth_time():
     current_time = datetime.now(perth_tz)
     return current_time.strftime("Date: %Y-%m-%d Time: %H:%M:%S")
 
+
 def remove_gcal_event_from_list(gcal_event_list, gcal_event, gcal_event_summary):
     gcal_event_list.remove(gcal_event)
     logger.info(
