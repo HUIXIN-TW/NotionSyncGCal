@@ -94,9 +94,14 @@ def synchronize_notion_and_google_calendar(
                     f"Task count exceeds {NOTION_TASK_LIMIT}. Sync process stopped to avoid overloading the Notion database."  # noqa: E501
                 )
                 sys.exit(1)
+            if task_count == 0:
+                logger.info("No Notion tasks found.")
+                return {"status": "success", "message": "No Notion tasks found."}
+            if event_count == 0:
+                logger.info("No Google Calendar events found.")
+                return {"status": "success", "message": "No Google Calendar events found."}
         except Exception as e:
-            logger.error(f"Error retrieving events or tasks: {e}")
-            sys.exit(1)
+            return {"status": "error", "message": str(e)}
 
         # Check if Notion Task is in Google Calendar
         for notion_task in notion_task_list:
