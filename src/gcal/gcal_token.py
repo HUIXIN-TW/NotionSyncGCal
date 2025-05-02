@@ -122,6 +122,7 @@ class GoogleToken:
 
     def save_credentials(self, credentials):
         # serialize credentials as JSON, all attributes of credentials
+        # refresh_token, token_uri, client_id, and client_secret
         payload = {
             "access_token": credentials.token,
             "refresh_token": credentials.refresh_token,
@@ -170,6 +171,7 @@ class GoogleToken:
         return credentials_data
 
     def _verify_credentials(self, credentials):
+        # refresh_token, token_uri, client_id, and client_secret
         if not isinstance(credentials, Credentials):
             raise SettingError("Invalid credentials object.")
         if not credentials.expiry:
@@ -182,6 +184,8 @@ class GoogleToken:
             raise SettingError("Client ID or Client Secret is missing.")
         if not credentials.scopes:
             raise SettingError("Scopes are missing.")
+        if not credentials.token_uri:
+            raise SettingError("Token URI is missing.")
 
 
 if __name__ == "__main__":
