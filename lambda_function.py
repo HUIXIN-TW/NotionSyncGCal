@@ -56,7 +56,7 @@ def lambda_handler(event, context):
                 "statusCode": 500,
                 "body": {"status": "lambda error", "message": "Sync function returned no result."},
             }
-        sync_result_code = (sync_result.get("statusCode", 500),)
+        sync_result_code = sync_result.get("statusCode", 500)
         sync_result_body = sync_result.get("body", {})
         return {
             "statusCode": sync_result_code,

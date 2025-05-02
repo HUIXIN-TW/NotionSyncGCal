@@ -2,6 +2,7 @@ import sys
 import argparse
 import logging
 from pathlib import Path
+from google.auth.exceptions import RefreshError
 
 sys.path.append(str(Path(__file__).resolve().parent))
 from user_setting import update_notion_setting  # noqa: E402
@@ -31,6 +32,9 @@ def main(uuid=None):
         notion_service = NotionService(notion_token, notion_user_setting, logger)
         google_token = GoogleToken(config, logger)
         google_service = GoogleService(notion_user_setting, google_token, logger)
+    except RefreshError as e:
+        logger.error(f"Google RefreshError in main: {e}")
+        raise
     except Exception as e:
         logger.error(f"Error initializing services: {e}")
         return {

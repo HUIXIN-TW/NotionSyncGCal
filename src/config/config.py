@@ -6,6 +6,13 @@ CURRENT_DIR = Path(__file__).resolve().parent.parent.parent
 print(f"Current directory: {CURRENT_DIR}")
 
 
+class SettingError(Exception):
+    """Custom exception to handle setting errors in the Notion class."""
+
+    def __init__(self, message):
+        super().__init__(message)
+
+
 def generate_uuid_config(user_uuid: str):
     """
     Dynamically generate CONFIG with user's UUID
@@ -26,17 +33,19 @@ def generate_uuid_config(user_uuid: str):
             "local_credentials_path": Path(LOCAL_CREDENTIALS_PATH),
         }
     if not S3_BUCKET_NAME:
-        raise ValueError(f"UUID: {user_uuid}, S3_BUCKET_NAME is not set. Please set it in your environment variables.")
+        raise SettingError(
+            f"UUID: {user_uuid}, S3_BUCKET_NAME is not set. Please set it in your environment variables."
+        )
     if not S3_NOTION_SETTINGS_PATH:
-        raise ValueError(
+        raise SettingError(
             f"UUID: {user_uuid}, S3_NOTION_SETTINGS_PATH is not set. Please set it in your environment variables."
         )
     if not S3_CREDENTIALS_PATH:
-        raise ValueError(
+        raise SettingError(
             f"UUID: {user_uuid}, S3_CREDENTIALS_PATH is not set. Please set it in your environment variables."
         )
     if not S3_CLIENT_SECRET_PATH:
-        raise ValueError(
+        raise SettingError(
             f"UUID: {user_uuid}, S3_CLIENT_SECRET_PATH is not set. Please set it in your environment variables."
         )
     return {
