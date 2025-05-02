@@ -79,7 +79,7 @@ class GoogleToken:
                 credentials_data = self._convert_expiry(credentials_data)
                 credentials = Credentials(**credentials_data)
                 return credentials
-            except Exception:
+            except Exception as e:
                 self.logger.exception(f"Failed to load credentials from local file: {e}")
                 return None
 
