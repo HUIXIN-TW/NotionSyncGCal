@@ -37,10 +37,7 @@ def main(uuid=None):
         raise
     except Exception as e:
         logger.error(f"Error initializing services: {e}")
-        return {
-            "statusCode": 500,
-            "body": {"status": "error", "message": str(e)},
-        }  # safely converts exception to string
+        raise
 
     try:
         parser = argparse.ArgumentParser(description="Welcome to Notion-Google Calendar Sync CLI!")
@@ -71,10 +68,7 @@ def main(uuid=None):
         args = parser.parse_args()
     except Exception as e:
         logger.error(f"Error parsing arguments: {e}")
-        return {
-            "statusCode": 500,
-            "body": {"status": "error", "message": str(e)},
-        }  # safely converts exception to string
+        raise
 
     # Handling no arguments case
     try:
@@ -90,7 +84,6 @@ def main(uuid=None):
                 should_update_notion_tasks=True,
                 should_update_google_events=True,
             )
-            return res
 
         # Handling optional -t flag for syncing by timestamp
         if args.timestamp:
@@ -106,7 +99,6 @@ def main(uuid=None):
                 should_update_notion_tasks=True,
                 should_update_google_events=True,
             )
-            return res
 
         # Handling optional -g flag for syncing from Google Calendar to Notion
         if args.google:
@@ -119,7 +111,6 @@ def main(uuid=None):
                 notion_service=notion_service,
                 google_service=google_service,
             )
-            return res
 
         # Handling optional -n flag for syncing from Notion to Google Calendar
         if args.notion:
@@ -132,13 +123,10 @@ def main(uuid=None):
                 notion_service=notion_service,
                 google_service=google_service,
             )
-            return res
+        return res
     except Exception as e:
         logger.error(f"Error during synchronization: {e}")
-        return {
-            "statusCode": 500,
-            "body": {"status": "error", "message": str(e)},
-        }  # safely converts exception to string
+        raise
 
 
 if __name__ == "__main__":
