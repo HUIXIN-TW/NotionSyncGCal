@@ -50,45 +50,44 @@ class GoogleToken:
         return self.credentials
 
     def load_credentials(self):
-        if not self.config:
-            raise SettingError("Configuration is required to load settings.")
-        if self.has_s3_google:
-            try:
-                # fmt: off
-                self.logger.info(f"Loaded credentials from S3: {self.config.get('s3_bucket_name')}/{self.config.get('s3_credentials_path')}")  # noqa: E501
-                # fmt: on
-                s3 = boto3.client("s3")
-                response = s3.get_object(
-                    Bucket=self.config.get("s3_bucket_name"), Key=self.config.get("s3_credentials_path")
-                )
-                credentials_data = json.loads(response.get("Body").read().decode("utf-8"))
-                credentials_data = self._convert_expiry(credentials_data)
-                credentials = Credentials(**credentials_data)
-                return credentials
-            except Exception as e:
-                # fmt: off
-                self.logger.error(f"Failed to load credentials from S3: {e}, {self.config.get('s3_bucket_name')}/{self.config.get('s3_credentials_path')}")  # noqa: E501
-                # fmt: on
-                return None
+        try:
+            if not self.config:
+                raise SettingError("Configuration is required to load settings.")
+            if self.has_s3_google:
+                try:
+                    # fmt: off
+                    self.logger.info(f"Loaded credentials from S3: {self.config.get('s3_bucket_name')}/{self.config.get('s3_credentials_path')}")  # noqa: E501
+                    # fmt: on
+                    s3 = boto3.client("s3")
+                    response = s3.get_object(
+                        Bucket=self.config.get("s3_bucket_name"), Key=self.config.get("s3_credentials_path")
+                    )
+                    credentials_data = json.loads(response.get("Body").read().decode("utf-8"))
+                except Exception as e:
+                    # fmt: off
+                    self.logger.error(f"Failed to load credentials from S3: {e}, {self.config.get('s3_bucket_name')}/{self.config.get('s3_credentials_path')}")  # noqa: E501
+                    # fmt: on
+                    raise
 
-        if self.local_credentials_path and self.local_credentials_path.exists():
-            try:
-                self.logger.debug(f"local_credentials_path type: {type(self.local_credentials_path)}")
-                self.logger.info(f"Loaded credentials from local file: {self.local_credentials_path}")
-                with self.local_credentials_path.open("r") as f:
-                    credentials_data = json.load(f)
-                credentials_data = self._convert_expiry(credentials_data)
-                credentials = Credentials(**credentials_data)
-                return credentials
-            except Exception as e:
-                self.logger.exception(f"Failed to load credentials from local file: {e}")
-                return None
-
-        self.logger.debug(f"local_credentials_path type: {type(self.local_credentials_path)}")
-        self.logger.warning(
-            f"No valid credentials found in either {self.local_credentials_path} or S3: {self.has_s3_google}"
-        )
-        return None
+            elif self.local_credentials_path and self.local_credentials_path.exists():
+                try:
+                    self.logger.debug(f"local_credentials_path type: {type(self.local_credentials_path)}")
+                    self.logger.info(f"Loaded credentials from local file: {self.local_credentials_path}")
+                    with self.local_credentials_path.open("r") as f:
+                        credentials_data = json.load(f)
+                except Exception as e:
+                    self.logger.exception(f"Failed to load credentials from local file: {e}")
+                    raise
+            else:
+                self.logger.error("No credentials found in either S3 or local file.")
+                raise SettingError("No credentials found in either S3 or local file.")
+            credentials_data = self._convert_expiry(credentials_data)
+            credentials = Credentials(**credentials_data)
+            self._verify_credentials(credentials)
+            return credentials
+        except SettingError as e:
+            self.logger.error(f"SettingError: {e}")
+            raise
 
     def refresh_tokens(self, credentials):
         try:
@@ -144,16 +143,22 @@ class GoogleToken:
                     Key=self.config.get("s3_credentials_path"),
                     Body=json_buffer,
                 )
-                return
-            if self.local_credentials_path.exists():
+                self.logger.info(
+                    f"Saved credentials to S3: {self.config.get('s3_bucket_name')}/{self.config.get('s3_credentials_path')}"
+                )
+            elif self.local_credentials_path.exists():
                 self.logger.debug(f"local_credentials_path type: {type(self.local_credentials_path)}")
                 self.logger.info(f"Removed existing credentials file: {self.local_credentials_path}")
                 os.remove(self.local_credentials_path)
                 with self.local_credentials_path.open("w") as token:
                     json.dump(payload, token)
-            self.logger.info("Saved credentials to local file.")
+                self.logger.info("Saved credentials to local file.")
+            else:
+                self.logger.info("No S3 path or local path provided for credentials.")
+                raise SettingError("No S3 path or local path provided for credentials.")
         except Exception as e:
             self.logger.error(f"Error saving credentials to local file: {e}")
+            raise
 
     def _convert_expiry(self, credentials_data):
         if "expiry" in credentials_data and isinstance(credentials_data["expiry"], str):
@@ -163,6 +168,20 @@ class GoogleToken:
                 self.logger.error(f"Error parsing expiry date: {e}")
                 credentials_data["expiry"] = None
         return credentials_data
+
+    def _verify_credentials(self, credentials):
+        if not isinstance(credentials, Credentials):
+            raise SettingError("Invalid credentials object.")
+        if not credentials.expiry:
+            raise SettingError("Credentials have no expiry date.")
+        if not credentials.refresh_token:
+            raise SettingError("No refresh token found.")
+        if not credentials.access_token:
+            raise SettingError("No access token found.")
+        if not credentials.client_id or not credentials.client_secret:
+            raise SettingError("Client ID or Client Secret is missing.")
+        if not credentials.scopes:
+            raise SettingError("Scopes are missing.")
 
 
 if __name__ == "__main__":
