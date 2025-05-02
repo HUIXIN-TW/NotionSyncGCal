@@ -8,8 +8,6 @@ import pytz
 # Add the 'src' folder to sys.path so that Python can find modules inside it
 sys.path.append(os.path.join(os.getcwd(), "src"))
 
-from src.main import main as run_sync_notion_and_google  # noqa: E402
-
 # API Key
 EXPECTED_API_KEY = os.environ.get("API_KEY")
 ALLOWED_USERLIST = json.loads(os.environ.get("USERLIST", "[]"))
@@ -20,6 +18,9 @@ def lambda_handler(event, context):
     AWS Lambda Handler to always run the CLI without any parameters and include Perth timezone information.
     """
     try:
+        # Import the main function from src.main
+        from src.main import main as run_sync_notion_and_google  # noqa: E402
+
         # API Key check: dynamic load from environment
         headers = event.get("headers", {})
         received_api_key = headers.get("x-api-key")
