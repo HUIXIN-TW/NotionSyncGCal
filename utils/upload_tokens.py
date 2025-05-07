@@ -27,5 +27,6 @@ def upload(local_path, bucket, s3_key):
     print(f"Uploading {local_path} to s3://{bucket}/{s3_key}")
     s3.upload_file(local_path, bucket, s3_key)
 
+
 upload("token_template/notion_setting.json", S3_BUCKET_NAME, f"{uuid}/{S3_NOTION_KEY}")
 upload("token_template/token.json", S3_BUCKET_NAME, f"{uuid}/{S3_GOOGLE_KEY}")
