@@ -219,9 +219,10 @@ def synchronize_notion_and_google_calendar(
 
                         if not notion_task_last_edited_time or not gcal_event_updated_time:
                             logger.warning(
-                                "Notion Task or Google Calendar Event has no last edited time or updated time. Stopping the program."  # noqa: E501
+                                f"Missing last edited or updated time. Skipping task '{notion_task_name}' "
+                                f"Notion: {notion_task_last_edited_time}, Google: {gcal_event_updated_time}"
                             )
-                            sys.exit(1)
+                            continue
 
                         if (
                             notion_gcal_sync_time
