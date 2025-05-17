@@ -29,34 +29,72 @@ upload-app-token-s3:
 # Upload token files to S3
 upload-user-token-s3:
 	@read -p "Enter your UUID (USERNAME): " uuid; \
+	read -p "Use token **template**? (yes/no): " use_template; \
+	if [ "$$use_template" = "yes" ]; then \
+		TOKEN_DIR="token_template"; \
+	else \
+		read -p "Type the real token folder name to confirm (e.g., token): " folder_confirm; \
+		if [ "$$folder_confirm" != "token" ]; then \
+			echo "❌ Folder confirmation failed. Aborting."; \
+			exit 1; \
+		fi; \
+		TOKEN_DIR="$$folder_confirm"; \
+	fi; \
+	if [ ! -f "$${TOKEN_DIR}/token.json" ] || [ ! -f "$${TOKEN_DIR}/notion_setting.json" ]; then \
+		echo "❌ Required files not found in $$TOKEN_DIR. Aborting."; \
+		exit 1; \
+	fi; \
 	S3_GOOGLE_PATH=$${uuid}/token/google; \
 	S3_NOTION_PATH=$${uuid}/token/notion; \
-	echo "📦 Will upload the following files:"; \
-	echo " - token/token.json → s3://$(S3_BUCKET_NAME)/$${S3_GOOGLE_PATH}/"; \
-	echo " - token/notion_setting.json → s3://$(S3_BUCKET_NAME)/$${S3_NOTION_PATH}/"; \
 	echo ""; \
-	read -p "❓ Are you sure you want to upload these tokens? (yes/no): " confirm; \
-	if [ "$$confirm" = "yes" ]; then \
-		echo "⏫ Uploading to S3..."; \
-		aws s3 cp token/notion_setting.json s3://$(S3_BUCKET_NAME)/$${S3_NOTION_PATH}/; \
-		aws s3 cp token/token.json s3://$(S3_BUCKET_NAME)/$${S3_GOOGLE_PATH}/; \
-		echo "✅ Upload complete for UUID: $$uuid"; \
+	echo "📦 Will upload the following files:"; \
+	echo " - $${TOKEN_DIR}/token.json           → s3://$(S3_BUCKET_NAME)/$${S3_GOOGLE_PATH}/"; \
+	echo " - $${TOKEN_DIR}/notion_setting.json  → s3://$(S3_BUCKET_NAME)/$${S3_NOTION_PATH}/"; \
+	echo ""; \
+	if [ "$(DRY_RUN)" = "true" ]; then \
+		echo "🧪 DRY RUN MODE: Skipping actual upload."; \
 	else \
-		echo "❌ Upload canceled."; \
+		read -p "❓ Are you sure you want to upload these tokens? (yes/no): " confirm; \
+		if [ "$$confirm" = "yes" ]; then \
+			echo "⏫ Uploading to S3..."; \
+			aws s3 cp $${TOKEN_DIR}/notion_setting.json s3://$(S3_BUCKET_NAME)/$${S3_NOTION_PATH}/; \
+			aws s3 cp $${TOKEN_DIR}/token.json s3://$(S3_BUCKET_NAME)/$${S3_GOOGLE_PATH}/; \
+			echo "✅ Upload complete for UUID: $$uuid"; \
+		else \
+			echo "❌ Upload canceled."; \
+		fi; \
 	fi
 
 
 # list S3 bucket and token paths
 list-s3-bucket:
 	@read -p "Enter your UUID: " uuid; \
-	S3_NOTION_TOKEN_FOLDER=$${uuid}/token/notion; \
-	S3_GOOGLE_TOKEN_FOLDER=$${uuid}/token/google; \
+	S3_GOOGLE_PATH=$${uuid}/token/google; \
+	S3_NOTION_PATH=$${uuid}/token/notion; \
 	echo "🔍 Checking S3 root..."; \
 	aws s3 ls s3://$(S3_BUCKET_NAME); \
+	echo ""; \
 	echo "🔍 Checking Notion token path..."; \
-	aws s3 ls s3://$(S3_BUCKET_NAME)/$${S3_NOTION_TOKEN_FOLDER}/ || echo "❌ Notion token path not found."; \
+	aws s3 ls s3://$(S3_BUCKET_NAME)/$${S3_NOTION_PATH}/; \
+	echo ""; \
 	echo "🔍 Checking Google token path..."; \
-	aws s3 ls s3://$(S3_BUCKET_NAME)/$${S3_GOOGLE_TOKEN_FOLDER}/ || echo "❌ Google token path not found."
+	aws s3 ls s3://$(S3_BUCKET_NAME)/$${S3_GOOGLE_PATH}/; \
+	echo ""; \
+	read -p "👀 Do you want to preview the token content? (yes/no): " preview; \
+	if [ "$$preview" = "yes" ]; then \
+		if ! command -v jq >/dev/null 2>&1; then \
+			echo "⚠️ 'jq' is not installed. Install it to pretty-print JSON."; \
+		else \
+			echo "📄 Notion token (pretty JSON):"; \
+			aws s3 cp s3://$(S3_BUCKET_NAME)/$${S3_NOTION_PATH}/notion_setting.json - | jq .; \
+			echo ""; \
+			echo "📄 Google token (pretty JSON):"; \
+			aws s3 cp s3://$(S3_BUCKET_NAME)/$${S3_GOOGLE_PATH}/token.json - | jq .; \
+		fi \
+	else \
+		echo "🔒 Skipped token preview for privacy."; \
+	fi
+
 
 
 # Open AWS Profile (shortcut)
