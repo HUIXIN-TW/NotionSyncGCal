@@ -13,6 +13,20 @@ class SettingError(Exception):
         super().__init__(message)
 
 
+def get_google_credential_env():
+    payload = {
+        "installed": {
+            "client_id": os.environ.get("GOOGLE_CALENDAR_CLIENT_ID"),
+            "project_id": os.environ.get("GOOGLE_CALENDAR_PROJECT_ID"),
+            "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+            "token_uri": "https://oauth2.googleapis.com/token",
+            "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+            "client_secret": os.environ.get("GOOGLE_CALENDAR_CLIENT_SECRET"),
+            "redirect_uris": ["http://localhost"],
+        }
+    }
+    return payload
+
 def generate_uuid_config(user_uuid: str):
     """
     Dynamically generate CONFIG with user's UUID
@@ -24,6 +38,7 @@ def generate_uuid_config(user_uuid: str):
     S3_NOTION_SETTINGS_PATH = os.environ.get("S3_NOTION_SETTINGS_PATH")
     S3_CREDENTIALS_PATH = os.environ.get("S3_CREDENTIALS_PATH")
     S3_CLIENT_SECRET_PATH = os.environ.get("S3_CLIENT_SECRET_PATH")
+    USE_ENV_GOOGLE_SECRET = os.environ.get("USE_ENV_GOOGLE_SECRET", "false").lower() == "true"
 
     if not user_uuid:
         # use local
@@ -31,6 +46,7 @@ def generate_uuid_config(user_uuid: str):
             "local_notion_settings_path": Path(LOCAL_NOTION_SETTINGS_PATH),
             "local_client_secret_path": Path(LOCAL_CLIENT_SECRET_PATH),
             "local_credentials_path": Path(LOCAL_CREDENTIALS_PATH),
+            "use_env_google_secret": USE_ENV_GOOGLE_SECRET,
         }
     if not S3_BUCKET_NAME:
         raise SettingError(
@@ -55,6 +71,7 @@ def generate_uuid_config(user_uuid: str):
         "s3_client_secret_path": S3_CLIENT_SECRET_PATH,
         "has_s3_notion": bool(S3_BUCKET_NAME and S3_NOTION_SETTINGS_PATH),
         "has_s3_google": bool(S3_BUCKET_NAME and S3_CREDENTIALS_PATH),
+        "use_env_google_secret": USE_ENV_GOOGLE_SECRET,
     }
 
 

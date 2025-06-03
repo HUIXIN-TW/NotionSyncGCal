@@ -10,6 +10,8 @@ from google.oauth2.credentials import Credentials
 from google.auth.exceptions import RefreshError
 from pathlib import Path
 
+from config.config import get_google_credential_env
+
 
 class SettingError(Exception):
     """Custom exception to handle setting errors in the Notion class."""
@@ -22,6 +24,7 @@ class GoogleToken:
     def __init__(self, config, logger):
         self.credentials = None
         self.config = config
+        self.use_env_google_secret = config.get("use_env_google_secret", False)
         self.has_s3_google = config.get("has_s3_google", "")
         self.local_client_secret_path = config.get("local_client_secret_path", "")
         self.local_credentials_path = config.get("local_credentials_path", "")
@@ -107,16 +110,19 @@ class GoogleToken:
 
     def perform_oauth_flow(self):
         scopes = ["https://www.googleapis.com/auth/calendar"]
-        flow = InstalledAppFlow.from_client_secrets_file(str(self.local_client_secret_path), scopes)
-        try:
-            self.logger.info("Running OAuth flow...")
-            credentials = flow.run_local_server(
-                port=0
-            )  # flow.run_console() is also an option if running in a non-GUI environment
-            self.logger.info("Successfully fetched new tokens.")
-        except Exception as e:
-            self.logger.error(f"Error during OAuth flow: {e}")
-            raise
+        if self.use_env_google_secret:
+            self.logger.info("Using environment variables for Google client secret.")
+            payload = get_google_credential_env()
+            flow = InstalledAppFlow.from_client_config(payload, scopes)
+        else:
+            try:
+                flow = InstalledAppFlow.from_client_secrets_file(str(self.local_client_secret_path), scopes)
+                self.logger.info("Running OAuth flow...")
+            except Exception as e:
+                self.logger.error(f"Error during OAuth flow: {e}")
+                raise
+        credentials = flow.run_local_server(port=0)
+        self.logger.info("Successfully fetched new tokens.")
         self.save_credentials(credentials)
         return credentials
 
