@@ -27,6 +27,7 @@ def get_google_credential_env():
     }
     return payload
 
+
 def generate_uuid_config(user_uuid: str):
     """
     Dynamically generate CONFIG with user's UUID
