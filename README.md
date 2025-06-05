@@ -48,7 +48,7 @@ Go to the terminal and run the following commands:
 ```bash
 git clone https://github.com/HUIXIN-TW/NotionSyncGCal.git
 cd NotionSyncGCal
-pip install -r src/requirements.txt
+pip install -r requirements.txt
 python3 src/main.py
 ```
 
@@ -66,7 +66,7 @@ You found the above topic is unfamiliar? No worries! Just follow the [Beginner G
 To run the basic synchronization between Notion and Google Calendar:
 
 ```bash
-python3 main.py
+python3 src/main.py
 ```
 
 ### Synchronization with Specific Date Range
@@ -74,7 +74,7 @@ python3 main.py
 To synchronize events based on a specific date range, use the following command:
 
 ```bash
-python3 main.py -t <look_back_days> <look_ahead_days>
+python3 src/main.py -t <look_back_days> <look_ahead_days>
 ```
 
 `<look_back_days>`: Number of days to look back from the current date.
@@ -88,7 +88,7 @@ python3 main.py -t <look_back_days> <look_ahead_days>
 To force an update of Notion tasks from Google Calendar events within a specified date range, use the following command:
 
 ```bash
-python3 main.py -g <look_back_days> <look_ahead_days>
+python3 src/main.py -g <look_back_days> <look_ahead_days>
 ```
 
 #### Sync from Notion to Google Calendar
@@ -96,7 +96,7 @@ python3 main.py -g <look_back_days> <look_ahead_days>
 To force an update of Google Calendar events from Notion tasks within a specified date range, use the following command:
 
 ```bash
-python3 main.py -n <look_back_days> <look_ahead_days>
+python3 src/main.py -n <look_back_days> <look_ahead_days>
 ```
 
 ## AWS Lambda Integration
