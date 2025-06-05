@@ -27,3 +27,4 @@ sync.log
 settings.json
 get_gcal_event.json
 get_notion_task.json
+tests/__pycache__
