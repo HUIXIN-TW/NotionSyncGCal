@@ -57,10 +57,13 @@ def remove_gcal_event_from_list(gcal_event_list, gcal_event, gcal_event_summary)
 
 
 def get_gcal_event_from_list(gcal_event_list, gcal_event_id):
+    """Return the Google Calendar event with the given ID from the list."""
     for gcal_event in gcal_event_list:
         if gcal_event.get("id") == gcal_event_id:
             return gcal_event
-    return f"{gcal_event_id} Can't be found in {gcal_event}"
+
+    logger.info(f"Google Calendar event '{gcal_event_id}' not found in the provided list")
+    return None
 
 
 def synchronize_notion_and_google_calendar(
@@ -187,7 +190,8 @@ def synchronize_notion_and_google_calendar(
                             notion_service.delete_notion_task(duplicate_notion_task_page_id)
 
                     deleted_gcal_event = get_gcal_event_from_list(gcal_event_list, notion_gcal_event_id)
-                    remove_gcal_event_from_list(gcal_event_list, deleted_gcal_event, notion_task_name)
+                    if deleted_gcal_event is not None:
+                        remove_gcal_event_from_list(gcal_event_list, deleted_gcal_event, notion_task_name)
                 except Exception as e:
                     logger.error(
                         f"Error deleting google calendar event ID: {notion_gcal_event_id} "
