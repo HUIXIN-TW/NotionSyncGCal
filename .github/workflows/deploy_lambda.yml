@@ -8,6 +8,9 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
 
     steps:
       # Step 1: Checkout the code
@@ -27,12 +30,15 @@ jobs:
           cd package
           zip -r ../lambda_function.zip .  # Zip the package directory contents
 
-      # Step 4: Deploy Lambda function to AWS
+      # Step 4: Configure AWS credentials using OIDC
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.LAMBDA_DEPLOY_ROLE_ARN }}
+          aws-region: us-east-1
+
+      # Step 5: Deploy Lambda function to AWS
       - name: Deploy Lambda to AWS
-        env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          AWS_DEFAULT_REGION: "us-east-1"
         run: |
           aws lambda update-function-code \
             --function-name NotionSyncGCal \
