@@ -34,7 +34,7 @@ jobs:
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: arn:aws:iam::590184055616:role/GitHubOIDCDeployRole
+          role-to-assume: ${{ secrets.LAMBDA_DEPLOY_ROLE_ARN }}
           aws-region: us-east-1
 
       # Step 5: Deploy Lambda function to AWS
