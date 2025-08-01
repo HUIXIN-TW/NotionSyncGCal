@@ -1,0 +1,67 @@
+name: Deploy Lambda Container to ECR
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  deploy:
+    name: Build & Push to ECR
+    runs-on: ubuntu-latest
+
+    env:
+      AWS_REGION: us-east-1
+      DOCKER_FILE: Dockerfile
+      IMAGE_NAME: notion-sync-gcal-lambda
+      IMAGE_VERSION: latest
+      FUNCTION_NAME: NotionSyncGCal
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: ${{ env.AWS_REGION }}
+          role-to-assume: ${{ secrets.LAMBDA_DEPLOY_ROLE_ARN }}
+          role-duration-seconds: 3500
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Ensure ECR repository exists
+        run: |
+          set -e
+          aws ecr describe-repositories \
+            --region "$AWS_REGION" \
+            --repository-name "$IMAGE_NAME" > /dev/null 2>&1 || \
+          aws ecr create-repository \
+            --region "$AWS_REGION" \
+            --repository-name "$IMAGE_NAME" \
+            --image-scanning-configuration scanOnPush=true \
+            --image-tag-mutability MUTABLE
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+        with:
+          version: v0.9.1
+
+      - name: Build and Push Docker image
+        run: |
+          ECR_URI="${{ steps.login-ecr.outputs.registry }}/${{ env.IMAGE_NAME }}"
+          docker build -t "$ECR_URI:${{ env.IMAGE_VERSION }}" -f ${{ env.DOCKER_FILE }} .
+          docker push "$ECR_URI:${{ env.IMAGE_VERSION }}"
+          echo "ECR_IMAGE_URI=$ECR_URI:${{ env.IMAGE_VERSION }}" >> $GITHUB_ENV
+
+      - name: Print ECR image URI (debug)
+        run: echo "$ECR_IMAGE_URI"
+
+      - name: Update Lambda function image
+        run: |
+          set -e
+          aws lambda update-function-code \
+            --function-name ${{ env.FUNCTION_NAME }} \
+            --image-uri "$ECR_IMAGE_URI"
