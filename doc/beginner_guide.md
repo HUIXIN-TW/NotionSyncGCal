@@ -16,7 +16,6 @@
 
     <img src="./assets/fork.png" width="600" height="auto">
   2. Select an owner for the forked repository.
-
   3. Choose the main branch
 
   4. Click `Create Fork`.
