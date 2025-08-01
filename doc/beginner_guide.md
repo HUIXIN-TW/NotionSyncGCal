@@ -3,7 +3,6 @@
 - Step1: Fork or Clone git repository
 
   For beginners, you can download this repository directly.
-
   1. Click the green `Code` button on the top-right corner of the page, and then click `Download ZIP`
 
      <img src="./assets/download.png" width="600" height="auto">
@@ -13,11 +12,9 @@
      <img src="./assets/folder.png" width="600" height="auto">
 
   For advanced users, you can fork this repository and then clone it.
-
   1. In the top-right corner of the page, click Fork.
 
     <img src="./assets/fork.png" width="600" height="auto">
-
   2. Select an owner for the forked repository.
 
   3. Choose the main branch
@@ -27,7 +24,6 @@
   5. Clone your forked repository
 
     <img src="./assets/code.png" width="600" height="auto">
-
   6. Open the terminal, and type:
 
   ```bash
@@ -51,13 +47,10 @@
   If you are familar with the entire code, you are welcome to customise your own template. However, I recommend you to use my template and do not change the property names at the first time.
 
 - Step3: Notion Connection Setting
-
   1. Visit Notion Developer website
-
   - Directly click [Notion Developer](https://www.notion.so/my-integrations), and make sure you are logged in, or
   - Via Notion App, open your Notion and click `Settings and members`, and then click here
     <img src="./assets/connection.png" width="600" height="auto">
-
   2. Create `New integration` and then `Submit`
 
      <img src="./assets/newintegration.png" width="600" height="auto">
@@ -67,7 +60,6 @@
      <img src="./assets/notionconnect.png" width="600" height="auto">
 
 - Step4: Complete the `notion_setting.json` in the `token_blank` folder, and then rename the folder `token_blank` with `token` (.gitignore will exclude files in this `token` folder to protect your sensitive information when you push your code to github. If you don't want to use github, you can still need to rename the folder but can ignore the reason why we do this)
-
   - "notion_token": "Paste your Internal Integration Token which starts with `secret*...`",
     <img src="./assets/secrets.png" width="600" height="auto">
 
@@ -75,7 +67,6 @@
     <img src="./assets/copylink.png" width="600" height="auto">
 
   - the following items is up to you. If you are the first time using terminal or python, I recommend you to use 1 or 2 fir "goforward_days". This mean that the code will synchromise the events from 1 day before to 2 days after today. If you are familar with python, you can change them as you want.
-
     - "timecode": "+08:00",
     - "timezone": "Asia/Taipei",
     - "goback_days": 1,
@@ -86,14 +77,12 @@
   - Go to your google calendar page, and then click `Settings` on the top-right, next, scroll the left bar to find `Setting for my calendar`. Click it, calendar `Name` is on the top, and scroll down to find `Calendar ID`
 
   - Enter your default calendar at least. If you want to add multiple calendars, separate them by `,`
-
     - "gcal_dic": [{"YOUR CALENDAR NAME1": "YOUR CALENDAR ID1", "YOUR CALENDAR NAME2": "YOUR CALENDAR ID2"}],
 
     If you set up multiple calendars, it will look like this:
     <img src="./assets/multiplecal.png" width="600" height="auto">
 
   - The following items are column names in notion based on my template. The `page_property` section is setting these column name.
-
     - "Task_Notion_Name": "Task Name",
     - "Date_Notion_Name": "Date",
     - "Initiative_Notion_Name": "Initiative",
@@ -111,7 +100,6 @@
       You can change the column name without modifying the main code zone as long as you alter this section and notion columns consistently.
 
 - Step5: Create a google token, and make sure your scope include google calendar
-
   1. Go to [google developers](https://console.developers.google.com/)
 
   2. Create a New Project, and select it
@@ -164,7 +152,6 @@
   14. Rename `client_secret_XXXXXXXXXXXX.json` to `client_secret.json`, and then move it into `token` folder
 
 - Step6: Download [python](https://www.python.org/downloads/) (or skip this step if you use Docker)
-
   1. Visit the official Python website at https://www.python.org/downloads/.
 
   2. On the Downloads page, you will see the latest version of Python available for download. The website will automatically detect your operating system and suggest the appropriate version for your platform (Windows, macOS, or Linux). If you want to download a different version, click on the "Looking for a specific release?" link.
@@ -180,11 +167,9 @@
   7. After the installation is complete, open a new command prompt (Windows) or terminal (macOS/Linux)
 
   <img src="./assets/terminal.png" width="600" height="auto">
-
   8. type python --version to verify that Python is installed correctly. You should see the version number of Python displayed.
 
   <img src="./assets/pythonversion.png" width="600" height="auto">
-
   9. Install python packages
 
   ```bash
@@ -194,9 +179,7 @@
   There are a lot of videos on youtube to teach you how to install python. I recommend you to watch them if you are not familar with python.
 
 - Step7: If you are familar with Docker, you can use Docker instaed of python to run this code.
-
   - Warning: if you use docker, change "docker": true, in `notion_setting.json`. Otherwise, the creds will not work when you activated it at the first time.
-
   1. download [Docker](https://www.docker.com/products/docker-desktop).
 
   2. open the terminal and type:
