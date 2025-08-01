@@ -9,6 +9,9 @@ jobs:
   deploy:
     name: Build & Push to ECR
     runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
 
     env:
       AWS_REGION: us-east-1
