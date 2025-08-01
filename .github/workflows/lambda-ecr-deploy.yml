@@ -18,7 +18,7 @@ jobs:
       DOCKER_FILE: Dockerfile
       IMAGE_NAME: notion-sync-gcal-lambda
       IMAGE_VERSION: latest
-      FUNCTION_NAME: NotionSyncGCal
+      FUNCTION_NAME: notion-sync-gcal
 
     steps:
       - name: Checkout code

@@ -201,7 +201,7 @@ This prevents your function from being invoked in parallel, and guarantees:
 
 ```bash
 aws lambda put-function-concurrency \
-  --function-name NotionSyncGCal \
+  --function-name notion-sync-gcal \
   --reserved-concurrent-executions 1
 ```
 
@@ -209,7 +209,7 @@ By default, CloudWatch keeps logs forever = `$$$` long-term. Set a retention pol
 
 ```bash
 aws logs put-retention-policy \
-  --log-group-name /aws/lambda/NotionSyncGCal \
+  --log-group-name /aws/lambda/notion-sync-gcal \
   --retention-in-days 7
 ```
 
