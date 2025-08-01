@@ -59,7 +59,7 @@ Configure Notion and Google Calendar
 - Enable the Google Calendar API and download the `client_secret.json` file.
 - Complete the `notion_setting.json` file in the `token` folder.
 
-You found the above topic is unfamiliar? No worries! Just follow the [Beginner Guide](beginner_guide.md) to set up your Notion and Google Calendar integration.
+You found the above topic is unfamiliar? No worries! Just follow the [Beginner Guide](doc/beginner_guide.md) to set up your Notion and Google Calendar integration.
 
 ### Basic Synchronization
 

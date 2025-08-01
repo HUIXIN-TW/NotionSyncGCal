@@ -55,7 +55,7 @@ def lambda_handler(event, context):
         if not sync_result:
             return {
                 "statusCode": 500,
-                "body": {"status": "lambda error", "message": "Sync function returned no result."},
+                "body": json.dumps({"status": "lambda error", "message": "Sync function returned no result."}),
             }
         sync_result_code = sync_result.get("statusCode", 500)
         sync_result_body = sync_result.get("body", {})
@@ -75,7 +75,10 @@ def lambda_handler(event, context):
             ),
         }
     except RefreshError as e:
-        return {"statusCode": 500, "body": {"status": f"Google token refresh failed: {str(e)}"}}
+        return {
+            "statusCode": 500,
+            "body": json.dumps({"status": "Google token refresh failed", "message": str(e)}),
+        }
     except Exception as e:
         return {
             "statusCode": 500,
