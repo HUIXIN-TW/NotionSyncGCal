@@ -5,95 +5,137 @@ from datetime import datetime, timezone
 from google.auth.exceptions import RefreshError
 import pytz
 
-# Add the 'src' folder to sys.path so that Python can find modules inside it
+# Add the 'src' folder to sys.path so Python can import modules inside it
 sys.path.append(os.path.join(os.getcwd(), "src"))
 
-# API Key
-EXPECTED_API_KEY = os.environ.get("API_KEY")
-ALLOWED_USERLIST = json.loads(os.environ.get("USERLIST", "[]"))
+# API key from environment variables
+EXPECTED_API_KEY = os.environ.get("API_KEY", "")
+
+
+def get_timestamp():
+    """
+    Returns current time information in both UTC and Perth timezones.
+    """
+    # UTC time
+    now_utc = datetime.now(timezone.utc)
+    utc_date = now_utc.strftime("%Y-%m-%d")
+    utc_time = now_utc.strftime("%H:%M:%S")
+    utc_zone = now_utc.tzname()
+
+    # Perth time
+    perth_tz = pytz.timezone("Australia/Perth")
+    now_perth = datetime.now(perth_tz)
+    perth_date = now_perth.strftime("%Y-%m-%d")
+    perth_time = now_perth.strftime("%H:%M:%S")
+    perth_zone = now_perth.tzname()
+
+    return {
+        "utc_date": utc_date,
+        "utc_time": utc_time,
+        "utc_time_zone": utc_zone,
+        "perth_date": perth_date,
+        "perth_time": perth_time,
+        "perth_time_zone": perth_zone,
+        "epoch_ms": int(now_utc.timestamp() * 1000),
+    }
+
+
+def _get_header(headers: dict, key: str, default=None):
+    """
+    Retrieves a header value in a case-insensitive manner.
+    """
+    if not headers:
+        return default
+    lower = {k.lower(): v for k, v in headers.items()}
+    return lower.get(key.lower(), default)
 
 
 def lambda_handler(event, context):
     """
-    AWS Lambda Handler to always run the CLI without any parameters and include Perth timezone information.
+    AWS Lambda handler to run the sync process and return timestamped results.
     """
     try:
-        # Import the main function from src.main
+        # Start Timestamp
+        start_time = datetime.now(timezone.utc)
+
+        # Import the main sync function
         from src.main import main as run_sync_notion_and_google  # noqa: E402
 
-        # API Key check: dynamic load from environment
-        headers = event.get("headers", {})
-        received_api_key = headers.get("x-api-key")
+        # API key check
+        headers = event.get("headers") or {}
+        received_api_key = _get_header(headers, "x-api-key", "")
         if received_api_key != EXPECTED_API_KEY:
             return {"statusCode": 403, "body": json.dumps({"error": "Forbidden: Invalid API Key"})}
 
-        # User Check: parse body whether dict or JSON string
+        # Parse body (could be JSON string or dict)
         raw_body = event.get("body", {})
-        if isinstance(raw_body, str):
-            body = json.loads(raw_body)
-        else:
-            body = raw_body
-        provided_uuid = body.get("uuid", "")
-        if provided_uuid and provided_uuid not in ALLOWED_USERLIST:
-            return {"statusCode": 403, "body": json.dumps({"error": "Forbidden: Invalid user UUID"})}
+        try:
+            body = json.loads(raw_body) if isinstance(raw_body, str) else (raw_body or {})
+        except json.JSONDecodeError:
+            body = {}
+        provided_uuid = (body.get("uuid") or "").strip()
 
-        # Get the current date, time, and timezone in UTC
-        now_utc = datetime.now(timezone.utc)
-        utc_date = now_utc.strftime("%Y-%m-%d")
-        utc_time = now_utc.strftime("%H:%M:%S")
-        utc_zone = now_utc.tzname()
-
-        # Convert to Perth timezone
-        perth_tz = pytz.timezone("Australia/Perth")
-        now_perth = datetime.now(perth_tz)
-        perth_date = now_perth.strftime("%Y-%m-%d")
-        perth_time = now_perth.strftime("%H:%M:%S")
-        perth_zone = now_perth.tzname()
-
-        # Run the sync function without any parameters as default
+        # Run sync function
         sync_result = run_sync_notion_and_google(provided_uuid)
         if not sync_result:
             return {
                 "statusCode": 500,
                 "body": json.dumps({"status": "lambda error", "message": "Sync function returned no result."}),
             }
-        sync_result_code = sync_result.get("statusCode", 500)
-        sync_result_body = sync_result.get("body", {})
+
+        status_code = int(sync_result.get("statusCode", 500))
+        body_obj = sync_result.get("body") or {}
+
+        # Structured logging for observability
+        ts = get_timestamp()
+        print(
+            json.dumps(
+                {
+                    "event": "sync_done",
+                    "uuid": provided_uuid,
+                    "status_code": status_code,
+                    "status": body_obj.get("status", "lambda unknown error"),
+                    "message": body_obj.get("message", "unknown"),
+                    "lambda_name": context.function_name,
+                    "aws_request_id": context.aws_request_id,
+                    "log_level": "INFO",
+                    "duration_ms": int((datetime.now(timezone.utc) - start_time).total_seconds() * 1000),
+                    **ts,
+                }
+            )
+        )
+
         return {
-            "statusCode": sync_result_code,
+            "statusCode": status_code,
             "body": json.dumps(
                 {
-                    "status": sync_result_body.get("status", "lambda unknown error"),
-                    "message": sync_result_body.get("message", "unknown"),
-                    "utc_date": utc_date,
-                    "utc_time": utc_time,
-                    "utc_time_zone": utc_zone,
-                    "perth_date": perth_date,
-                    "perth_time": perth_time,
-                    "perth_time_zone": perth_zone,
+                    "status": body_obj.get("status", "lambda unknown error"),
+                    "message": body_obj.get("message", "unknown"),
+                    **ts,
                 }
             ),
         }
+
     except RefreshError as e:
+        # Specific error for Google token refresh failure
         return {
             "statusCode": 500,
             "body": json.dumps({"status": "Google token refresh failed", "message": str(e)}),
         }
     except Exception as e:
+        # General error handler
+        print(json.dumps({"event": "unhandled_error", "error": str(e), **get_timestamp()}))
         return {
             "statusCode": 500,
             "body": json.dumps({"status": "lambda error", "message": str(e)}),
         }
 
 
-# Mock event and context for local testing
+# Local test entrypoint
 if __name__ == "__main__":
     expected_key = os.environ.get("API_KEY", "test-api-key")
-    allowed_userlist = json.loads(os.environ.get("USERLIST", "[]"))[0]
-    # Mock event with body as dict (no JSON string)
     mock_event = {
         "headers": {"x-api-key": expected_key},
-        "body": {"uuid": allowed_userlist},
+        "body": {"uuid": "test-uuid"},
     }
-    mock_context = {}
-    print(lambda_handler(mock_event, mock_context))
+    print(lambda_handler(mock_event, {}))
