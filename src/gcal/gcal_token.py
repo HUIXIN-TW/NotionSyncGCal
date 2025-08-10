@@ -65,7 +65,18 @@ class GoogleToken:
                     response = s3.get_object(
                         Bucket=self.config.get("s3_bucket_name"), Key=self.config.get("s3_credentials_path")
                     )
-                    credentials_data = json.loads(response.get("Body").read().decode("utf-8"))
+                    data = json.loads(response.get("Body").read().decode("utf-8"))
+                    print(data)
+                    credentials_data = {
+                        "token": data.token,
+                        "refresh_token": data.refresh_token,
+                        "token_uri": "https://oauth2.googleapis.com/token",
+                        "client_id": os.environ.get("GOOGLE_CALENDAR_CLIENT_ID"),
+                        "client_secret": os.environ.get("GOOGLE_CALENDAR_CLIENT_SECRET"),
+                        "scopes": data.scopes,
+                        "expiry": data.expiry,
+                    }
+                    print(credentials_data)
                 except Exception as e:
                     # fmt: off
                     self.logger.error(f"Failed to load credentials from S3: {e}, {self.config.get('s3_bucket_name')}/{self.config.get('s3_credentials_path')}")  # noqa: E501
@@ -109,13 +120,11 @@ class GoogleToken:
         return credentials
 
     def perform_oauth_flow(self):
-        scopes = [
-            "https://www.googleapis.com/auth/calendar.events",
-            "https://www.googleapis.com/auth/calendar.calendarlist.readonly",
-            "openid",
-            "email",
-            "profile"
-        ],
+        scopes = (
+            [
+                "https://www.googleapis.com/auth/calendar.calendarlist.readonly https://www.googleapis.com/auth/calendar.events https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile openid"
+            ],
+        )
         if self.use_env_google_secret:
             self.logger.info("Using environment variables for Google client secret.")
             payload = get_google_credential_env()
