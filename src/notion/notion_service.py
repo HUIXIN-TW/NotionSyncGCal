@@ -106,6 +106,10 @@ class NotionService:
                             "end": gcal_event_end_datetime,
                         },
                     },
+                    self.page_property["ExtraInfo_Notion_Name"]: {
+                        "type": "rich_text",
+                        "rich_text": [{"text": {"content": gcal_event.get("description", "")}}],
+                    },
                     self.page_property["Location_Notion_Name"]: {
                         "type": "rich_text",
                         "rich_text": [{"text": {"content": gcal_event.get("location", "")}}],
