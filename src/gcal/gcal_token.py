@@ -68,13 +68,13 @@ class GoogleToken:
                     data = json.loads(response.get("Body").read().decode("utf-8"))
                     print(data)
                     credentials_data = {
-                        "token": data.token,
-                        "refresh_token": data.refresh_token,
-                        "token_uri": "https://oauth2.googleapis.com/token",
+                        "token": data.get("token"),
+                        "refresh_token": data.get("refresh_token"),
+                        "token_uri": data.get("token_uri") or "https://oauth2.googleapis.com/token",
                         "client_id": os.environ.get("GOOGLE_CALENDAR_CLIENT_ID"),
                         "client_secret": os.environ.get("GOOGLE_CALENDAR_CLIENT_SECRET"),
-                        "scopes": data.scopes,
-                        "expiry": data.expiry,
+                        "scopes": data.get("data.scopes"),
+                        "expiry": data.get("data.expiry"),
                     }
                     print(credentials_data)
                 except Exception as e:
