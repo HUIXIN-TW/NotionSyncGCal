@@ -109,7 +109,13 @@ class GoogleToken:
         return credentials
 
     def perform_oauth_flow(self):
-        scopes = ["https://www.googleapis.com/auth/calendar"]
+        scopes = [
+            "https://www.googleapis.com/auth/calendar.events",
+            "https://www.googleapis.com/auth/calendar.calendarlist.readonly",
+            "openid",
+            "email",
+            "profile"
+        ],
         if self.use_env_google_secret:
             self.logger.info("Using environment variables for Google client secret.")
             payload = get_google_credential_env()
