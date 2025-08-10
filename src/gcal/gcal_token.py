@@ -122,7 +122,7 @@ class GoogleToken:
     def perform_oauth_flow(self):
         scopes = (
             [
-                "https://www.googleapis.com/auth/calendar.calendarlist.readonly https://www.googleapis.com/auth/calendar.events https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile openid"
+                "https://www.googleapis.com/auth/calendar.calendarlist.readonly https://www.googleapis.com/auth/calendar.events https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile openid"  # noqa: E501
             ],
         )
         if self.use_env_google_secret:
