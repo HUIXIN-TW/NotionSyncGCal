@@ -66,7 +66,6 @@ class GoogleToken:
                         Bucket=self.config.get("s3_bucket_name"), Key=self.config.get("s3_credentials_path")
                     )
                     data = json.loads(response.get("Body").read().decode("utf-8"))
-                    print(data)
                     credentials_data = {
                         "token": data.get("token"),
                         "refresh_token": data.get("refresh_token"),
@@ -76,7 +75,6 @@ class GoogleToken:
                         "scopes": data.get("scopes"),
                         "expiry": data.get("expiry"),
                     }
-                    print(credentials_data)
                 except Exception as e:
                     # fmt: off
                     self.logger.error(f"Failed to load credentials from S3: {e}, {self.config.get('s3_bucket_name')}/{self.config.get('s3_credentials_path')}")  # noqa: E501
