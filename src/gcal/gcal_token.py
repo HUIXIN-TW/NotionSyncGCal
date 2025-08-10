@@ -73,8 +73,8 @@ class GoogleToken:
                         "token_uri": data.get("token_uri") or "https://oauth2.googleapis.com/token",
                         "client_id": os.environ.get("GOOGLE_CALENDAR_CLIENT_ID"),
                         "client_secret": os.environ.get("GOOGLE_CALENDAR_CLIENT_SECRET"),
-                        "scopes": data.get("data.scopes"),
-                        "expiry": data.get("data.expiry"),
+                        "scopes": data.get("scopes"),
+                        "expiry": data.get("expiry"),
                     }
                     print(credentials_data)
                 except Exception as e:
