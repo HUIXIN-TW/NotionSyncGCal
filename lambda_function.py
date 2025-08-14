@@ -53,30 +53,52 @@ def _get_header(headers: dict, key: str, default=None):
 def lambda_handler(event, context):
     """
     AWS Lambda handler to run the sync process and return timestamped results.
+    Supports:
+    - SQS trigger: {"Records": [...]}
+    - API Gateway trigger with x-api-key and JSON body
     """
     try:
         # Start Timestamp
         start_time = datetime.now(timezone.utc)
 
-        # Import the main sync function
         from src.main import main as run_sync_notion_and_google  # noqa: E402
 
-        # API key check
+        # --- Handle SQS-triggered event ---
+        if "Records" in event:
+            results = []
+            for record in event["Records"]:
+                try:
+                    ts = get_timestamp()
+                    body = json.loads(record["body"])
+                    print(f'SQS record:  {body}')
+                    provided_uuid = (body.get("uuid") or "").strip()
+                    sync_result = run_sync_notion_and_google(provided_uuid)
+
+                    result = _handle_sync_result(sync_result, context, provided_uuid, start_time, ts)
+                    results.append(result)
+                except Exception as e:
+                    results.append({"uuid": provided_uuid, "error": str(e)})
+
+            return {
+                "statusCode": 200,
+                "body": json.dumps({"status": "batch processed", "results": results}),
+            }
+
+        # --- Handle API Gateway-style event ---
         headers = event.get("headers") or {}
         received_api_key = _get_header(headers, "x-api-key", "")
         if received_api_key != EXPECTED_API_KEY:
             return {"statusCode": 403, "body": json.dumps({"error": "Forbidden: Invalid API Key"})}
 
-        # Parse body (could be JSON string or dict)
         raw_body = event.get("body", {})
         try:
             body = json.loads(raw_body) if isinstance(raw_body, str) else (raw_body or {})
         except json.JSONDecodeError:
             body = {}
-        provided_uuid = (body.get("uuid") or "").strip()
 
-        # Run sync function
+        provided_uuid = (body.get("uuid") or "").strip()
         sync_result = run_sync_notion_and_google(provided_uuid)
+
         if not sync_result:
             return {
                 "statusCode": 500,
@@ -85,9 +107,9 @@ def lambda_handler(event, context):
 
         status_code = int(sync_result.get("statusCode", 500))
         body_obj = sync_result.get("body") or {}
-
-        # Structured logging for observability
         ts = get_timestamp()
+
+        # Structured logging
         print(
             json.dumps(
                 {
@@ -117,13 +139,13 @@ def lambda_handler(event, context):
         }
 
     except RefreshError as e:
-        # Specific error for Google token refresh failure
+        # Specific Google refresh error
         return {
             "statusCode": 500,
             "body": json.dumps({"status": "Google token refresh failed", "message": str(e)}),
         }
     except Exception as e:
-        # General error handler
+        # Generic error
         print(json.dumps({"event": "unhandled_error", "error": str(e), **get_timestamp()}))
         return {
             "statusCode": 500,
@@ -131,11 +153,55 @@ def lambda_handler(event, context):
         }
 
 
-# Local test entrypoint
+def _handle_sync_result(sync_result, context, uuid, start_time, ts):
+    """
+    Shared logging and response formatting for sync results.
+    """
+    status_code = int(sync_result.get("statusCode", 500))
+    body_obj = sync_result.get("body") or {}
+
+    log = {
+        "event": "sync_done",
+        "uuid": uuid,
+        "status_code": status_code,
+        "status": body_obj.get("status", "lambda unknown error"),
+        "message": body_obj.get("message", "unknown"),
+        "lambda_name": context.function_name,
+        "aws_request_id": context.aws_request_id,
+        "log_level": "INFO",
+        "duration_ms": int((datetime.now(timezone.utc) - start_time).total_seconds() * 1000),
+        **ts,
+    }
+    print(json.dumps(log))
+
+    return {
+        "statusCode": status_code,
+        "body": json.dumps(
+            {
+                "status": body_obj.get("status", "lambda unknown error"),
+                "message": body_obj.get("message", "unknown"),
+                **ts,
+            }
+        ),
+    }
+
+# --- Local test entrypoint ---
 if __name__ == "__main__":
     expected_key = os.environ.get("API_KEY", "test-api-key")
-    mock_event = {
-        "headers": {"x-api-key": expected_key},
-        "body": {"uuid": "test-uuid"},
-    }
-    print(lambda_handler(mock_event, {}))
+
+    use_sqs_mock = True
+
+    if use_sqs_mock:
+        mock_event = {
+            "Records": [
+                {"body": json.dumps({"uuid": "test-uuid-1"})},
+                {"body": json.dumps({"uuid": "test-uuid-2"})},
+            ]
+        }
+    else:
+        mock_event = {
+            "headers": {"x-api-key": expected_key},
+            "body": json.dumps({"uuid": "test-uuid"}),
+        }
+
+    print(lambda_handler(mock_event, type("FakeContext", (), {"function_name": "test-lambda", "aws_request_id": "abc-123"})()))
