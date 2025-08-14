@@ -70,7 +70,7 @@ def lambda_handler(event, context):
                 try:
                     ts = get_timestamp()
                     body = json.loads(record["body"])
-                    print(f'SQS record:  {body}')
+                    print(f"SQS record:  {body}")
                     provided_uuid = (body.get("uuid") or "").strip()
                     sync_result = run_sync_notion_and_google(provided_uuid)
 
@@ -185,6 +185,7 @@ def _handle_sync_result(sync_result, context, uuid, start_time, ts):
         ),
     }
 
+
 # --- Local test entrypoint ---
 if __name__ == "__main__":
     expected_key = os.environ.get("API_KEY", "test-api-key")
@@ -204,4 +205,8 @@ if __name__ == "__main__":
             "body": json.dumps({"uuid": "test-uuid"}),
         }
 
-    print(lambda_handler(mock_event, type("FakeContext", (), {"function_name": "test-lambda", "aws_request_id": "abc-123"})()))
+    print(
+        lambda_handler(
+            mock_event, type("FakeContext", (), {"function_name": "test-lambda", "aws_request_id": "abc-123"})()
+        )
+    )
