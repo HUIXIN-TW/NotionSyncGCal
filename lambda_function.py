@@ -1,7 +1,6 @@
 import os
 import sys
 import json
-import logging
 from datetime import datetime, timezone
 from typing import Any, Dict, Optional
 
