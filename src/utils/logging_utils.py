@@ -5,11 +5,19 @@ import logging
 from typing import Any, Dict
 
 
+import sys
+
+
 def get_logger(name: str) -> logging.Logger:
-    """Get a logger pre-configured to INFO level if no handlers exist."""
+    """Get a logger that always logs to stdout with a simple formatter (for Lambda/CloudWatch)."""
     logger = logging.getLogger(name)
     if not logger.handlers:
-        logging.basicConfig(level=logging.INFO)
+        handler = logging.StreamHandler(sys.stdout)
+        handler.setLevel(logging.INFO)
+        handler.setFormatter(logging.Formatter("%(message)s"))
+        logger.addHandler(handler)
+        logger.setLevel(logging.INFO)
+        logger.propagate = False
     return logger
 
 
