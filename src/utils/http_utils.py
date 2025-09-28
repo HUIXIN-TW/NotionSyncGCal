@@ -1,7 +1,4 @@
-from __future__ import annotations
-
-import json
-from typing import Any, Dict, Optional
+from typing import Dict, Optional
 
 
 def get_header(headers: Optional[Dict[str, str]], key: str, default: Optional[str] = None) -> Optional[str]:
@@ -12,9 +9,4 @@ def get_header(headers: Optional[Dict[str, str]], key: str, default: Optional[st
     return lower.get(key.lower(), default)
 
 
-def format_json_response(status_code: int, body: Dict[str, Any]) -> Dict[str, Any]:
-    """Standard API Gateway style JSON response."""
-    return {"statusCode": status_code, "body": json.dumps(body)}
-
-
-__all__ = ["get_header", "format_json_response"]
+__all__ = ["get_header"]
