@@ -50,10 +50,10 @@ class GoogleService:
             self.logger.debug(f"Total events retrieved: {len(events)}")
             return events
         except RefreshError as e:
-            self.logger.error(f"RefreshError: {e}", exc_info=True)
+            self.logger.error(f"RefreshError: {e}")
             raise
         except Exception as e:
-            self.logger.error(f"Error retrieving Google Calendar events: {e}", exc_info=True)
+            self.logger.error(f"Error retrieving Google Calendar events: {e}")
             raise
 
     def update_gcal_event(self, notion_task, existing_gcal_cal_id, existing_gcal_event_id):

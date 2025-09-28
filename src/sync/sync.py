@@ -310,7 +310,7 @@ def synchronize_notion_and_google_calendar(
                 gcal_cal_name = gcal_id_dict.get(gcal_event.get("organizer", {}).get("email"))
                 notion_service.create_notion_task(gcal_event, gcal_cal_name)
     except Exception as e:
-        logger.error(f"Error during synchronization: {e}", exc_info=True)
+        logger.error(f"Error during synchronization: {e}")
         return {"statusCode": 500, "body": {"status": "sync error", "message": str(e)}}
 
     message = f"{notion_task_summary}. Synchronization completed successfully at {trigger_sync_time}, notion task count: {len(notion_task_list)}"  # noqa: E501

@@ -88,7 +88,7 @@ class GoogleToken:
                     with self.local_credentials_path.open("r") as f:
                         credentials_data = json.load(f)
                 except Exception as e:
-                    self.logger.exception(f"Failed to load credentials from local file: {e}")
+                    self.logger.error(f"Failed to load credentials from local file: {e}")
                     raise
             else:
                 self.logger.error("No credentials found in either S3 or local file.")

@@ -59,16 +59,16 @@ def main(uuid: str | None = None) -> dict:
         google_token = GoogleToken(config, logger)
         google_service = GoogleService(notion_user_setting, google_token, logger)
     except RefreshError as e:
-        logger.error("Google RefreshError during initialization", exc_info=True)
+        logger.error(f"Google RefreshError during initialization: {e}")
     except Exception as e:
-        logger.error("Error initializing services", exc_info=True)
+        logger.error(f"Error initializing services: {e}")
 
     # Parse CLI args (safe for lambda - argv is just script name)
     try:
         args = _parse_args()
         logger.debug(f"Parsed arguments: {args}")
     except Exception as e:
-        logger.error("Error parsing arguments", exc_info=True)
+        logger.error(f"Error parsing arguments: {e}")
 
     # Execute requested operation(s)
     try:
@@ -123,7 +123,7 @@ def main(uuid: str | None = None) -> dict:
             )
         return res
     except Exception as e:
-        logger.error(f"Error during sync operation {e}", exc_info=True)
+        logger.error(f"Error during sync operation {e}")
 
 
 if __name__ == "__main__":

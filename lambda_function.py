@@ -38,15 +38,18 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         if "Records" in event:
             message = process_sqs_records(logger_obj, event, context, run_sync_notion_and_google, lambda_start_time)
         else:
-            message = process_api_event(logger_obj, event, context, run_sync_notion_and_google, lambda_start_time, EXPECTED_API_KEY)
+            message = process_api_event(
+                logger_obj, event, context, run_sync_notion_and_google, lambda_start_time, EXPECTED_API_KEY
+            )
         import rich
+
         rich.print(message)
         return message
 
     except RefreshError as e:
-        logger_obj.exception("Google token refresh failed")
+        logger_obj.exception(f"Google token refresh failed {e}")
     except Exception as e:
-        logger_obj.exception("Unhandled lambda error")
+        logger_obj.exception(f"Unhandled lambda error {e}")
 
 
 # --- Local test entrypoint ---

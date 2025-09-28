@@ -80,7 +80,10 @@ def process_sqs_records(
         "statusCode": 200,
         "body": {
             "status": "batch processed",
-            "message": f"Processed {len(sqs_batch_results)} records: {success_count} succeeded, {failure_count} failed.",
+            "message": (
+                f"Processed {len(sqs_batch_results)} records: "
+                f"{success_count} succeeded, {failure_count} failed."
+            ),
         },
     }
     return process_and_log_sync_result(
@@ -126,7 +129,12 @@ def process_api_event(
         return {"statusCode": 500, body: {"status": "lambda error", "message": "Sync function returned no result."}}
 
     response = process_and_log_sync_result(
-        logger_obj=logger_obj, sync_result=sync_result, context=context, uuid=provided_uuid, lambda_start_time=lambda_start_time, trigger_name="api"
+        logger_obj=logger_obj,
+        sync_result=sync_result,
+        context=context,
+        uuid=provided_uuid,
+        lambda_start_time=lambda_start_time,
+        trigger_name="api",
     )
     return response
 
