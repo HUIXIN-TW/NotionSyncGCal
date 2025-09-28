@@ -32,7 +32,7 @@ class NotionConfig:
             try:
                 s3 = boto3.client("s3")
                 response = s3.get_object(Bucket=config.get("s3_bucket_name"), Key=config.get("s3_key_notion"))
-                self.logger.info(
+                self.logger.debug(
                     f"Loading settings from S3: {config.get('s3_bucket_name')}/{config.get('s3_key_notion')}"
                 )
                 return json.loads(response["Body"].read().decode("utf-8"))

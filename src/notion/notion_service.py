@@ -32,27 +32,29 @@ class NotionService:
         # TODO: Notion has no filter for start date and end date so add extra column: GCAL_END_DATE_NOTION_NAME
         before_date_with_time_zone = self.setting["before_date"] + "T00:00:00.000" + self.setting["timecode"]
         after_date_with_time_zone = self.setting["after_date"] + "T00:00:00.000" + self.setting["timecode"]
+        notion_summary = f"Reading Notion database with ID: {self.setting['database_id']} from {self.page_property['GCal_End_Date_Notion_Name']}: {self.setting['after_date']} to {self.page_property['Date_Notion_Name']}: {self.setting['before_date']} (exclusive)"  # noqa: E501
 
-        self.logger.info(
-            f"Reading Notion database with ID: {self.setting['database_id']} from {self.page_property['GCal_End_Date_Notion_Name']}: {self.setting['after_date']} to {self.page_property['Date_Notion_Name']}: {self.setting['before_date']} (exclusive)"  # noqa: E501
-        )
+        self.logger.debug(notion_summary)
 
         try:
-            return self.client.databases.query(
-                database_id=self.setting["database_id"],
-                filter={
-                    "and": [
-                        {
-                            "property": self.page_property["Date_Notion_Name"],
-                            "date": {"before": before_date_with_time_zone},
-                        },
-                        {
-                            "property": self.page_property["GCal_End_Date_Notion_Name"],
-                            "formula": {"date": {"on_or_after": after_date_with_time_zone}},
-                        },
-                    ]
-                },
-            )["results"]
+            return (
+                notion_summary,
+                self.client.databases.query(
+                    database_id=self.setting["database_id"],
+                    filter={
+                        "and": [
+                            {
+                                "property": self.page_property["Date_Notion_Name"],
+                                "date": {"before": before_date_with_time_zone},
+                            },
+                            {
+                                "property": self.page_property["GCal_End_Date_Notion_Name"],
+                                "formula": {"date": {"on_or_after": after_date_with_time_zone}},
+                            },
+                        ]
+                    },
+                )["results"],
+            )
         except Exception as e:
             self.logger.error(f"Error reading Notion table: {e}")
             return None

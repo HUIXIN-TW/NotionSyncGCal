@@ -23,7 +23,7 @@ class GoogleService:
         self.notion_page_property = user_setting["page_property"]
         try:
             self.service = build("calendar", "v3", credentials=google_token.credentials)
-            self.logger.info("Google Calendar service initialized successfully.")
+            self.logger.debug("Google Calendar service initialized successfully.")
         except Exception as e:
             self.logger.error(f"Error initializing Google service: {e}")
             raise
@@ -45,9 +45,9 @@ class GoogleService:
 
                 if response.get("items"):
                     events.extend(response["items"])
-                self.logger.info(f"Retrieved {len(response.get('items', []))} events from calendar ID {cal_id}")
+                self.logger.debug(f"Retrieved {len(response.get('items', []))} events from calendar ID {cal_id}")
 
-            self.logger.info(f"Total events retrieved: {len(events)}")
+            self.logger.debug(f"Total events retrieved: {len(events)}")
             return events
         except RefreshError as e:
             self.logger.error(f"RefreshError: {e}", exc_info=True)
