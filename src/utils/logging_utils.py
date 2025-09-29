@@ -1,29 +1,29 @@
-from __future__ import annotations
-
-import json
-import logging
-from typing import Any, Dict
-
-
+import os
 import sys
+import logging
 
 
-def get_logger(name: str) -> logging.Logger:
+def get_logger(name: str, log_file) -> logging.Logger:
     """Get a logger that always logs to stdout with a simple formatter (for Lambda/CloudWatch)."""
+    # DEBUG with event details
+    # INFO with calendar level summary
+    # WARNING for recoverable errors
+    # ERROR for non-recoverable errors
     logger = logging.getLogger(name)
+    env = os.environ.get("ENVIRONMENT", "production")
+    print(f"environment: {env} in file: {__file__}, log_file: {log_file}")
     if not logger.handlers:
         handler = logging.StreamHandler(sys.stdout)
-        handler.setLevel(logging.INFO)
+        if env.lower() == "production":
+            handler.setLevel(logging.INFO)
+            logger.setLevel(logging.INFO)
+        else:
+            handler.setLevel(logging.DEBUG)
+            logger.setLevel(logging.DEBUG)
         handler.setFormatter(logging.Formatter("%(message)s"))
         logger.addHandler(handler)
-        logger.setLevel(logging.INFO)
         logger.propagate = False
     return logger
 
 
-def log_json(logger: logging.Logger, payload: Dict[str, Any], level: int = logging.INFO) -> None:
-    """Emit a structured JSON log line."""
-    logger.log(level, json.dumps(payload))
-
-
-__all__ = ["get_logger", "log_json"]
+__all__ = ["get_logger"]

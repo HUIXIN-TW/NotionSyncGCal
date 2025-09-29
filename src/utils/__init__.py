@@ -1,7 +1,13 @@
 """Utility package for shared helpers used across the project."""
 
-from .time_utils import get_timestamp
-from .http_utils import get_header, format_json_response
-from .logging_utils import get_logger, log_json
+from .http_utils import get_header
+from .logging_utils import get_logger
+from .lambda_utils import (
+    process_and_log_sync_result,
+)
 
-__all__ = ["get_timestamp", "get_header", "format_json_response", "get_logger", "log_json"]
+__all__ = [
+    "get_header",
+    "get_logger",
+    "process_and_log_sync_result",
+]

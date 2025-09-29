@@ -1,9 +1,13 @@
 import os
 from pathlib import Path
+from utils.logging_utils import get_logger  # noqa: E402
 
 # Get the current directory
 CURRENT_DIR = Path(__file__).resolve().parent.parent.parent
-print(f"Current directory: {CURRENT_DIR}")
+logger = get_logger(__name__, "tmp/sync_activity.log")
+
+current_dir = Path(__file__).parent.resolve()
+logger.debug(f"Current directory: {CURRENT_DIR}")
 
 
 class SettingError(Exception):

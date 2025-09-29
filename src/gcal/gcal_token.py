@@ -40,7 +40,7 @@ class GoogleToken:
                 "No credentials found on S3. Cannot proceed `perform_oauth_flow`. Please use Web UI to re-authenticate."
             )
             sys.exit(1)
-        self.logger.info(
+        self.logger.debug(
             f"Credentials Expired: {credentials.expired}, Has Refresh Token: {bool(credentials.refresh_token)}"
         )
         if credentials.expired and credentials.refresh_token:
@@ -59,7 +59,7 @@ class GoogleToken:
             if self.has_s3_google:
                 try:
                     # fmt: off
-                    self.logger.info(f"Loaded credentials from S3: {self.config.get('s3_bucket_name')}/{self.config.get('s3_credentials_path')}")  # noqa: E501
+                    self.logger.debug(f"Loaded credentials from S3: {self.config.get('s3_bucket_name')}/{self.config.get('s3_credentials_path')}")  # noqa: E501
                     # fmt: on
                     s3 = boto3.client("s3")
                     response = s3.get_object(
@@ -88,7 +88,7 @@ class GoogleToken:
                     with self.local_credentials_path.open("r") as f:
                         credentials_data = json.load(f)
                 except Exception as e:
-                    self.logger.exception(f"Failed to load credentials from local file: {e}")
+                    self.logger.error(f"Failed to load credentials from local file: {e}")
                     raise
             else:
                 self.logger.error("No credentials found in either S3 or local file.")
