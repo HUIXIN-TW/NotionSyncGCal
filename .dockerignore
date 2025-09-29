@@ -1,0 +1,40 @@
+# Exclude VCS
+.git
+.gitignore
+
+# Python caches
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.pytest_cache/
+.mypy_cache/
+
+# Virtual environments
+venv/
+.env/
+
+# Local/OS/editor files
+.DS_Store
+.idea/
+.vscode/
+
+# Logs & temp
+logs/
+*.log
+tmp/
+!tmp/__keep__
+
+# Tests (not needed in runtime image)
+tests/
+
+# Node/yarn (if any)
+node_modules/
+
+# Credentials (ensure mounted via secrets manager or env)
+*.pem
+*.key
+.token
+
+# Docker related
+Dockerfile.*
