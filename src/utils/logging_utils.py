@@ -11,7 +11,7 @@ def get_logger(name: str, log_file) -> logging.Logger:
     # ERROR for non-recoverable errors
     logger = logging.getLogger(name)
     env = os.environ.get("ENVIRONMENT", "production")
-    print(f"environment: {env} in file: {__file__}, log_file: {log_file}")
+    # print(f"environment: {env} in file: {__file__}, log_file: {log_file}")
     if not logger.handlers:
         handler = logging.StreamHandler(sys.stdout)
         if env.lower() == "production":
