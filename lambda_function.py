@@ -41,9 +41,6 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             message = process_api_event(
                 logger_obj, event, context, run_sync_notion_and_google, lambda_start_time, EXPECTED_API_KEY
             )
-        import rich
-
-        rich.print(message)
         return message
 
     except RefreshError as e:
