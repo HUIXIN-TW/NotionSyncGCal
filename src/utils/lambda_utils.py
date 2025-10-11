@@ -1,7 +1,6 @@
 import json
 from datetime import datetime, timezone
 from typing import Any, Dict, Optional
-from src.utils.http_utils import get_header
 
 
 def process_and_log_sync_result(
@@ -81,8 +80,7 @@ def process_sqs_records(
         "body": {
             "status": "batch processed",
             "message": (
-                f"Processed {len(sqs_batch_results)} records: "
-                f"{success_count} succeeded, {failure_count} failed."
+                f"Processed {len(sqs_batch_results)} records: " f"{success_count} succeeded, {failure_count} failed."
             ),
         },
     }
@@ -105,42 +103,7 @@ def process_sqs_records(
     )
 
 
-def process_api_event(
-    logger_obj, event: Dict[str, Any], context: Any, run_sync, lambda_start_time: datetime, expected_api_key: str
-) -> Dict[str, Any]:
-    """
-    API Gateway event processing: validate key, run sync, log summary
-    """
-    headers = event.get("headers") or {}
-    received_api_key = get_header(headers, "x-api-key", "")
-    if received_api_key != expected_api_key:
-        return {"statusCode": 403, "body": {"error": "Forbidden: Invalid API Key"}}
-
-    raw_body = event.get("body", {})
-    try:
-        body = json.loads(raw_body) if isinstance(raw_body, str) else (raw_body or {})
-    except json.JSONDecodeError:
-        body = {}
-
-    provided_uuid = (body.get("uuid") or "").strip()
-    sync_result = run_sync(provided_uuid)
-
-    if not sync_result:
-        return {"statusCode": 500, body: {"status": "lambda error", "message": "Sync function returned no result."}}
-
-    response = process_and_log_sync_result(
-        logger_obj=logger_obj,
-        sync_result=sync_result,
-        context=context,
-        uuid=provided_uuid,
-        lambda_start_time=lambda_start_time,
-        trigger_name="api",
-    )
-    return response
-
-
 __all__ = [
     "process_and_log_sync_result",
     "process_sqs_records",
-    "process_api_event",
 ]

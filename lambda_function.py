@@ -14,13 +14,7 @@ if _SRC not in sys.path:
 
 # Import utility functions and helpers
 from src.utils import get_logger  # noqa: E402
-from src.utils.lambda_utils import (  # noqa: E402
-    process_sqs_records,
-    process_api_event,
-)
-
-# API key from environment variables
-EXPECTED_API_KEY = os.environ.get("API_KEY", "")
+from src.utils.lambda_utils import process_sqs_records  # noqa: E402
 
 # Set up logger to write to file
 logger_obj = get_logger(__name__, log_file="tmp/sync_activity.log")
@@ -35,12 +29,7 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     from src.main import main as run_sync_notion_and_google  # noqa: E402
 
     try:
-        if "Records" in event:
-            message = process_sqs_records(logger_obj, event, context, run_sync_notion_and_google, lambda_start_time)
-        else:
-            message = process_api_event(
-                logger_obj, event, context, run_sync_notion_and_google, lambda_start_time, EXPECTED_API_KEY
-            )
+        message = process_sqs_records(logger_obj, event, context, run_sync_notion_and_google, lambda_start_time)
         return message
 
     except RefreshError as e:
@@ -55,15 +44,10 @@ if __name__ == "__main__":
     from dotenv import load_dotenv
 
     load_dotenv()
-    EXPECTED_API_KEY = os.environ.get("API_KEY", "test-api-key")
     UUID = os.environ.get("UUID", "test-uuid")
     use_sqs_mock = False
 
-    if use_sqs_mock:
-        mock_event = {"Records": [{"body": json.dumps({"uuid": UUID})}]}
-    else:
-        mock_event = {"headers": {"x-api-key": EXPECTED_API_KEY}, "body": json.dumps({"uuid": UUID})}
-
+    mock_event = {"Records": [{"body": json.dumps({"uuid": UUID})}]}
     fake_ctx = type("FakeContext", (), {"function_name": "test-lambda", "aws_request_id": "abc-123"})()
     response = lambda_handler(mock_event, fake_ctx)
     # print(response) # return to sync table
