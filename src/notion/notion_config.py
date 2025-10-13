@@ -84,13 +84,15 @@ class NotionConfig:
 
     def get_database_id(self, url):
         """Extracts the database ID from the Notion URL."""
+        # if contains https://www.notion.so/... extract the id
+        #  otherwise assume it's already the id
         pattern = r"https://www.notion.so/[^/]+/([^?]+)"
         match = re.search(pattern, url)
         if match:
             return match.group(1)
         else:
-            self.logger.error("Failed to extract database ID from URL")
-            raise SettingError("Failed to extract database ID from URL")
+            self.logger.warning("No valid Notion URL provided, assuming ID is correct")
+            return url if url else None
 
     def get_cal_name(self, cal_id):
         return self.user_setting["gcal_id_dict"].get(cal_id)
