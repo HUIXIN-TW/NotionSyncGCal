@@ -91,7 +91,7 @@ class NotionConfig:
         if match:
             return match.group(1)
         else:
-            self.logger.warning("No valid Notion URL provided, assuming ID is correct")
+            self.logger.warning(f"No valid Notion URL provided, assuming ID is correct: {url}")
             return url if url else None
 
     def get_cal_name(self, cal_id):
