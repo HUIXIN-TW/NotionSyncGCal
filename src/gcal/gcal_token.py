@@ -146,8 +146,8 @@ class GoogleToken:
             "token": credentials.token,
             "refresh_token": credentials.refresh_token,
             "token_uri": credentials.token_uri,
-            "client_id": credentials.client_id,
-            "client_secret": credentials.client_secret,
+            # "client_id": credentials.client_id,
+            # "client_secret": credentials.client_secret,
             "scopes": credentials.scopes,
             "expiry": credentials.expiry.isoformat() if credentials.expiry else None,
         }
@@ -199,8 +199,8 @@ class GoogleToken:
             raise SettingError("No refresh token found.")
         if not credentials.token:
             raise SettingError("No access token found.")
-        if not credentials.client_id or not credentials.client_secret:
-            raise SettingError("Client ID or Client Secret is missing.")
+        # if not credentials.client_id or not credentials.client_secret:
+        #     raise SettingError("Client ID or Client Secret is missing.")
         if not credentials.scopes:
             raise SettingError("Scopes are missing.")
         if not credentials.token_uri:
