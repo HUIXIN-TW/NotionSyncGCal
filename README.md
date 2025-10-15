@@ -103,7 +103,7 @@ python3 src/main.py -n <look_back_days> <look_ahead_days>
 
 ### How It Works
 
-- Stores `token.json`, `client_secret.json`, and `notion_setting.json` in S3.
+- Stores `xxx.json` in S3.
 - Lambda reads these files at runtime using environment variables.
 - Automatically refreshes expired tokens and saves them back to S3.
 
@@ -113,12 +113,12 @@ Set the following variables in your Lambda configuration or `.env` file:
 
 ```bash
 export S3_BUCKET_NAME='your-bucket-name'
-export S3_CLIENT_SECRET_PATH='<foldername>/client_secret.json'
-export S3_CREDENTIALS_PATH='<foldername>/token.json'
-export S3_NOTION_SETTINGS_PATH='<foldername>/notion_setting.json'
+export S3_GOOGLE_TOKEN_PATH='<foldername>/token.json'
+export S3_NOTION_TOKEN_PATH='<foldername>/notion_token.json'
+export S3_NOTION_CONFIG_PATH='<foldername>/notion_config.json'
 ```
 
-Note: When using Lambda, no CLI arguments are passed. You must configure your `notion_setting.json` values (e.g., `goback_days`, `goforward_days`) to control the sync range.
+Note: When using Lambda, no CLI arguments are passed. You must configure your `notion_config.json` values (e.g., `goback_days`, `goforward_days`) to control the sync range.
 
 ### IAM Permissions Required for Lambda Role
 
@@ -135,7 +135,7 @@ Note: When using Lambda, no CLI arguments are passed. You must configure your `n
 Use GitHub Actions:
 
 - Create a GitHub Action to build and deploy your Lambda function.
-- Use the provided `deploy_lambda.yml` file in the `.github/workflows` directory.
+- Use the provided `lambda-ecr-deploy.yml` file in the `.github/workflows` directory.
 
 ## Testing and Monitoring
 
