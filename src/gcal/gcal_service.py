@@ -218,6 +218,7 @@ if __name__ == "__main__":
     import json
     import logging
     from pathlib import Path
+
     # python -m src.gcal.gcal_service
     logging.basicConfig(filename="google_services.log", level=logging.INFO)
     logger = logging.getLogger(__name__)

@@ -21,12 +21,12 @@ class GoogleToken:
         self.config = config
         self.mode = config.get("mode")
         self.logger = logger
-        self.s3_client = boto3.client("s3") if self.mode == 's3' else None
+        self.s3_client = boto3.client("s3") if self.mode == "s3" else None
         self.activate_token()
 
     def activate_token(self):
         credentials = self._load_credentials()
-        if self.mode == 'local':
+        if self.mode == "local":
             self.logger.info("Running in local mode. Proceeding with OAuth flow via local server")
             credentials = self._perform_oauth_flow(credentials.scopes) if credentials.expired else credentials
         if credentials.expired and credentials.refresh_token:
@@ -38,8 +38,8 @@ class GoogleToken:
         try:
             if not self.config:
                 raise SettingError("Configuration is required to load settings.")
-            if self.mode == 's3':
-                self.logger.info(f"Loading credentials from S3")
+            if self.mode == "s3":
+                self.logger.info("Loading credentials from S3")
                 response = self.s3_client.get_object(
                     Bucket=self.config.get("s3_bucket_name"), Key=self.config.get("s3_key_google_token")
                 )
@@ -53,9 +53,9 @@ class GoogleToken:
                     "client_id": os.environ.get("GOOGLE_CALENDAR_CLIENT_ID"),
                     "client_secret": os.environ.get("GOOGLE_CALENDAR_CLIENT_SECRET"),
                 }
-            elif self.mode == 'local':
+            elif self.mode == "local":
                 self.logger.info(f"Loading google token from local file: {self.config.get('local_google_token_path')}")
-                with self.config.get('local_google_token_path').open("r") as f:
+                with self.config.get("local_google_token_path").open("r") as f:
                     credentials_data = json.load(f)
             credentials_data = self._convert_expiry(credentials_data)
             credentials = Credentials(**credentials_data)
@@ -72,15 +72,18 @@ class GoogleToken:
             self.logger.info("Successfully refreshed tokens.")
             return credentials
         except Exception as e:
-            # local only
-            credentials = self._perform_oauth_flow(credentials.scopes)
-            return credentials
-        except Exception as e:
-            raise RefreshError("Failed to refresh Google credentials")
+            self.logger.warning(f"Token refresh failed: {e}, running OAuth flow locally.")
+            try:
+                credentials = self._perform_oauth_flow(credentials.scopes)
+                return credentials
+            except Exception as e:
+                raise RefreshError(f"Failed to refresh Google credentials: {e}")
 
     def _perform_oauth_flow(self, scopes):
         self.logger.info("Google Scope: " + str(scopes))
-        flow = InstalledAppFlow.from_client_secrets_file(str(self.config.get('local_google_client_secret_path')), scopes)
+        flow = InstalledAppFlow.from_client_secrets_file(
+            str(self.config.get("local_google_client_secret_path")), scopes
+        )
         credentials = flow.run_local_server(port=0)
         self.logger.info(f"Successfully fetched new google tokens to {self.config.get('local_google_token_path')}")
         self._save_credentials(credentials)
@@ -100,14 +103,14 @@ class GoogleToken:
         json_buffer = json.dumps(payload).encode()
 
         try:
-            if self.mode == 's3':
+            if self.mode == "s3":
                 self.s3_client.put_object(
                     Bucket=self.config.get("s3_bucket_name"),
                     Key=self.config.get("s3_key_google_token"),
                     Body=json_buffer,
                 )
                 self.logger.info("Saved credentials to S3.")
-            elif self.mode == 'local':
+            elif self.mode == "local":
                 os.remove(self.config.get("local_google_token_path"))
                 with self.config.get("local_google_token_path").open("w") as token:
                     json.dump(payload, token)

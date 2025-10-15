@@ -46,4 +46,4 @@ if __name__ == "__main__":
     mock_event = {"Records": [{"body": json.dumps({"uuid": UUID})}]}
     fake_ctx = type("FakeContext", (), {"function_name": "test-lambda", "aws_request_id": "abc-123"})()
     response = lambda_handler(mock_event, fake_ctx)
-    print(response) # return to sync table
+    print(response)  # return to sync table

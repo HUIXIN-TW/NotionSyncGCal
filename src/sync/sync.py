@@ -350,7 +350,7 @@ def force_update_google_event_by_notion_task_and_ignore_time(user_setting, notio
 if __name__ == "__main__":
     # python -m src.sync.sync
     from rich.pretty import pprint
-    
+
     sys.path.append(str(Path(__file__).resolve().parent.parent))
     from config.config import generate_uuid_config  # noqa: E402
     from notion.notion_service import NotionService  # noqa: E402

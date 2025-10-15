@@ -16,14 +16,14 @@ class NotionToken:
         self.logger = logger
         self.config = config
         self.mode = config.get("mode")
-        self.token = self.load_settings(config.get("uuid") if self.mode == 's3' else None)
+        self.token = self.load_settings(config.get("uuid") if self.mode == "s3" else None)
 
     def load_settings(self, uuid=None):
         config = self.config
         if not config:
             raise SettingError("Configuration is required to load settings.")
         try:
-            if self.mode == 's3':
+            if self.mode == "s3":
                 s3 = boto3.client("s3")
                 response = s3.get_object(Bucket=config.get("s3_bucket_name"), Key=config.get("s3_key_notion_token"))
                 self.logger.debug(
@@ -31,7 +31,7 @@ class NotionToken:
                 )
                 response = json.loads(response["Body"].read().decode("utf-8"))
                 return response.get("access_token")
-            elif self.mode == 'local':
+            elif self.mode == "local":
                 self.logger.info(f"Loading settings from local file: {config.get('local_notion_settings_path')}")
                 with open(config.get("local_notion_settings_path"), encoding="utf-8") as f:
                     response = json.load(f)
@@ -42,10 +42,12 @@ class NotionToken:
     def get(self):
         return self.token
 
+
 if __name__ == "__main__":
     import sys
     import logging
     from pathlib import Path
+
     # python -m src.notion.notion_config
     logging.basicConfig(level=logging.INFO)
     logger = logging.getLogger(__name__)

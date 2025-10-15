@@ -16,16 +16,17 @@ class SettingError(Exception):
     def __init__(self, message):
         super().__init__(message)
 
+
 def generate_config(user_uuid: str):
     """Dynamically generate CONFIG based on whether UUID is provided.
 
     - If user_uuid is provided: use S3 paths scoped by that UUID
     - If user_uuid is empty: use local token files under repo 'token/'
     """
-    mode = 'local' if not user_uuid else 's3'
+    mode = "local" if not user_uuid else "s3"
     logger.debug(f"Configuration mode: {mode}, UUID: {user_uuid}")
 
-    if mode == 's3':
+    if mode == "s3":
         S3_BUCKET_NAME = os.environ.get("S3_BUCKET_NAME")
         S3_NOTION_CONFIG_PATH = os.environ.get("S3_NOTION_CONFIG_PATH")
         S3_NOTION_TOKEN_PATH = os.environ.get("S3_NOTION_TOKEN_PATH")
@@ -37,10 +38,14 @@ def generate_config(user_uuid: str):
             "s3_key_notion_config": f"{user_uuid}/{S3_NOTION_CONFIG_PATH}",
             "s3_key_notion_token": f"{user_uuid}/{S3_NOTION_TOKEN_PATH}",
             "s3_key_google_token": f"{user_uuid}/{S3_GOOGLE_TOKEN_PATH}",
-    }
+        }
     else:
-        LOCAL_NOTION_SETTINGS_PATH = os.environ.get("LOCAL_NOTION_SETTINGS_PATH", CURRENT_DIR / "token/notion_setting.json")
-        LOCAL_GOOGLE_CLIENT_SECRET_PATH = os.environ.get("LOCAL_GOOGLE_CLIENT_SECRET_PATH", CURRENT_DIR / "token/client_secret.json")
+        LOCAL_NOTION_SETTINGS_PATH = os.environ.get(
+            "LOCAL_NOTION_SETTINGS_PATH", CURRENT_DIR / "token/notion_setting.json"
+        )
+        LOCAL_GOOGLE_CLIENT_SECRET_PATH = os.environ.get(
+            "LOCAL_GOOGLE_CLIENT_SECRET_PATH", CURRENT_DIR / "token/client_secret.json"
+        )
         LOCAL_GOOGLE_TOKEN_PATH = os.environ.get("LOCAL_GOOGLE_TOKEN_PATH", CURRENT_DIR / "token/token.json")
         return {
             "mode": mode,
@@ -53,6 +58,7 @@ def generate_config(user_uuid: str):
 if __name__ == "__main__":
     from rich.console import Console
     from rich.pretty import pprint
+
     # python -m config.config
     console = Console()
     console.rule("[bold green]🔧 Configuration Source")

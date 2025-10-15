@@ -293,6 +293,7 @@ if __name__ == "__main__":
     import logging
     import json
     from pathlib import Path
+
     # python -m src.notion.notion_service
     logging.basicConfig(level=logging.INFO)
     logger = logging.getLogger(__name__)
