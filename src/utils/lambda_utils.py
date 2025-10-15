@@ -2,6 +2,8 @@ import json
 from datetime import datetime, timezone
 from typing import Any, Dict, Optional
 
+from .dynamodb_utils import save_sync_logs  # noqa: E402
+
 
 def process_and_log_sync_result(
     logger_obj,
@@ -27,6 +29,13 @@ def process_and_log_sync_result(
     }
     if extra:
         payload.update(extra)
+    # Persist summary to DynamoDB; don't fail the handler on logging errors
+    try:
+        # Only log individual user syncs, not batch summaries
+        if uuid and uuid != "batch":
+            save_sync_logs(uuid, payload)  # ttl default 7 days
+    except Exception:
+        logger_obj.exception("Failed to persist sync summary to DynamoDB")
     return payload
 
 
