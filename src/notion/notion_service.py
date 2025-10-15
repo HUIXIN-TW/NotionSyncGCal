@@ -1,9 +1,5 @@
-import sys
-import logging
-import json
 from notion_client import Client
 from datetime import datetime, timedelta
-from pathlib import Path
 import emoji
 
 
@@ -23,6 +19,7 @@ class NotionService:
 
         try:
             self.client = Client(auth=self.token)
+            self.logger.info("Notion client initialized successfully.")
         except Exception as e:
             self.logger.error(f"Failed to initialize Notion client: {e}")
             raise SettingError(f"Failed to initialize Notion client: {e}")
@@ -130,7 +127,7 @@ class NotionService:
                 },
             )
         except Exception as e:
-            logging.error(f"Error updating Notion page when updating Notion Task: {e}")
+            self.logger.error(f"Error updating Notion page when updating Notion Task: {e}")
             return None
 
     def update_notion_task_for_new_gcal_event_id(self, page_id, new_gcal_event_id):
@@ -145,7 +142,7 @@ class NotionService:
                 },
             )
         except Exception as e:
-            logging.error(f"Error updating Notion page when updating for new GCal Event ID: {e}")
+            self.logger.error(f"Error updating Notion page when updating for new GCal Event ID: {e}")
             return None
 
     def update_notion_task_for_new_gcal_sync_time(self, page_id, new_gcal_sync_time):
@@ -160,7 +157,7 @@ class NotionService:
                 },
             )
         except Exception as e:
-            logging.error(f"Error updating Notion page when updating for new GCal sync time: {e}")
+            self.logger.error(f"Error updating Notion page when updating for new GCal sync time: {e}")
             return None
 
     def update_notion_task_for_default_calendar(self, page_id, default_calendar_name):
@@ -175,7 +172,7 @@ class NotionService:
                 },
             )
         except Exception as e:
-            logging.error(f"Error updating Notion page when updating for default calendar: {e}")
+            self.logger.error(f"Error updating Notion page when updating for default calendar: {e}")
             return None
 
     def create_notion_task(self, gcal_event, gcal_cal_name):
@@ -227,9 +224,9 @@ class NotionService:
                     },
                 },
             )
-            logging.info(f"Event {gcal_event.get('summary', '')} created in Notion successfully.")
+            self.logger.info(f"Event {gcal_event.get('summary', '')} created in Notion successfully.")
         except Exception as e:
-            logging.error(f"Failed to sync event {gcal_event.get('summary', '')} to Notion: {e}")
+            self.logger.error(f"Failed to sync event {gcal_event.get('summary', '')} to Notion: {e}")
             return None
 
     def delete_notion_task(self, page_id):
@@ -248,9 +245,9 @@ class NotionService:
                     },
                 },
             )
-            logging.info(f"Event {page_id} marked as deletion in Notion successfully.")
+            self.logger.info(f"Event {page_id} marked as deletion in Notion successfully.")
         except Exception as e:
-            logging.error(f"Failed to marked as deletion {page_id} to Notion: {e}")
+            self.logger.error(f"Failed to marked as deletion {page_id} to Notion: {e}")
             return None
 
     def parse_date_in_notion_format(self, date_obj):
@@ -258,7 +255,7 @@ class NotionService:
         try:
             formatted_date = date_obj.strftime(f"%Y-%m-%dT%H:%M:%S{self.setting['timecode']}")
         except Exception as e:
-            logging.error(f"Error formatting date: {e}")
+            self.logger.error(f"Error formatting date: {e}")
             formatted_date = None
         return formatted_date
 
@@ -292,16 +289,21 @@ class NotionService:
 
 
 if __name__ == "__main__":
+    import sys
+    import logging
+    import json
+    from pathlib import Path
     # python -m src.notion.notion_service
     logging.basicConfig(level=logging.INFO)
     logger = logging.getLogger(__name__)
 
     from rich.console import Console  # noqa: E402
     from .notion_config import NotionConfig  # noqa: E402
+    from .notion_token import NotionToken  # noqa: E402
 
     # Add the src directory to the Python path
     sys.path.append(str(Path(__file__).resolve().parent.parent))
-    from config.config import generate_uuid_config  # noqa: E402
+    from config.config import generate_config  # noqa: E402
 
     console = Console()
     Path("logs").mkdir(parents=True, exist_ok=True)
@@ -309,9 +311,9 @@ if __name__ == "__main__":
     if not log_path.exists():
         log_path.touch()
 
-    config = generate_uuid_config("huixinyang")
+    config = generate_config("huixinyang")
     nc = NotionConfig(config, logger)
-    token = nc.token
+    token = NotionToken(config, logger).token
     user_setting = nc.user_setting
     logger.info(f"Notion User Setting: {user_setting}")
     ns = NotionService(token, user_setting, logger)

@@ -32,11 +32,11 @@ def update_notion_token(notion_token):
     write_json(data)
 
 
-def update_urlroot(urlroot):
+def update_database_id(database_id):
     """Modify the notion_database_id in notion_setting.json"""
     data = read_json()
-    data["urlroot"] = urlroot
-    print(f"Modified urlroot to {urlroot} in notion_setting.json")
+    data["database_id"] = database_id
+    print(f"Modified database_id to {database_id} in notion_setting.json")
     write_json(data)
 
 

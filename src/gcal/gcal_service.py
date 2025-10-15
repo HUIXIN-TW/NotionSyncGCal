@@ -1,11 +1,7 @@
-import logging
-import json
-import sys
 from datetime import timedelta
 from dateutil.parser import isoparse
 from googleapiclient.discovery import build
 from google.auth.exceptions import RefreshError
-from pathlib import Path
 
 
 class SettingError(Exception):
@@ -218,6 +214,10 @@ class GoogleService:
 
 # Example usage
 if __name__ == "__main__":
+    import sys
+    import json
+    import logging
+    from pathlib import Path
     # python -m src.gcal.gcal_service
     logging.basicConfig(filename="google_services.log", level=logging.INFO)
     logger = logging.getLogger(__name__)
@@ -231,11 +231,11 @@ if __name__ == "__main__":
 
     # Add the src directory to the Python path
     sys.path.append(str(Path(__file__).resolve().parent.parent))
-    from config.config import generate_uuid_config  # noqa: E402
+    from config.config import generate_config  # noqa: E402
     from notion.notion_config import NotionConfig  # noqa: E402
     from gcal.gcal_token import GoogleToken  # noqa: E402
 
-    config = generate_uuid_config("huixinyang")
+    config = generate_config("")
     nt = NotionConfig(config, logger)
     gt = GoogleToken(config, logger)
     user_setting = nt.user_setting

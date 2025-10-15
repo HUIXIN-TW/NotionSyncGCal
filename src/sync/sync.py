@@ -1,5 +1,5 @@
+import os
 import sys
-import logging
 from pathlib import Path
 from datetime import datetime, timezone
 from dateutil.parser import isoparse
@@ -7,7 +7,7 @@ import pytz
 from utils.logging_utils import get_logger  # noqa: E402
 
 # Configure logging
-logger = get_logger(__name__, log_file="tmp/sync_activity.log")
+logger = get_logger(__name__, log_file=os.getenv("LOG_FILE_PATH"))
 
 # Notion API Task Limit
 NOTION_TASK_LIMIT = 100
@@ -90,11 +90,11 @@ def synchronize_notion_and_google_calendar(
             notion_task_summary, notion_task_list = notion_service.get_notion_task()
             event_count = len(gcal_event_list)
             task_count = len(notion_task_list)
-            logging.info(f"Notion Task Count: {task_count}")
+            logger.info(f"Notion Task Count: {task_count}")
             # Check if task count exceeds the limit
             if task_count > NOTION_TASK_LIMIT or event_count > NOTION_TASK_LIMIT:
                 warning_message = f"Task count exceeds {NOTION_TASK_LIMIT}. Sync process stopped to avoid overloading the Notion database."  # noqa: E501
-                logging.warning(warning_message)
+                logger.warning(warning_message)
                 sys.exit(1)  # Exit the script
             if task_count == 0:
                 logger.debug("No Notion tasks found.")
@@ -350,7 +350,7 @@ def force_update_google_event_by_notion_task_and_ignore_time(user_setting, notio
 if __name__ == "__main__":
     # python -m src.sync.sync
     from rich.pretty import pprint
-
+    
     sys.path.append(str(Path(__file__).resolve().parent.parent))
     from config.config import generate_uuid_config  # noqa: E402
     from notion.notion_service import NotionService  # noqa: E402
