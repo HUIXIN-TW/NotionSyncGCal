@@ -53,6 +53,7 @@ def process_sqs_records(
         logger_obj.debug(f"Processing SQS record: {record}")
         try:
             body = json.loads(record.get("body", "{}"))
+            job_id = record.get("messageId", "unknown")
             provided_uuid = body.get("uuid")
             sync_result = run_sync(provided_uuid)
             sqs_batch_results.append(
@@ -63,6 +64,7 @@ def process_sqs_records(
                     uuid=provided_uuid,
                     lambda_start_time=lambda_start_time,
                     trigger_name="sqs",
+                    extra={"job_id": job_id}
                 )
             )
         except Exception:
