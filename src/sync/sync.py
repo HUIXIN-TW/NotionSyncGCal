@@ -119,11 +119,13 @@ def synchronize_notion_and_google_calendar(
             try:
                 gcal_name_column_name_in_notion = notion_page_property["GCal_Name_Notion_Name"]
                 notion_gcal_cal_name = notion_task["properties"][gcal_name_column_name_in_notion]["select"]["name"]
-                notion_gcal_cal_id = gcal_name_dict.get(notion_gcal_cal_name, user_setting["gcal_default_id"])
+                notion_gcal_cal_id = gcal_name_dict.get(notion_gcal_cal_name)
             except Exception as e:
                 notion_gcal_cal_name = user_setting["gcal_default_name"]
+                notion_gcal_cal_id = user_setting["gcal_default_id"]
                 logger.warning(f"Calendar name not found. Use the default calendar: {notion_gcal_cal_name}\n{e}")
-                logger.debug("Update Notion Task for default calendar id and calendar name")
+                logger.debug(f"Calendar id not found. Use the default calendar id: {notion_gcal_cal_id}")
+                logger.info("Update Notion Task for default calendar id and calendar name")
                 notion_service.update_notion_task_for_default_calendar(notion_task_page_id, notion_gcal_cal_name)
 
             try:
@@ -169,11 +171,6 @@ def synchronize_notion_and_google_calendar(
                     logger.debug(f"⚪️Deleted Flag & Not Creating in Google Calendar '{notion_task_name}'")
                     continue
                 logger.debug(f"Notion Task: 🟢Creating a new event in Google Calendar for task '{notion_task_name}'")
-                default_gcal_cal_id = user_setting["gcal_default_id"]
-                notion_gcal_cal_id = locals().get("notion_gcal_cal_id") or default_gcal_cal_id
-                logger.debug("Notion Task Calendar ID: %s", default_gcal_cal_id)
-                logger.debug(f"Notion Task Calendar ID: {notion_gcal_cal_id}")
-                logger.debug(f"Notion Task: {notion_task}")
                 new_gcal_event_id = google_service.create_gcal_event(notion_task, notion_gcal_cal_id)
                 notion_service.update_notion_task_for_new_gcal_event_id(notion_task_page_id, new_gcal_event_id)
                 continue
