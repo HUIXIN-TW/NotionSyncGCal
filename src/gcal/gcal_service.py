@@ -1,6 +1,7 @@
 from datetime import timedelta
 from dateutil.parser import isoparse
 from googleapiclient.discovery import build
+from googleapiclient.errors import HttpError
 from google.auth.exceptions import RefreshError
 
 
@@ -23,6 +24,19 @@ class GoogleService:
         except Exception as e:
             self.logger.error(f"Error initializing Google service: {e}")
             raise
+
+    def test_connection(self):
+        """Quick sanity check to confirm credentials are valid and API reachable."""
+        try:
+            self.service.calendarList().list(maxResults=1).execute()
+            self.logger.debug("Google Calendar connection test passed.")
+            return True
+        except HttpError as e:
+            self.logger.error(f"Google API error: {e}. Please click 'view settings' and re-authorize")
+            return False
+        except Exception as e:
+            self.logger.error(f"Google Calendar Connection test failed: {e}")
+            return False
 
     def get_gcal_event(self):
         # Calculate the start and end dates for the event range

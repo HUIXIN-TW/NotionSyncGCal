@@ -96,14 +96,14 @@ def synchronize_notion_and_google_calendar(
                 warning_message = f"Task count exceeds {NOTION_TASK_LIMIT}. Sync process stopped to avoid overloading the Notion database."  # noqa: E501
                 logger.warning(warning_message)
                 sys.exit(1)  # Exit the script
-            if task_count == 0:
-                logger.debug("No Notion tasks found.")
-                return {"statusCode": 200, "body": {"status": "sync success", "message": "No Notion tasks found."}}
-            if event_count == 0:
-                logger.debug("No Google Calendar events found.")
+            if task_count == 0 and event_count == 0:
+                logger.debug("No Notion tasks found and no Google Calendar events found.")
                 return {
                     "statusCode": 200,
-                    "body": {"status": "sync success", "message": "No Google Calendar events found."},
+                    "body": {
+                        "status": "sync success",
+                        "message": "No Notion tasks found and no Google Calendar events found.",
+                    },
                 }
         except Exception as e:
             return {"statusCode": 500, "body": {"status": "sync error", "message": str(e)}}
@@ -119,7 +119,7 @@ def synchronize_notion_and_google_calendar(
             try:
                 gcal_name_column_name_in_notion = notion_page_property["GCal_Name_Notion_Name"]
                 notion_gcal_cal_name = notion_task["properties"][gcal_name_column_name_in_notion]["select"]["name"]
-                notion_gcal_cal_id = gcal_name_dict.get(notion_gcal_cal_name)
+                notion_gcal_cal_id = gcal_name_dict.get(notion_gcal_cal_name, user_setting["gcal_default_id"])
             except Exception as e:
                 notion_gcal_cal_name = user_setting["gcal_default_name"]
                 logger.warning(f"Calendar name not found. Use the default calendar: {notion_gcal_cal_name}\n{e}")

@@ -64,7 +64,7 @@ def process_sqs_records(
                     uuid=provided_uuid,
                     lambda_start_time=lambda_start_time,
                     trigger_name="sqs",
-                    extra={"job_id": job_id}
+                    extra={"job_id": job_id},
                 )
             )
         except Exception:

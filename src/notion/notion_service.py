@@ -1,4 +1,5 @@
 from notion_client import Client
+from notion_client.errors import APIResponseError
 from datetime import datetime, timedelta
 import emoji
 
@@ -23,6 +24,18 @@ class NotionService:
         except Exception as e:
             self.logger.error(f"Failed to initialize Notion client: {e}")
             raise SettingError(f"Failed to initialize Notion client: {e}")
+
+    def test_connection(self):
+        try:
+            self.client.users.me()
+            self.logger.info("Notion connection passed.")
+            return True
+        except APIResponseError as e:
+            self.logger.error(f"Notion API error: {e}. Please click 'view settings' and re-authorize the integration.")
+            return False
+        except Exception as e:
+            self.logger.error(f"Notion Connection failed: {e}. Please check your network connection.")
+            return False
 
     def get_notion_task(self):
 
