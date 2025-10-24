@@ -14,7 +14,7 @@ if _SRC not in sys.path:
 
 # Import utility functions and helpers
 from src.utils import get_logger  # noqa: E402
-from src.utils.lambda_utils import process_sqs_records  # noqa: E402
+from src.utils.lambda_utils import detect_event_source, process_sqs_records  # noqa: E402
 
 # Set up logger to write to file
 logger_obj = get_logger(__name__, log_file=os.getenv("LOG_FILE_PATH"))
@@ -29,8 +29,15 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     from src.main import main as run_sync_notion_and_google  # noqa: E402
 
     try:
-        message = process_sqs_records(logger_obj, event, context, run_sync_notion_and_google, lambda_start_time)
-        return message
+        event_type = detect_event_source(event)
+        if event_type == "api":
+            pass  # API event processing can be added here (e.g. test connection)
+        elif event_type == "sqs":
+            message = process_sqs_records(logger_obj, event, context, run_sync_notion_and_google, lambda_start_time)
+            return message
+        else:
+            logger_obj.warning(f"Unknown event source: {event_type}")
+            return {"statusCode": 400, "body": {"message": "Unknown event source"}}
 
     except RefreshError as e:
         logger_obj.exception(f"Google token refresh failed {e}")

@@ -114,7 +114,18 @@ def process_sqs_records(
     )
 
 
-__all__ = [
-    "process_and_log_sync_result",
-    "process_sqs_records",
-]
+def detect_event_source(event: dict) -> str:
+    """Return 'sqs', 'api', or 'unknown'."""
+    if isinstance(event, dict):
+        # SQS events always have a 'Records' list with 'eventSource' or 'body'
+        if "Records" in event:
+            rec = event["Records"][0]
+            if rec.get("eventSource") == "aws:sqs" or "body" in rec:
+                return "sqs"
+        # API Gateway v2 or Lambda Function URL events have these keys
+        if "rawPath" in event or "requestContext" in event:
+            return "api"
+    return "unknown"
+
+
+__all__ = ["process_and_log_sync_result", "process_sqs_records", "detect_event_source"]

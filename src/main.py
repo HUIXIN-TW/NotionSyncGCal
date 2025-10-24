@@ -22,6 +22,12 @@ from utils.logging_utils import get_logger  # noqa: E402
 def _parse_args(argv: list[str] | None = None):
     parser = argparse.ArgumentParser(description="Welcome to Notion-Google Calendar Sync CLI!")
     parser.add_argument(
+        "-x",
+        "--test-connection",
+        action="store_true",
+        help="Test connections to Notion and Google Calendar services",
+    )
+    parser.add_argument(
         "-t",
         "--timestamp",
         nargs=2,
@@ -82,6 +88,15 @@ def main(uuid: str | None = None) -> dict:
     # Execute requested operation(s)
     try:
         res: dict | None = None
+        # Test connections
+        if args.test_connection:
+            logger.debug("▶ Testing connections...")
+            isConnectedToNotion = notion_service.test_connection()
+            isConnectedToGoogle = google_service.test_connection()
+            return {
+                "notion_connection": isConnectedToNotion,
+                "google_connection": isConnectedToGoogle,
+            }
         if not args.timestamp and not args.google and not args.notion:
             logger.debug("▶ Running sync with no arguments (default range)...")
             from sync import sync
