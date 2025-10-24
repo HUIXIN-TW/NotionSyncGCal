@@ -169,8 +169,9 @@ def synchronize_notion_and_google_calendar(
                     logger.debug(f"⚪️Deleted Flag & Not Creating in Google Calendar '{notion_task_name}'")
                     continue
                 logger.debug(f"Notion Task: 🟢Creating a new event in Google Calendar for task '{notion_task_name}'")
-                notion_gcal_cal_id = locals().get("notion_gcal_cal_id") or user_setting["gcal_default_id"]
-                logger.debug(f"Notion Task Calendar ID: {user_setting["gcal_default_id"]}")
+                default_gcal_cal_id = user_setting["gcal_default_id"]
+                notion_gcal_cal_id = locals().get("notion_gcal_cal_id") or default_gcal_cal_id
+                logger.debug("Notion Task Calendar ID: %s", default_gcal_cal_id)
                 logger.debug(f"Notion Task Calendar ID: {notion_gcal_cal_id}")
                 logger.debug(f"Notion Task: {notion_task}")
                 new_gcal_event_id = google_service.create_gcal_event(notion_task, notion_gcal_cal_id)
