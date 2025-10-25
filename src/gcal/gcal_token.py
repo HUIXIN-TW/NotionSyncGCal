@@ -14,7 +14,6 @@ class SettingError(Exception):
     def __init__(self, message):
         super().__init__(message)
 
-
 class GoogleToken:
     def __init__(self, config, logger):
         self.credentials = None
@@ -48,7 +47,7 @@ class GoogleToken:
                     "token": data.get("token"),
                     "refresh_token": data.get("refresh_token"),
                     "token_uri": "https://oauth2.googleapis.com/token",
-                    "scopes": data.get("scopes"),
+                    "scopes": ['https://www.googleapis.com/auth/calendar.events', 'openid', 'https://www.googleapis.com/auth/calendar.calendarlist.readonly', 'https://www.googleapis.com/auth/userinfo.profile', 'https://www.googleapis.com/auth/userinfo.email'],
                     "expiry": data.get("expiry"),
                     "client_id": os.environ.get("GOOGLE_CALENDAR_CLIENT_ID"),
                     "client_secret": os.environ.get("GOOGLE_CALENDAR_CLIENT_SECRET"),
@@ -95,8 +94,6 @@ class GoogleToken:
         payload = {
             "token": credentials.token,
             "refresh_token": credentials.refresh_token,
-            "token_uri": credentials.token_uri,
-            "scopes": credentials.scopes,
             "expiry": credentials.expiry.isoformat() if credentials.expiry else None,
         }
         # convert payload to JSON
