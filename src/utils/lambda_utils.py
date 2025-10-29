@@ -114,17 +114,60 @@ def process_sqs_records(
     )
 
 
+def process_eventbridge_event(
+    logger_obj, event: Dict[str, Any], context: Any, run_sync, lambda_start_time: datetime
+) -> Dict[str, Any]:
+    """
+    Process EventBridge event.
+    Returns a string summary of the event.
+    """
+    event_id = event.get("id", "unknown")
+    detail_type = event.get("detail-type", "unknown")
+    event_source = event.get("source", "unknown")
+    event_time = event.get("time", "unknown")
+    detail = event.get("detail", {})
+    try:
+        provided_uuid = detail.get("uuid")
+        sync_result = run_sync(provided_uuid)
+        result = process_and_log_sync_result(
+            logger_obj=logger_obj,
+            sync_result=sync_result,
+            context=context,
+            uuid=provided_uuid,
+            lambda_start_time=lambda_start_time,
+            trigger_name="eventbridge",
+            extra={"event_id": event_id, "detail_type": detail_type, "source": event_source, "event_time": event_time},
+        )
+        return result
+    except Exception:
+        logger_obj.exception("Error processing EventBridge event")
+        return {"statusCode": 500, "body": {"error": "Event processing failed"}}
+
+
 def detect_event_source(event: dict) -> str:
-    """Return 'sqs', 'api', or 'unknown'."""
-    if isinstance(event, dict):
-        # SQS events always have a 'Records' list with 'eventSource' or 'body'
-        if "Records" in event:
-            rec = event["Records"][0]
-            if rec.get("eventSource") == "aws:sqs" or "body" in rec:
-                return "sqs"
-        # API Gateway v2 or Lambda Function URL events have these keys
-        if "rawPath" in event or "requestContext" in event:
+    """
+    Detect Lambda event source.
+    Returns one of: 'sqs', 'api', 'eventbridge', or 'unknown'.
+    """
+    if not isinstance(event, dict):
+        return "unknown"
+
+    # SQS: has 'Records' with eventSource = 'aws:sqs'
+    if "Records" in event:
+        record = event["Records"][0]
+        if record.get("eventSource") == "aws:sqs":
+            return "sqs"
+
+    # API Gateway v1/v2 or Lambda URL: presence of 'requestContext' and HTTP-like keys
+    if "requestContext" in event:
+        rc = event["requestContext"]
+        if "httpMethod" in event or "http" in rc:
             return "api"
+
+    # EventBridge (CloudWatch Events): has 'source' and 'detail-type'
+    if "source" in event and "detail-type" in event:
+        return "eventbridge"
+
     return "unknown"
 
 
