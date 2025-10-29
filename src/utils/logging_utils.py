@@ -15,9 +15,9 @@ def get_logger(name: str, log_file) -> logging.Logger:
     if not logger.handlers:
         handler = logging.StreamHandler(sys.stdout)
         if env.lower() == "production":
-            # print out warning, error only in production
-            handler.setLevel(logging.WARNING)
-            logger.setLevel(logging.WARNING)
+            # print out info, warning, error only in production
+            handler.setLevel(logging.INFO)
+            logger.setLevel(logging.INFO)
         else:
             handler.setLevel(logging.DEBUG)
             logger.setLevel(logging.DEBUG)
