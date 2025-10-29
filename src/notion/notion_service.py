@@ -20,7 +20,7 @@ class NotionService:
 
         try:
             self.client = Client(auth=self.token)
-            self.logger.info("Notion client initialized successfully.")
+            self.logger.debug("Notion client initialized successfully.")
         except Exception as e:
             self.logger.error(f"Failed to initialize Notion client: {e}")
             raise SettingError(f"Failed to initialize Notion client: {e}")

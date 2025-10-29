@@ -39,7 +39,7 @@ class GoogleToken:
             if not self.config:
                 raise SettingError("Configuration is required to load settings.")
             if self.mode == "s3":
-                self.logger.info("Loading credentials from S3")
+                self.logger.debug("Loading credentials from S3")
                 response = self.s3_client.get_object(
                     Bucket=self.config.get("s3_bucket_name"), Key=self.config.get("s3_key_google_token")
                 )

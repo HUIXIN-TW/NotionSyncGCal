@@ -156,20 +156,20 @@ def detect_event_source(logger_obj, event: dict) -> str:
     # SQS: has 'Records' with eventSource = 'aws:sqs'
     if "Records" in event:
         record = event["Records"][0]
-        logger_obj.info(f"Detected SQS event: {event}")
+        logger_obj.debug(f"Detected SQS event: {event}")
         if record.get("eventSource") == "aws:sqs":
             return "sqs"
 
     # API Gateway v1/v2 or Lambda URL: presence of 'requestContext' and HTTP-like keys
     if "requestContext" in event:
-        logger_obj.info(f"Detected API Gateway or Lambda URL event: {event}")
+        logger_obj.debug(f"Detected API Gateway or Lambda URL event: {event}")
         rc = event["requestContext"]
         if "httpMethod" in event or "http" in rc:
             return "api"
 
     # EventBridge (CloudWatch Events): has 'source' and 'detail-type'
     if "source" in event and "detail-type" in event:
-        logger_obj.info(f"Detected EventBridge event: {event}")
+        logger_obj.debug(f"Detected EventBridge event: {event}")
         return "eventbridge"
 
     logger_obj.warning(f"Could not detect event source from event: {event}")
