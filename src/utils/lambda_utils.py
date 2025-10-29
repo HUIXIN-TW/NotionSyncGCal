@@ -20,7 +20,7 @@ def process_and_log_sync_result(
         "trigger_by": trigger_name,
         "uuid": uuid,
         "statusCode": statusCode,
-        "status": body_obj.get("status", "lambda unknown error"),
+        "status": body_obj.get("status", "lambda_unknown_error"),
         "message": body_obj.get("message", "unknown"),
         "lambda_name": getattr(context, "function_name", "unknown"),
         "aws_request_id": getattr(context, "aws_request_id", "unknown"),
@@ -89,7 +89,7 @@ def process_sqs_records(
         # Provide an explicit statusCode for downstream handler uniformity
         "statusCode": 200,
         "body": {
-            "status": "batch processed",
+            "status": "batch_processed",
             "message": (
                 f"Processed {len(sqs_batch_results)} records: " f"{success_count} succeeded, {failure_count} failed."
             ),
