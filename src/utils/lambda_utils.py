@@ -144,12 +144,13 @@ def process_eventbridge_event(
         return {"statusCode": 500, "body": {"error": "Event processing failed"}}
 
 
-def detect_event_source(event: dict) -> str:
+def detect_event_source(logger_obj, event: dict) -> str:
     """
     Detect Lambda event source.
     Returns one of: 'sqs', 'api', 'eventbridge', or 'unknown'.
     """
     if not isinstance(event, dict):
+        logger_obj.warning(f"Event is not a dict: {event}")
         return "unknown"
 
     # SQS: has 'Records' with eventSource = 'aws:sqs'
@@ -168,6 +169,7 @@ def detect_event_source(event: dict) -> str:
     if "source" in event and "detail-type" in event:
         return "eventbridge"
 
+    logger_obj.warning(f"Could not detect event source from event: {event}")
     return "unknown"
 
 

@@ -29,7 +29,7 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     from src.main import main as run_sync_notion_and_google  # noqa: E402
 
     try:
-        event_type = detect_event_source(event)
+        event_type = detect_event_source(logger_obj, event)
         if event_type == "api":
             pass  # API event processing can be added here (e.g. test connection)
         elif event_type == "sqs":
