@@ -46,13 +46,7 @@ class NotionService:
         notion_summary = {
             "action": "get_notion_task",
             "database_id": self.setting["database_id"],
-            "range": {
-                "start_field": self.page_property["GCal_End_Date_Notion_Name"],
-                "start_date": self.setting["after_date"],
-                "end_field": self.page_property["Date_Notion_Name"],
-                "end_date": self.setting["before_date"],
-                "exclusive": True,
-            },
+            "range": f"from {self.setting["after_date"]} (inclusive) to {self.setting["before_date"]} (exclusive)",
         }
 
         self.logger.debug(notion_summary)
