@@ -42,11 +42,11 @@ class NotionService:
         # TODO: Notion has no filter for start date and end date so add extra column: GCAL_END_DATE_NOTION_NAME
         before_date_with_time_zone = self.setting["before_date"] + "T00:00:00.000" + self.setting["timecode"]
         after_date_with_time_zone = self.setting["after_date"] + "T00:00:00.000" + self.setting["timecode"]
-
+        date_range = f"from {self.setting['after_date']} (inclusive) to {self.setting['before_date']} (exclusive)"
         notion_summary = {
             "action": "get_notion_task",
             "database_id": self.setting["database_id"],
-            "range": f"from {self.setting["after_date"]} (inclusive) to {self.setting["before_date"]} (exclusive)",
+            "range": date_range,
         }
 
         self.logger.debug(notion_summary)
