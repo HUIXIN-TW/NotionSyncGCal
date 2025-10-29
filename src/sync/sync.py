@@ -315,7 +315,12 @@ def synchronize_notion_and_google_calendar(
         logger.error(f"Error during synchronization: {e}")
         return {"statusCode": 500, "body": {"status": "sync error", "message": str(e)}}
 
-    message = f"{notion_task_summary}. Synchronization completed successfully at {trigger_sync_time}, notion task count: {len(notion_task_list)}"  # noqa: E501
+    message = {
+        "summary": notion_task_summary,
+        "trigger_time": trigger_sync_time,
+        "google_event_count": len(gcal_event_list),
+        "notion_task_count": len(notion_task_list),
+    }
     return {"statusCode": 200, "body": {"status": "sync success", "message": message}}
 
 
