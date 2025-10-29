@@ -51,8 +51,8 @@ class NotionService:
                 "start_date": self.setting["after_date"],
                 "end_field": self.page_property["Date_Notion_Name"],
                 "end_date": self.setting["before_date"],
-                "exclusive": True
-            }
+                "exclusive": True,
+            },
         }
 
         self.logger.debug(notion_summary)
