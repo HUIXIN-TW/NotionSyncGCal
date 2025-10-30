@@ -41,12 +41,9 @@ def get_current_time_in_iso_format():
 
 
 def get_perth_time():
-    """
-    Returns current time in UTC
-    """
     perth_tz = pytz.timezone("Australia/Perth")
     current_time = datetime.now(perth_tz)
-    return current_time.strftime("Date: %Y-%m-%d Time: %H:%M:%S")
+    return current_time.isoformat()
 
 
 def remove_gcal_event_from_list(gcal_event_list, gcal_event, gcal_event_summary):
