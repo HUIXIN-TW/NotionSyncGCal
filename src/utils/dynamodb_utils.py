@@ -23,9 +23,10 @@ def _get_tables():
 
 def save_sync_logs(uuid: str, response: dict, ttl_days: int = 7):
     now_iso = datetime.now(timezone.utc).isoformat()
+    trigger_by = response.get("trigger_by", "unknown")
     log_str = json.dumps(response, ensure_ascii=False, default=str)
     now = datetime.now(timezone.utc)
-    epoch_ms = int(now.timestamp() * 1000)  # <-- Sort key: Number
+    epoch_ms = int(now.timestamp() * 1000)
     ttl_sec = int(time.time()) + ttl_days * 24 * 60 * 60
 
     # update lastSyncLog in Users table + add log entry in Logs table
@@ -47,7 +48,9 @@ def save_sync_logs(uuid: str, response: dict, ttl_days: int = 7):
     logs.put_item(
         Item={
             "uuid": uuid,  # partition key
-            "timestamp": epoch_ms,  # sort key
+            "date": now_iso,
+            "timestamp": epoch_ms,
+            "trigger_by": trigger_by,
             "log": log_str,
             "ttl": ttl_sec,
         }
