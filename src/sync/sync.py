@@ -79,7 +79,7 @@ def synchronize_notion_and_google_calendar(
 
         # freeze the datetime of the gcal event and notion task status
         current_gcal_sync_time = get_current_time_in_iso_format()
-        trigger_sync_time = get_perth_time()
+        trigger_sync_time = get_current_time_in_iso_format()
 
         # Get the Google Calendar and Notion events
         try:
