@@ -32,8 +32,8 @@ def save_sync_logs(uuid: str, response: dict, ttl_days: int = 7):
     users, logs = _get_tables()
 
     now = datetime.now(timezone.utc)
-    now_iso = now.strftime("%Y-%m-%d")         # e.g. '2025-11-06'
-    now_ms = int(now.timestamp() * 1000)       # epoch milliseconds
+    now_iso = now.strftime("%Y-%m-%d")  # e.g. '2025-11-06'
+    now_ms = int(now.timestamp() * 1000)  # epoch milliseconds
     users.update_item(
         Key={"uuid": uuid},
         UpdateExpression="SET lastSyncLog = :ls, updatedAt = :ua, updatedAtMs = :uams",
