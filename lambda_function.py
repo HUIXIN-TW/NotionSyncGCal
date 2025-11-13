@@ -61,4 +61,5 @@ if __name__ == "__main__":
 
     # pretty print for json response
     from pprint import pprint
+
     pprint(response)

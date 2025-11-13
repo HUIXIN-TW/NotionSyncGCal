@@ -94,11 +94,7 @@ class GoogleToken:
         # serialize credentials as JSON, all attributes of credentials
         # refresh_token, token_uri, client_id, and client_secret
         # 'expiry': datetime.datetime(2025, 11, 13, 18, 19, 39, 221090)
-        payload = {
-            "token": credentials.token,
-            "refresh_token": credentials.refresh_token,
-            "expiry": credentials.expiry
-        }
+        payload = {"token": credentials.token, "refresh_token": credentials.refresh_token, "expiry": credentials.expiry}
         try:
             if self.mode == "serverless":
                 expiry_str = self._convert_notica_expiry_date_format(credentials.expiry)
