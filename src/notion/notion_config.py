@@ -25,7 +25,7 @@ class NotionConfig:
         if not config:
             raise SettingError("Configuration is required to load settings.")
         try:
-            if self.mode == "s3":
+            if self.mode == "serverless":
                 s3 = boto3.client("s3")
                 response = s3.get_object(Bucket=config.get("s3_bucket_name"), Key=config.get("s3_key_notion_config"))
                 self.logger.debug(
@@ -79,11 +79,8 @@ class NotionConfig:
     def get_cal_id(self, cal_name):
         return self.user_setting["gcal_name_dict"].get(cal_name)
 
-    @property
-    def user_setting(self):
-        setting = self.setting.copy()
-        setting.pop("notion_token", None)
-        return setting
+    def get(self):
+        return self.setting
 
 
 if __name__ == "__main__":
@@ -107,4 +104,4 @@ if __name__ == "__main__":
     console = Console()
     console.rule("[bold green]🔧 Notion Config Script")
     console.print("[green]📋 Full Notion Property:[/]")
-    pprint(notion.user_setting)
+    pprint(notion.setting)

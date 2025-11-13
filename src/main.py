@@ -61,18 +61,17 @@ def main(uuid: str | None = None) -> dict:
     try:
         logger.debug(f"Using UUID: {uuid}")
 
-        # Configure paths based on UUID (local vs S3)
+        # Configure paths based on UUID (local vs S3 + dynamoDB)
         config = generate_config(uuid)
 
         # Notion
-        notion_config = NotionConfig(config, logger)
+        notion_config = NotionConfig(config, logger).get()
         notion_token = NotionToken(config, logger).get()
-        notion_user_setting = notion_config.user_setting
-        notion_service = NotionService(notion_token, notion_user_setting, logger)
+        notion_service = NotionService(notion_token, notion_config, logger)
 
         # Google
         google_token = GoogleToken(config, logger)
-        google_service = GoogleService(notion_user_setting, google_token, logger)
+        google_service = GoogleService(notion_config, google_token, logger)
     except RefreshError as e:
         logger.error(f"Google RefreshError during initialization: {e}")
     except Exception as e:
@@ -102,7 +101,7 @@ def main(uuid: str | None = None) -> dict:
             from sync import sync
 
             res = sync.synchronize_notion_and_google_calendar(
-                user_setting=notion_user_setting,
+                user_setting=notion_config,
                 notion_service=notion_service,
                 google_service=google_service,
                 compare_time=True,
@@ -116,7 +115,7 @@ def main(uuid: str | None = None) -> dict:
             from sync import sync
 
             res = sync.synchronize_notion_and_google_calendar(
-                user_setting=notion_user_setting,
+                user_setting=notion_config,
                 notion_service=notion_service,
                 google_service=google_service,
                 compare_time=True,
@@ -152,7 +151,7 @@ def main(uuid: str | None = None) -> dict:
 
 if __name__ == "__main__":
     # python -m src.main
-    UUID = "huixinyang"  # Replace with your UUID or leave empty for local
+    UUID = ""  # Replace with your UUID or leave empty for local
     response = main(UUID)
     # update response into dynamoDB "NotionSyncGCalUser" table with uuid
     if response:

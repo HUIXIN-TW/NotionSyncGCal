@@ -20,24 +20,24 @@ class SettingError(Exception):
 def generate_config(user_uuid: str):
     """Dynamically generate CONFIG based on whether UUID is provided.
 
-    - If user_uuid is provided: use S3 paths scoped by that UUID
+    - If user_uuid is provided: use S3 paths scoped by that UUID and DynamoDB tables
     - If user_uuid is empty: use local token files under repo 'token/'
     """
-    mode = "local" if not user_uuid else "s3"
+    mode = "local" if not user_uuid else "serverless"
     logger.debug(f"Configuration mode: {mode}, UUID: {user_uuid}")
 
-    if mode == "s3":
+    if mode == "serverless":
         S3_BUCKET_NAME = os.environ.get("S3_BUCKET_NAME")
         S3_NOTION_CONFIG_PATH = os.environ.get("S3_NOTION_CONFIG_PATH")
-        S3_NOTION_TOKEN_PATH = os.environ.get("S3_NOTION_TOKEN_PATH")
-        S3_GOOGLE_TOKEN_PATH = os.environ.get("S3_GOOGLE_TOKEN_PATH")
+        DYNAMODB_NOTION_OAUTH_TOKEN_TABLE = os.environ.get("DYNAMODB_NOTION_OAUTH_TOKEN_TABLE")
+        DYNAMODB_GOOGLE_OAUTH_TOKEN_TABLE = os.environ.get("DYNAMODB_GOOGLE_OAUTH_TOKEN_TABLE")
         return {
             "mode": mode,
             "uuid": user_uuid,
             "s3_bucket_name": S3_BUCKET_NAME,
             "s3_key_notion_config": f"{user_uuid}/{S3_NOTION_CONFIG_PATH}",
-            "s3_key_notion_token": f"{user_uuid}/{S3_NOTION_TOKEN_PATH}",
-            "s3_key_google_token": f"{user_uuid}/{S3_GOOGLE_TOKEN_PATH}",
+            "dynamo_notion_token_table": DYNAMODB_NOTION_OAUTH_TOKEN_TABLE,
+            "dynamo_google_token_table": DYNAMODB_GOOGLE_OAUTH_TOKEN_TABLE,
         }
     else:
         LOCAL_NOTION_SETTINGS_PATH = os.environ.get(
