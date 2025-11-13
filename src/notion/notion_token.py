@@ -1,5 +1,5 @@
 import json
-import boto3
+from utils.dynamodb_utils import get_notion_token_by_uuid  # noqa: E402
 
 
 class SettingError(Exception):
@@ -16,7 +16,8 @@ class NotionToken:
         self.logger = logger
         self.config = config
         self.mode = config.get("mode")
-        self.token = self.load_settings(config.get("uuid") if self.mode == "serverless" else None)
+        self.uuid = config.get("uuid")
+        self.token = self.load_settings(self.uuid if self.mode == "serverless" else None)
 
     def load_settings(self, uuid=None):
         config = self.config
@@ -24,14 +25,8 @@ class NotionToken:
             raise SettingError("Configuration is required to load settings.")
         try:
             if self.mode == "serverless":
-                ddb_client = boto3.client("dynamodb")
-                response = ddb_client.get_item(
-                    TableName=config.get("dynamo_notion_token_table"),
-                    Key={"uuid": {"S": uuid}},
-                )
-                data = response.get("Item")
-                self.logger.debug(f"Loading settings from DynamoDB: {config.get('dynamo_notion_token_table')}")
-                return data.get("accessToken").get("S")
+                response = get_notion_token_by_uuid(uuid)
+                return response.get("accessToken")
             elif self.mode == "local":
                 self.logger.info(f"Loading settings from local file: {config.get('local_notion_settings_path')}")
                 with open(config.get("local_notion_settings_path"), encoding="utf-8") as f:

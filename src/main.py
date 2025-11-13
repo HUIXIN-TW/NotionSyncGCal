@@ -3,7 +3,6 @@ import sys
 import argparse
 import json
 from pathlib import Path
-import boto3
 from google.auth.exceptions import RefreshError
 
 # Ensure this module can import sibling packages when run as a script
@@ -153,12 +152,4 @@ if __name__ == "__main__":
     # python -m src.main
     UUID = ""  # Replace with your UUID or leave empty for local
     response = main(UUID)
-    # update response into dynamoDB "NotionSyncGCalUser" table with uuid
-    if response:
-        dynamodb = boto3.resource("dynamodb", region_name=os.getenv("AWS_REGION", "us-east-1"))
-        table_name = os.getenv("DYNAMODB_TABLE_NAME", "NotionSyncGCalUser")
-        table = dynamodb.Table(table_name)
-        table.put_item(Item={"uuid": UUID, "last_sync_response": response})
-        logger = get_logger(__name__, log_file=os.getenv("LOG_FILE_PATH"))
-        logger.info(f"Sync response stored in DynamoDB table {table_name} for UUID {UUID}")
     print(json.dumps(response, indent=2))

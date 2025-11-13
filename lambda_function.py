@@ -53,9 +53,12 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
 # --- Local test entrypoint ---
 if __name__ == "__main__":
     # import pprint
-    UUID = "huixinyang"
+    UUID = ""
 
-    mock_event = {"Records": [{"body": json.dumps({"uuid": UUID})}]}
+    mock_event = {"Records": [{"body": json.dumps({"uuid": UUID}), "eventSource": "aws:sqs"}]}
     fake_ctx = type("FakeContext", (), {"function_name": "test-lambda", "aws_request_id": "abc-123"})()
     response = lambda_handler(mock_event, fake_ctx)
-    print(response)  # return to sync table
+
+    # pretty print for json response
+    from pprint import pprint
+    pprint(response)

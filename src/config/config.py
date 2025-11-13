@@ -29,15 +29,11 @@ def generate_config(user_uuid: str):
     if mode == "serverless":
         S3_BUCKET_NAME = os.environ.get("S3_BUCKET_NAME")
         S3_NOTION_CONFIG_PATH = os.environ.get("S3_NOTION_CONFIG_PATH")
-        DYNAMODB_NOTION_OAUTH_TOKEN_TABLE = os.environ.get("DYNAMODB_NOTION_OAUTH_TOKEN_TABLE")
-        DYNAMODB_GOOGLE_OAUTH_TOKEN_TABLE = os.environ.get("DYNAMODB_GOOGLE_OAUTH_TOKEN_TABLE")
         return {
             "mode": mode,
             "uuid": user_uuid,
             "s3_bucket_name": S3_BUCKET_NAME,
             "s3_key_notion_config": f"{user_uuid}/{S3_NOTION_CONFIG_PATH}",
-            "dynamo_notion_token_table": DYNAMODB_NOTION_OAUTH_TOKEN_TABLE,
-            "dynamo_google_token_table": DYNAMODB_GOOGLE_OAUTH_TOKEN_TABLE,
         }
     else:
         LOCAL_NOTION_SETTINGS_PATH = os.environ.get(

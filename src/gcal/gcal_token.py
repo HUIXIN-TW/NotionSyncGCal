@@ -1,11 +1,11 @@
 import os
 import json
-import boto3
 from datetime import datetime, timezone
 from google.auth.transport.requests import Request
 from google_auth_oauthlib.flow import InstalledAppFlow
 from google.oauth2.credentials import Credentials
 from google.auth.exceptions import RefreshError
+from utils.dynamodb_utils import get_google_token_by_uuid, update_google_token_by_uuid  # noqa: E402
 
 
 class SettingError(Exception):
@@ -21,7 +21,6 @@ class GoogleToken:
         self.config = config
         self.mode = config.get("mode")
         self.logger = logger
-        self.ddb_client = boto3.client("dynamodb") if self.mode == "serverless" else None
         self.activate_token()
 
     def activate_token(self):
@@ -40,14 +39,10 @@ class GoogleToken:
                 raise SettingError("Configuration is required to load settings.")
             if self.mode == "serverless":
                 self.logger.debug("Loading credentials from DynamoDB")
-                response = self.ddb_client.get_item(
-                    TableName=self.config.get("dynamo_google_token_table"),
-                    Key={"uuid": {"S": self.config.get("uuid")}},
-                )
-                data = response.get("Item")
+                data = get_google_token_by_uuid(self.config.get("uuid"))
                 credentials_data = {
-                    "token": data.get("accessToken").get("S"),
-                    "refresh_token": data.get("refreshToken").get("S"),
+                    "token": data.get("accessToken"),
+                    "refresh_token": data.get("refreshToken"),
                     "token_uri": "https://oauth2.googleapis.com/token",
                     "scopes": [
                         "https://www.googleapis.com/auth/calendar.events",
@@ -56,7 +51,7 @@ class GoogleToken:
                         "https://www.googleapis.com/auth/userinfo.profile",
                         "https://www.googleapis.com/auth/userinfo.email",
                     ],
-                    "expiry": self._convert_google_expiry_date_format(data.get("expiryDate").get("N")),
+                    "expiry": self._convert_google_expiry_date_format(data.get("expiryDate")),
                     "client_id": os.environ.get("GOOGLE_CALENDAR_CLIENT_ID"),
                     "client_secret": os.environ.get("GOOGLE_CALENDAR_CLIENT_SECRET"),
                 }
@@ -98,30 +93,22 @@ class GoogleToken:
     def _save_credentials(self, credentials):
         # serialize credentials as JSON, all attributes of credentials
         # refresh_token, token_uri, client_id, and client_secret
+        # 'expiry': datetime.datetime(2025, 11, 13, 18, 19, 39, 221090)
         payload = {
             "token": credentials.token,
             "refresh_token": credentials.refresh_token,
-            "expiry": credentials.expiry if credentials.expiry else None,
+            "expiry": credentials.expiry
         }
         try:
             if self.mode == "serverless":
                 expiry_str = self._convert_notica_expiry_date_format(credentials.expiry)
                 updated_str = expiry_str  # using expiry as updatedAt for simplicity
-                self.ddb_client.update_item(
-                    TableName=self.config.get("dynamo_google_token_table"),
-                    Key={"uuid": {"S": self.config.get("uuid")}},
-                    UpdateExpression="""
-                        SET accessToken = :at,
-                            refreshToken = :rt,
-                            expiryDate = :expiry,
-                            updatedAt = :updated
-                    """,
-                    ExpressionAttributeValues={
-                        ":at": {"S": credentials.token},
-                        ":rt": {"S": credentials.refresh_token},
-                        ":expiry": {"N": expiry_str},
-                        ":updated": {"N": updated_str},
-                    },
+                update_google_token_by_uuid(
+                    self.config.get("uuid"),
+                    credentials.token,
+                    credentials.refresh_token,
+                    expiry_str,
+                    updated_str,
                 )
                 self.logger.info("Saved credentials to DynamoDB.")
             elif self.mode == "local":
@@ -140,7 +127,12 @@ class GoogleToken:
     def _convert_notica_expiry_date_format(self, expiryDate):
         if not expiryDate:
             return None
-        return str(int(expiryDate.timestamp()) * 1000)
+
+        if expiryDate.tzinfo is None:
+            expiryDate = expiryDate.replace(tzinfo=timezone.utc)
+
+        expiryDate = expiryDate.astimezone(timezone.utc)
+        return str(int(expiryDate.timestamp() * 1000))
 
     def _verify_credentials(self, credentials):
         # refresh_token, token_uri, client_id, and client_secret
