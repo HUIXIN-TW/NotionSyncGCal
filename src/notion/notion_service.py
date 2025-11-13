@@ -145,9 +145,7 @@ class NotionService:
                 },
             )
         except Exception as e:
-            self.logger.error(
-                f"Error updating Notion page when updating Notion Task: {e} for Page ID: {page_id}, GCal Event ID: {gcal_event}"
-            )
+            self.logger.error(f"Error updating Notion {e} for Page ID: {page_id}, GCal Event ID: {gcal_event}")
             return None
 
     def update_notion_task_for_new_gcal_event_id(self, page_id, new_gcal_event_id):
