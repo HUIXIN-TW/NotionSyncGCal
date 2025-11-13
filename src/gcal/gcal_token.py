@@ -105,14 +105,22 @@ class GoogleToken:
         }
         try:
             if self.mode == "serverless":
+                expiry_str = self._convert_notica_expiry_date_format(credentials.expiry)
+                updated_str = expiry_str  # using expiry as updatedAt for simplicity
                 self.ddb_client.update_item(
                     TableName=self.config.get("dynamo_google_token_table"),
                     Key={"uuid": {"S": self.config.get("uuid")}},
-                    UpdateExpression="SET accessToken = :at, refreshToken = :rt, expiryDate = :ed",
+                    UpdateExpression="""
+                        SET accessToken = :at,
+                            refreshToken = :rt,
+                            expiryDate = :expiry,
+                            updatedAt = :updated
+                    """,
                     ExpressionAttributeValues={
                         ":at": {"S": credentials.token},
                         ":rt": {"S": credentials.refresh_token},
-                        ":ed": {"N": self._convert_notica_expiry_date_format(credentials.expiry)},
+                        ":expiry": {"N": expiry_str},
+                        ":updated": {"N": updated_str},
                     },
                 )
                 self.logger.info("Saved credentials to DynamoDB.")
