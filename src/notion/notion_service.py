@@ -128,8 +128,8 @@ class NotionService:
                         "rich_text": [{"text": {"content": gcal_event.get("description", "")}}],
                     },
                     self.page_property["Location_Notion_Name"]: {
-                        "type": "rich_text",
-                        "rich_text": [{"text": {"content": gcal_event.get("location", "")}}],
+                        "type": "place",
+                        "place": {"lat": 0, "lon": 0, "address": gcal_event.get("location", "")},
                     },
                     self.page_property["GCal_Sync_Time_Notion_Name"]: {
                         "type": "rich_text",
@@ -145,7 +145,9 @@ class NotionService:
                 },
             )
         except Exception as e:
-            self.logger.error(f"Error updating Notion page when updating Notion Task: {e}")
+            self.logger.error(
+                f"Error updating Notion page when updating Notion Task: {e} for Page ID: {page_id}, GCal Event ID: {gcal_event}"
+            )
             return None
 
     def update_notion_task_for_new_gcal_event_id(self, page_id, new_gcal_event_id):
@@ -230,8 +232,8 @@ class NotionService:
                         "rich_text": [{"text": {"content": gcal_event.get("description", "")}}],
                     },
                     self.page_property["Location_Notion_Name"]: {
-                        "type": "rich_text",
-                        "rich_text": [{"text": {"content": gcal_event.get("location", "")}}],
+                        "type": "place",
+                        "place": {"lat": 0, "lon": 0, "address": gcal_event.get("location", "")},
                     },
                     self.page_property["GCal_EventId_Notion_Name"]: {
                         "type": "rich_text",
@@ -330,10 +332,9 @@ if __name__ == "__main__":
     if not log_path.exists():
         log_path.touch()
 
-    config = generate_config("huixinyang")
-    nc = NotionConfig(config, logger)
-    token = NotionToken(config, logger).token
-    user_setting = nc.user_setting
+    config = generate_config("")
+    user_setting = NotionConfig(config, logger).get()
+    token = NotionToken(config, logger).get()
     logger.info(f"Notion User Setting: {user_setting}")
     ns = NotionService(token, user_setting, logger)
 
@@ -345,7 +346,8 @@ if __name__ == "__main__":
         f"to {ns.page_property['Date_Notion_Name']}: {ns.setting['before_date']} (exclusive)"
     )
 
-    event_id = "4qajal4vgpl92lsl3mnuv76od8"
+    event_id = ""
     result = ns.get_notion_task_by_gcal_event_id(event_id)
     console.print(f"[bold cyan]Notion Task from GCal Event ID:[/] [green]{event_id}[/]")
     console.print(result)
+    console.print(result[0].get("properties", {}).get("Location", {}))

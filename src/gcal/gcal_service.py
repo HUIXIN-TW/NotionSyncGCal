@@ -144,9 +144,8 @@ class GoogleService:
             event_location = (
                 notion_task.get("properties", {})
                 .get(self.notion_page_property["Location_Notion_Name"], {})
-                .get("rich_text", [])[0]
-                .get("text", {})
-                .get("content", "")
+                .get("place", {})
+                .get("address", "")
             )
         except Exception as e:
             self.logger.info(f"Getting location: {e}. Using empty string.")
@@ -251,9 +250,8 @@ if __name__ == "__main__":
     from gcal.gcal_token import GoogleToken  # noqa: E402
 
     config = generate_config("")
-    nt = NotionConfig(config, logger)
+    user_setting = NotionConfig(config, logger).get()
     gt = GoogleToken(config, logger)
-    user_setting = nt.user_setting
     gs = GoogleService(user_setting, gt, logger)
     # Open the file in write mode and dump JSON data
     with log_path.open("w") as output:
@@ -265,4 +263,3 @@ if __name__ == "__main__":
     console = Console()
     console.rule("[bold blue]Google Calendar Events[/bold blue]")
     pprint(gs.get_gcal_event())
-    pprint(nt.user_setting)
