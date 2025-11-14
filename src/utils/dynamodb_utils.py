@@ -40,7 +40,7 @@ def _get_notion_tables():
 def save_sync_logs(uuid: str, response: dict, ttl_days: int = 7):
     now_iso = datetime.now(timezone.utc).isoformat()
     trigger_by = response.get("trigger_by", "unknown")
-    log_str = json.dumps(response, ensure_ascii=False, default=str)
+    log_map = response  # use dict to store map data
     now = datetime.now(timezone.utc)
     epoch_ms = int(now.timestamp() * 1000)
     ttl_sec = int(time.time()) + ttl_days * 24 * 60 * 60
@@ -55,7 +55,7 @@ def save_sync_logs(uuid: str, response: dict, ttl_days: int = 7):
         Key={"uuid": uuid},
         UpdateExpression="SET lastSyncLog = :ls, updatedAt = :ua, updatedAtMs = :uams",
         ExpressionAttributeValues={
-            ":ls": log_str,
+            ":ls": log_map,
             ":ua": now_iso,
             ":uams": now_ms,
         },
@@ -67,7 +67,7 @@ def save_sync_logs(uuid: str, response: dict, ttl_days: int = 7):
             "date": now_iso,
             "timestamp": epoch_ms,
             "trigger_by": trigger_by,
-            "log": log_str,
+            "log": log_map,
             "ttl": ttl_sec,
         }
     )
