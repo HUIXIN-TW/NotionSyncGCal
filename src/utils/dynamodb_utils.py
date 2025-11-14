@@ -1,5 +1,4 @@
 import os
-import json
 import time
 from datetime import datetime, timezone
 import boto3
@@ -113,9 +112,33 @@ def update_google_token_by_uuid(uuid: str, access_token: str, refresh_token: str
     )
 
 
+# get notion config in user table by uuid
+def get_notion_config_by_uuid(uuid: str) -> dict:
+    users_tbl = dynamodb.Table(USERS_TABLE)
+    response = users_tbl.get_item(Key={"uuid": uuid})
+    item = response.get("Item")
+    if not item or "notionConfig" not in item:
+        raise ValueError(f"No Notion config found for uuid: {uuid}")
+    return item["notionConfig"]
+
+
+# update notion config in user table by uuid
+def update_notion_config_by_uuid(uuid: str, notion_config: dict):
+    users_tbl = dynamodb.Table(USERS_TABLE)
+    users_tbl.update_item(
+        Key={"uuid": uuid},
+        UpdateExpression="SET notionConfig = :nc",
+        ExpressionAttributeValues={
+            ":nc": notion_config,
+        },
+    )
+
+
 __all__ = [
     "save_sync_logs",
     "get_notion_token_by_uuid",
     "get_google_token_by_uuid",
     "update_google_token_by_uuid",
+    "get_notion_config_by_uuid",
+    "update_notion_config_by_uuid",
 ]

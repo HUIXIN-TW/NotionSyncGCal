@@ -1,6 +1,6 @@
 import json
-import boto3
 from datetime import timedelta, date
+from utils.dynamodb_utils import get_notion_config_by_uuid  # noqa: E402
 
 
 class SettingError(Exception):
@@ -26,12 +26,9 @@ class NotionConfig:
             raise SettingError("Configuration is required to load settings.")
         try:
             if self.mode == "serverless":
-                s3 = boto3.client("s3")
-                response = s3.get_object(Bucket=config.get("s3_bucket_name"), Key=config.get("s3_key_notion_config"))
-                self.logger.debug(
-                    f"Loading settings from S3: {config.get('s3_bucket_name')}/{config.get('s3_key_notion_config')}"
-                )
-                return json.loads(response["Body"].read().decode("utf-8"))
+                response = get_notion_config_by_uuid(config.get("uuid"))
+                self.logger.debug("Loading Notion Configuration from DynamoDB")
+                return response
 
             elif self.mode == "local":
                 self.logger.info(f"Loading settings from local file: {config.get('local_notion_settings_path')}")
