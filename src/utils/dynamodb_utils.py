@@ -12,6 +12,13 @@ REGION = os.getenv("APP_REGION")
 dynamodb = boto3.resource("dynamodb", region_name=REGION)
 
 
+def _get_users_table():
+    if not USERS_TABLE:
+        raise ValueError("DYNAMODB_USER_TABLE env var is not set")
+    users_tbl = dynamodb.Table(USERS_TABLE)
+    return users_tbl
+
+
 def _get_logs_tables():
     if not USERS_TABLE:
         raise ValueError("DYNAMODB_USER_TABLE env var is not set")
@@ -114,7 +121,7 @@ def update_google_token_by_uuid(uuid: str, access_token: str, refresh_token: str
 
 # get notion config in user table by uuid
 def get_notion_config_by_uuid(uuid: str) -> dict:
-    users_tbl = dynamodb.Table(USERS_TABLE)
+    users_tbl = _get_users_table()
     response = users_tbl.get_item(Key={"uuid": uuid})
     item = response.get("Item")
     if not item or "notionConfig" not in item:
@@ -124,7 +131,7 @@ def get_notion_config_by_uuid(uuid: str) -> dict:
 
 # update notion config in user table by uuid
 def update_notion_config_by_uuid(uuid: str, notion_config: dict):
-    users_tbl = dynamodb.Table(USERS_TABLE)
+    users_tbl = _get_users_table()
     users_tbl.update_item(
         Key={"uuid": uuid},
         UpdateExpression="SET notionConfig = :nc",
