@@ -212,7 +212,7 @@ class GoogleService:
             end_date = start_date
 
         if "T" in start_date_str and end_date == start_date:  # datetime format
-            end_date = start_date + timedelta(minutes=self.notion_setting["default_event_length"])
+            end_date = start_date + timedelta(minutes=int(self.notion_setting["default_event_length"]))
         elif "T" not in start_date_str and end_date == start_date:  # date format
             end_date = start_date + timedelta(days=1)
 

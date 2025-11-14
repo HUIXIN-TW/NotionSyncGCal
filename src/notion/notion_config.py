@@ -41,14 +41,16 @@ class NotionConfig:
         """Applies settings from the data dictionary to attributes of the Notion class."""
         try:
             # Date range settings
-            setting["after_date"] = (date.today() + timedelta(days=-setting["goback_days"])).strftime("%Y-%m-%d")
-            setting["before_date"] = (date.today() + timedelta(days=setting["goforward_days"])).strftime("%Y-%m-%d")
+            setting["after_date"] = (date.today() + timedelta(days=-int(setting["goback_days"]))).strftime("%Y-%m-%d")
+            setting["before_date"] = (date.today() + timedelta(days=int(setting["goforward_days"]))).strftime(
+                "%Y-%m-%d"
+            )
 
             # ISO format for Google Calendar API
-            setting["google_timemin"] = (date.today() + timedelta(days=-setting["goback_days"])).strftime(
+            setting["google_timemin"] = (date.today() + timedelta(days=-int(setting["goback_days"]))).strftime(
                 f"%Y-%m-%dT%H:%M:%S{setting['timecode']}"
             )
-            setting["google_timemax"] = (date.today() + timedelta(days=setting["goforward_days"])).strftime(
+            setting["google_timemax"] = (date.today() + timedelta(days=int(setting["goforward_days"]))).strftime(
                 f"%Y-%m-%dT%H:%M:%S{setting['timecode']}"
             )
 
