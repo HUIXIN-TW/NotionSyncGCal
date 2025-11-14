@@ -14,21 +14,35 @@ def process_and_log_sync_result(
     trigger_name: str,
     extra: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
-    status_code = int((sync_result or {}).get("statusCode", 500))
-    body_obj = sync_result.get("body") or {}
-    payload: Dict[str, Any] = {
-        "trigger_by": trigger_name,
-        "uuid": uuid,
-        "statusCode": status_code,
-        "status": body_obj.get("status", "lambda_unknown_error"),
-        "message": body_obj.get("message", "unknown"),
-        "lambda_name": getattr(context, "function_name", "unknown"),
-        "aws_request_id": getattr(context, "aws_request_id", "unknown"),
-        "log_level": logger_obj.level,
-        "duration_ms": int((datetime.now(timezone.utc) - lambda_start_time).total_seconds() * 1000),
-    }
-    if extra:
-        payload.update(extra)
+    try:
+        status_code = int((sync_result or {}).get("statusCode", 500))
+        body_obj = (sync_result or {}).get("body") or {}
+        payload: Dict[str, Any] = {
+            "trigger_by": trigger_name,
+            "uuid": uuid,
+            "statusCode": status_code,
+            "status": body_obj.get("status", "lambda_unknown_error"),
+            "message": body_obj.get("message", "unknown"),
+            "lambda_name": getattr(context, "function_name", "unknown"),
+            "aws_request_id": getattr(context, "aws_request_id", "unknown"),
+            "log_level": logger_obj.level,
+            "duration_ms": int((datetime.now(timezone.utc) - lambda_start_time).total_seconds() * 1000),
+        }
+        if extra:
+            payload.update(extra)
+    except Exception:
+        logger_obj.exception("Error processing sync result")
+        payload = {
+            "trigger_by": trigger_name,
+            "uuid": uuid,
+            "statusCode": 500,
+            "status": "lambda_processing_error",
+            "message": "Error processing sync result",
+            "lambda_name": getattr(context, "function_name", "unknown"),
+            "aws_request_id": getattr(context, "aws_request_id", "unknown"),
+            "log_level": logger_obj.level,
+            "duration_ms": int((datetime.now(timezone.utc) - lambda_start_time).total_seconds() * 1000),
+        }
     # Persist summary to DynamoDB; don't fail the handler on logging errors
     try:
         # Only log individual user syncs, not batch summaries
