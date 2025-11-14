@@ -14,12 +14,12 @@ def process_and_log_sync_result(
     trigger_name: str,
     extra: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
-    statusCode = int(sync_result.get("statusCode", 500))
+    status_code = int((sync_result or {}).get("statusCode", 500))
     body_obj = sync_result.get("body") or {}
     payload: Dict[str, Any] = {
         "trigger_by": trigger_name,
         "uuid": uuid,
-        "statusCode": statusCode,
+        "statusCode": status_code,
         "status": body_obj.get("status", "lambda_unknown_error"),
         "message": body_obj.get("message", "unknown"),
         "lambda_name": getattr(context, "function_name", "unknown"),
