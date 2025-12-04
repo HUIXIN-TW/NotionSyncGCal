@@ -17,11 +17,7 @@ payload = {
     "timezone": "Asia/Taipei",
     "default_event_length": 60,
     "default_start_time": 8,
-    "gcal_dic": [
-        {
-            "Calendar_Name1": "xxxxxx@gmail.com"
-        }
-    ],
+    "gcal_dic": [{"Calendar_Name1": "xxxxxx@gmail.com"}],
     "page_property": [
         {
             "Task_Notion_Name": "Task Name",
@@ -35,9 +31,9 @@ payload = {
             "GCal_Sync_Time_Notion_Name": "GCal Sync Time",
             "GCal_End_Date_Notion_Name": "GCal End Date",
             "Delete_Notion_Name": "GCal Deleted?",
-            "CompleteIcon_Notion_Name": "GCal Icon"
+            "CompleteIcon_Notion_Name": "GCal Icon",
         }
-    ]
+    ],
 }
 
 # -------------------------
@@ -51,16 +47,14 @@ ddb_payload = serializer.serialize(payload)["M"]
 # -------------------------
 client = boto3.client("dynamodb")  # uses AWS CLI local credentials
 
+
 def update_notion_config():
     response = client.update_item(
         TableName=TABLE_NAME,
         Key={"uuid": {"S": UUID}},
         UpdateExpression=f"SET {FIELD_NAME} = :cfg, updatedAt = :now",
-        ExpressionAttributeValues={
-            ":cfg": {"M": ddb_payload},
-            ":now": {"N": str(int(time.time() * 1000))}
-        },
-        ReturnValues="UPDATED_NEW"
+        ExpressionAttributeValues={":cfg": {"M": ddb_payload}, ":now": {"N": str(int(time.time() * 1000))}},
+        ReturnValues="UPDATED_NEW",
     )
 
     print("Update complete:")
