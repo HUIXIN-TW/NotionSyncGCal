@@ -2,7 +2,6 @@
 
 ![Python](https://img.shields.io/badge/Python-3.8%2B-blue)
 ![Lambda](https://img.shields.io/badge/Serverless-AWS%20Lambda-orange)
-![Deploy Status](https://github.com/HUIXIN-TW/NotionSyncGCal/actions/workflows/deploy_lambda.yml/badge.svg)
 
 > Command-line interface to sync data between Notion Task and Google Calendar Event.
 
@@ -10,7 +9,14 @@ Do you find yourself juggling between Notion and Google Calendar to manage your 
 
 **Warning**: Proceed with caution! This repo wields the power to make changes to your Notion database and Google Calendar. So, if you're not confident about what you're doing, buckle up and brace yourself for some unexpected surprises.
 
-🆕 [View Release v2.0.0 →](https://github.com/HUIXIN-TW/NotionSyncGCal/releases)
+🆕 [View Release v3.0.0 →](https://github.com/HUIXIN-TW/NotionSyncGCal/releases)
+
+## Release v3.0.0 – DynamoDB Serverless Edition
+
+- Breaking change: serverless storage now uses DynamoDB tables (tokens, user config, sync logs) instead of S3 objects.
+- Lambda reads/writes by `uuid` (SQS/EventBridge payload) and persists refreshed tokens plus sync summaries into DynamoDB.
+- Auto-deploy via GitHub Actions remains; CloudWatch metrics and optional SNS alerts cover spikes, errors, and slow syncs.
+- Migration tip: seed the DynamoDB tables with your existing credentials/config and update environment variables to the new `DYNAMODB_*` names.
 
 ## What You Will Need to Get Started
 
@@ -18,7 +24,7 @@ Do you find yourself juggling between Notion and Google Calendar to manage your 
 - Notion account
 - Python 3.8+
 - GitHub account (optional)
-- AWS account (for serverless mode)
+- AWS account and DynamoDB tables (for serverless mode)
 
 ## Current Capabilities
 
@@ -29,7 +35,7 @@ Do you find yourself juggling between Notion and Google Calendar to manage your 
 - Sync across _multiple calendars_ and choose which calendar you would like to sync by changing `gcal_dic` in `notion_setting.json`
 - Custom Notion column names
 - Google Calendar OAuth integration
-- S3 and Lambda integration for serverless execution
+- DynamoDB + Lambda integration for serverless execution
 
 ## Functions You Can Configure
 
@@ -103,19 +109,20 @@ python3 src/main.py -n <look_back_days> <look_ahead_days>
 
 ### How It Works
 
-- Stores `xxx.json` in S3.
-- Lambda reads these files at runtime using environment variables.
-- Automatically refreshes expired tokens and saves them back to S3.
+- Stores user config and OAuth tokens in DynamoDB tables keyed by `uuid`.
+- Lambda reads config/tokens at runtime using the `uuid` provided by your trigger payload (for example, an SQS message body).
+- Token refreshes and sync summaries are written back to DynamoDB (including the sync log table with TTL).
 
 ### Environment Variables
 
 Set the following variables in your Lambda configuration or `.env` file:
 
 ```bash
-export S3_BUCKET_NAME='your-bucket-name'
-export S3_GOOGLE_TOKEN_PATH='<foldername>/token.json'
-export S3_NOTION_TOKEN_PATH='<foldername>/notion_token.json'
-export S3_NOTION_CONFIG_PATH='<foldername>/notion_config.json'
+export APP_REGION=''
+export DYNAMODB_USER_TABLE=''
+export DYNAMODB_SYNC_LOGS_TABLE=''
+export DYNAMODB_GOOGLE_OAUTH_TOKEN_TABLE=''
+export DYNAMODB_NOTION_OAUTH_TOKEN_TABLE=''
 ```
 
 Note: When using Lambda, no CLI arguments are passed. You must configure your `notion_config.json` values (e.g., `goback_days`, `goforward_days`) to control the sync range.
@@ -125,8 +132,17 @@ Note: When using Lambda, no CLI arguments are passed. You must configure your `n
 ```json
 {
   "Effect": "Allow",
-  "Action": ["s3:GetObject", "s3:PutObject"],
-  "Resource": "arn:aws:s3:::your-bucket-name/your-folder/*"
+  "Action": [
+    "dynamodb:GetItem",
+    "dynamodb:UpdateItem",
+    "dynamodb:PutItem"
+  ],
+  "Resource": [
+    "arn:aws:dynamodb:<region>:<account-id>:table/<DYNAMODB_USER_TABLE>",
+    "arn:aws:dynamodb:<region>:<account-id>:table/<DYNAMODB_SYNC_LOGS_TABLE>",
+    "arn:aws:dynamodb:<region>:<account-id>:table/<DYNAMODB_GOOGLE_OAUTH_TOKEN_TABLE>",
+    "arn:aws:dynamodb:<region>:<account-id>:table/<DYNAMODB_NOTION_OAUTH_TOKEN_TABLE>"
+  ]
 }
 ```
 

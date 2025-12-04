@@ -20,20 +20,16 @@ class SettingError(Exception):
 def generate_config(user_uuid: str):
     """Dynamically generate CONFIG based on whether UUID is provided.
 
-    - If user_uuid is provided: use S3 paths scoped by that UUID and DynamoDB tables
+    - If user_uuid is provided: use DynamoDB tables
     - If user_uuid is empty: use local token files under repo 'token/'
     """
     mode = "local" if not user_uuid else "serverless"
     logger.debug(f"Configuration mode: {mode}, UUID: {user_uuid}")
 
     if mode == "serverless":
-        S3_BUCKET_NAME = os.environ.get("S3_BUCKET_NAME")
-        S3_NOTION_CONFIG_PATH = os.environ.get("S3_NOTION_CONFIG_PATH")
         return {
             "mode": mode,
             "uuid": user_uuid,
-            "s3_bucket_name": S3_BUCKET_NAME,
-            "s3_key_notion_config": f"{user_uuid}/{S3_NOTION_CONFIG_PATH}",
         }
     else:
         LOCAL_NOTION_SETTINGS_PATH = os.environ.get(
