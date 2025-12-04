@@ -132,11 +132,7 @@ Note: When using Lambda, no CLI arguments are passed. You must configure your `n
 ```json
 {
   "Effect": "Allow",
-  "Action": [
-    "dynamodb:GetItem",
-    "dynamodb:UpdateItem",
-    "dynamodb:PutItem"
-  ],
+  "Action": ["dynamodb:GetItem", "dynamodb:UpdateItem", "dynamodb:PutItem"],
   "Resource": [
     "arn:aws:dynamodb:<region>:<account-id>:table/<DYNAMODB_USER_TABLE>",
     "arn:aws:dynamodb:<region>:<account-id>:table/<DYNAMODB_SYNC_LOGS_TABLE>",
