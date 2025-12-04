@@ -61,7 +61,7 @@ def main(uuid: str | None = None) -> dict:
         logger.debug(f"Using UUID: {uuid}")
 
         # Configure paths based on UUID (local vs dynamodb)
-        config = generate_config(uuid) # only return uuid in serverless mode
+        config = generate_config(uuid)  # only return uuid in serverless mode
 
         # Notion
         notion_config = NotionConfig(config, logger).get()
