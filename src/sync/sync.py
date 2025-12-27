@@ -9,8 +9,8 @@ from utils.logging_utils import get_logger  # noqa: E402
 # Configure logging
 logger = get_logger(__name__, log_file=os.getenv("LOG_FILE_PATH"))
 
-# Notion API Task Limit
-NOTION_TASK_LIMIT = 100
+# Notion API Task Limit: Notion return 100 when exceed the limit, so we use 99 to avoid the limit.
+NOTION_TASK_LIMIT = 99
 
 
 def compare_timezones(notion_time_str, google_time_str):
