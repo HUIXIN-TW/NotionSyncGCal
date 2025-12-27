@@ -98,7 +98,7 @@ def synchronize_notion_and_google_calendar(
             logger.debug(f"Sync Summary: {sync_summary}")
             # Check if task count exceeds the limit
             if task_count > NOTION_TASK_LIMIT or event_count > NOTION_TASK_LIMIT:
-                warning_message = f"Task count exceeds {NOTION_TASK_LIMIT}. Sync process stopped to avoid overloading the Notion database."  # noqa: E501
+                warning_message = f"Task count exceeds {NOTION_TASK_LIMIT} when triggering sync at {trigger_sync_time}. Sync process stopped to avoid overloading the Notion database."  # noqa: E501
                 logger.warning(warning_message)
                 return {
                     "statusCode": 200,
