@@ -49,7 +49,6 @@ jobs:
           platforms: linux/amd64
           provenance: false
           tags: |
-            ${{ steps.login-ecr.outputs.registry }}/${{ env.IMAGE_NAME }}:latest
             ${{ steps.login-ecr.outputs.registry }}/${{ env.IMAGE_NAME }}:${{ env.IMAGE_VERSION }}
             ${{ steps.login-ecr.outputs.registry }}/${{ env.IMAGE_NAME }}:${{ env.IMAGE_VERSION }}-${{ steps.vars.outputs.short_sha }}
             ${{ steps.login-ecr.outputs.registry }}/${{ env.IMAGE_NAME }}:${{ steps.vars.outputs.short_sha }}
