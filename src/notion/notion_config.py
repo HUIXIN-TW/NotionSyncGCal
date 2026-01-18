@@ -27,7 +27,7 @@ class NotionConfig:
         try:
             if self.mode == "serverless":
                 response = get_notion_config_by_uuid(config.get("uuid"))
-                self.logger.debug("Loading Notion Configuration from DynamoDB")
+                self.logger.debug(f"Loading Notion Configuration from DynamoDB: type={type(response).__name__}")
                 return response
 
             elif self.mode == "local":
@@ -40,6 +40,7 @@ class NotionConfig:
     def format_settings(self, setting):
         """Applies settings from the data dictionary to attributes of the Notion class."""
         try:
+            self.logger.debug(f"Formatting Notion settings: type={type(setting).__name__}")
             # Date range settings
             setting["after_date"] = (date.today() + timedelta(days=-int(setting["goback_days"]))).strftime("%Y-%m-%d")
             setting["before_date"] = (date.today() + timedelta(days=int(setting["goforward_days"]))).strftime(
@@ -59,6 +60,7 @@ class NotionConfig:
 
             # Google calendar settings
             gcal_name_dict = setting["gcal_dic"][0]  # read it once from input
+            self.logger.debug(f"gcal_dic[0] type={type(gcal_name_dict).__name__}")
             setting["gcal_name_dict"] = gcal_name_dict  # store with clear name
             setting["gcal_id_dict"] = self.convert_key_to_value(gcal_name_dict)  # updated variable name
             setting["gcal_default_name"] = list(gcal_name_dict)[0]  # updated variable name
