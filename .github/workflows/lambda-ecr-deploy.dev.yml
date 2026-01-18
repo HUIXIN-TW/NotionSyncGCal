@@ -1,0 +1,67 @@
+name: Deploy Lambda Container to ECR
+
+on:
+  push:
+    branches:
+      - dev
+
+jobs:
+  deploy:
+    name: Build & Push to ECR
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+
+    env:
+      AWS_REGION: ap-southeast-2
+      DOCKER_FILE: Dockerfile
+      IMAGE_NAME: notion-sync-gcal-lambda
+      IMAGE_VERSION: dev
+      FUNCTION_NAME: dev-fn-notion-sync-gcal
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: ${{ env.AWS_REGION }}
+          role-to-assume: ${{ secrets.DEV_DEPLOY_ROLE_ARN }}
+          role-duration-seconds: 3500
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Extract short SHA
+        id: vars
+        run: echo "short_sha=${GITHUB_SHA::12}" >> $GITHUB_OUTPUT
+
+      - name: Build & Push (cache)
+        uses: docker/build-push-action@v6
+        id: build-and-push
+        with:
+          context: .
+          file: ${{ env.DOCKER_FILE }}
+          push: true
+          platforms: linux/amd64
+          provenance: false
+          tags: |
+            ${{ steps.login-ecr.outputs.registry }}/${{ env.IMAGE_NAME }}:latest
+            ${{ steps.login-ecr.outputs.registry }}/${{ env.IMAGE_NAME }}:${{ env.IMAGE_VERSION }}
+            ${{ steps.login-ecr.outputs.registry }}/${{ env.IMAGE_NAME }}:${{ env.IMAGE_VERSION }}-${{ steps.vars.outputs.short_sha }}
+            ${{ steps.login-ecr.outputs.registry }}/${{ env.IMAGE_NAME }}:${{ steps.vars.outputs.short_sha }}
+
+      - name: Set image uri env
+        run: |
+          echo "ECR_IMAGE_URI=${{ steps.login-ecr.outputs.registry }}/${{ env.IMAGE_NAME }}:${{ steps.vars.outputs.short_sha }}" >> $GITHUB_ENV
+          echo "Using image: ${ECR_IMAGE_URI}"
+
+      - name: Update Lambda function image
+        run: |
+          set -e
+          aws lambda update-function-code \
+            --function-name ${{ env.FUNCTION_NAME }} \
+            --image-uri "$ECR_IMAGE_URI"
