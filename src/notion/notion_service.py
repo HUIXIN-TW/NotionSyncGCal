@@ -71,8 +71,9 @@ class NotionService:
                 )["results"],
             )
         except Exception as e:
-            self.logger.error(f"Error reading Notion table: {e}")
-            return None
+            error_message = f"Error reading Notion table: {e}"
+            self.logger.error(error_message)
+            raise SettingError(error_message)
 
     def get_notion_task_by_gcal_event_id(self, gcal_event_id):
         try:
