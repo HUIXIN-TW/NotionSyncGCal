@@ -4,6 +4,7 @@ cachetools==5.3.3
 certifi==2024.2.2
 charset-normalizer==3.3.2
 click==8.1.7
+cryptography==44.0.3
 emoji==2.12.1
 exceptiongroup==1.2.1
 google-api-core==2.19.0
