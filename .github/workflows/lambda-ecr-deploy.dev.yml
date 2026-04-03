@@ -16,6 +16,7 @@ jobs:
 
     env:
       AWS_REGION: ap-southeast-2
+      ECR_ACCOUNT_ID: 262835400669
       DOCKER_FILE: Dockerfile
       IMAGE_NAME: notion-sync-gcal-lambda
       IMAGE_VERSION: dev
@@ -25,7 +26,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Configure AWS credentials
+      - name: Configure AWS credentials (sharedservice account for ECR push)
         uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-region: ${{ env.AWS_REGION }}
@@ -35,6 +36,8 @@ jobs:
       - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
+        with:
+          registries: ${{ env.ECR_ACCOUNT_ID }}
 
       - name: Extract short SHA
         id: vars
@@ -58,6 +61,13 @@ jobs:
         run: |
           echo "ECR_IMAGE_URI=${{ steps.login-ecr.outputs.registry }}/${{ env.IMAGE_NAME }}:${{ steps.vars.outputs.short_sha }}" >> $GITHUB_ENV
           echo "Using image: ${ECR_IMAGE_URI}"
+
+      - name: Configure AWS credentials (dev account for Lambda update)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: ${{ env.AWS_REGION }}
+          role-to-assume: ${{ secrets.DEV_DEPLOY_ROLE_ARN }}
+          role-duration-seconds: 3500
 
       - name: Update Lambda function image
         run: |
