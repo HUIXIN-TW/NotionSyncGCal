@@ -75,3 +75,6 @@ jobs:
           aws lambda update-function-code \
             --function-name ${{ env.FUNCTION_NAME }} \
             --image-uri "$ECR_IMAGE_URI"
+          aws lambda update-function-code \
+            --function-name dev-fn-legacy-notion-sync-gcal \
+            --image-uri "$ECR_IMAGE_URI"
