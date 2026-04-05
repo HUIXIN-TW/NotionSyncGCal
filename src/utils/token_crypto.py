@@ -9,7 +9,7 @@ _TOKEN_TAG_BYTES = 16
 
 
 class TokenCryptoError(ValueError):
-    """Raised when encrypted token payload cannot be processed."""
+    """Raised when a token cannot be encrypted or decrypted."""
 
 
 def _get_aesgcm():
@@ -17,37 +17,30 @@ def _get_aesgcm():
         from cryptography.hazmat.primitives.ciphers.aead import AESGCM
     except ImportError as exc:
         raise TokenCryptoError(
-            "Encrypted token support requires 'cryptography'. Install dependencies from requirements.txt."
+            "Token encryption requires 'cryptography'. Install dependencies from requirements.txt."
         ) from exc
     return AESGCM
 
 
-def _get_key_bytes() -> bytes | None:
+def _get_key_bytes() -> bytes:
     raw = os.getenv(TOKEN_ENCRYPTION_KEY_ENV, "").strip()
     if not raw:
-        return None
+        raise TokenCryptoError("TOKEN_ENCRYPTION_KEY env var is required but not set.")
     if not _KEY_HEX_PATTERN.match(raw):
         raise TokenCryptoError("TOKEN_ENCRYPTION_KEY must be a 64-character hex string.")
     return bytes.fromhex(raw)
 
 
-def is_encrypted_token(value: str) -> bool:
-    return isinstance(value, str) and value.startswith(TOKEN_ENCRYPTION_PREFIX)
-
-
-def decrypt_token_if_needed(value: str) -> str:
+def decrypt_token(value: str) -> str:
     if not isinstance(value, str) or not value:
         return value
-    if value.startswith("enc:") and not value.startswith(TOKEN_ENCRYPTION_PREFIX):
-        raise TokenCryptoError("Unsupported encrypted token version prefix.")
-    if not is_encrypted_token(value):
-        # Backward compatibility: existing plaintext tokens.
-        return value
+    if not value.startswith(TOKEN_ENCRYPTION_PREFIX):
+        raise TokenCryptoError(
+            f"Token is not encrypted (expected '{TOKEN_ENCRYPTION_PREFIX}' prefix). "
+            "All tokens in the database must be encrypted."
+        )
 
     key = _get_key_bytes()
-    if not key:
-        raise TokenCryptoError("Encrypted token cannot be decrypted without TOKEN_ENCRYPTION_KEY.")
-
     parts = value.split(":")
     if len(parts) != 5:
         raise TokenCryptoError("Malformed encrypted token payload.")
@@ -76,17 +69,11 @@ def decrypt_token_if_needed(value: str) -> str:
         raise TokenCryptoError("Failed to decrypt encrypted token payload.") from exc
 
 
-def encrypt_token_if_enabled(value: str) -> str:
+def encrypt_token(value: str) -> str:
     if not isinstance(value, str) or not value:
-        return value
-    if is_encrypted_token(value):
         return value
 
     key = _get_key_bytes()
-    if not key:
-        # Backward compatibility: when key is not configured, keep plaintext behavior.
-        return value
-
     aesgcm_cls = _get_aesgcm()
     iv = os.urandom(_TOKEN_IV_BYTES)
     payload = aesgcm_cls(key).encrypt(iv, value.encode("utf-8"), None)
