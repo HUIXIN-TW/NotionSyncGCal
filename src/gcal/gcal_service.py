@@ -68,7 +68,7 @@ class GoogleService:
 
     def update_gcal_event(self, notion_task, existing_gcal_cal_id, existing_gcal_event_id):
         event = self.make_event_body(notion_task)
-        self.service.events().update(
+        self.service.events().patch(
             calendarId=existing_gcal_cal_id, eventId=existing_gcal_event_id, body=event
         ).execute()
 
@@ -213,8 +213,8 @@ class GoogleService:
 
         if "T" in start_date_str and end_date == start_date:  # datetime format
             end_date = start_date + timedelta(minutes=int(self.notion_setting["default_event_length"]))
-        elif "T" not in start_date_str and end_date == start_date:  # date format
-            end_date = start_date + timedelta(days=1)
+        elif "T" not in start_date_str:  # date format: Google Calendar end date is exclusive, always add 1 day
+            end_date = end_date + timedelta(days=1)
 
         if "T" in start_date_str:
             start_date_str = start_date.strftime("%Y-%m-%dT%H:%M:%S%z")
