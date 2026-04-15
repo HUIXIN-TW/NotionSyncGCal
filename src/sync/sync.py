@@ -9,8 +9,8 @@ from utils.logging_utils import get_logger  # noqa: E402
 # Configure logging
 logger = get_logger(__name__, log_file=os.getenv("LOG_FILE_PATH"))
 
-# Notion API Task Limit: Notion return 100 when exceed the limit, so we use 99 to avoid the limit.
-NOTION_TASK_LIMIT = 99
+# Cap sync volume to avoid unbounded processing for large datasets.
+SYNC_TASK_LIMIT = 250
 
 
 def compare_timezones(notion_time_str, google_time_str):
@@ -96,9 +96,9 @@ def synchronize_notion_and_google_calendar(
             }
 
             logger.debug(f"Sync Summary: {sync_summary}")
-            # Check if task count exceeds the limit
-            if task_count > NOTION_TASK_LIMIT or event_count > NOTION_TASK_LIMIT:
-                warning_message = f"Task count exceeds {NOTION_TASK_LIMIT} when triggering sync at {trigger_sync_time}. Sync process stopped to avoid overloading the Notion database."  # noqa: E501
+            # Stop early if either side exceeds the supported sync cap.
+            if task_count > SYNC_TASK_LIMIT or event_count > SYNC_TASK_LIMIT:
+                warning_message = f"Task count exceeds {SYNC_TASK_LIMIT} when triggering sync at {trigger_sync_time}. Sync process stopped to avoid overloading the sync job."  # noqa: E501
                 logger.warning(warning_message)
                 return {
                     "statusCode": 200,

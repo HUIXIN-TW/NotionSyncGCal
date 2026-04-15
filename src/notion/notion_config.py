@@ -46,6 +46,8 @@ class NotionConfig:
             setting["before_date"] = (date.today() + timedelta(days=int(setting["goforward_days"]))).strftime(
                 "%Y-%m-%d"
             )
+            setting.setdefault("notion_api_version", "2022-06-28")
+            setting.setdefault("data_source_id", None)
 
             # ISO format for Google Calendar API
             setting["google_timemin"] = (date.today() + timedelta(days=-int(setting["goback_days"]))).strftime(
