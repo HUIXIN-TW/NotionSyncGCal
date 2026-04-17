@@ -139,7 +139,8 @@ def synchronize_notion_and_google_calendar(
                     notion_gcal_cal_id = gcal_name_dict.get(notion_gcal_cal_name)
                     if not notion_gcal_cal_id:
                         logger.warning(
-                            f"Calendar '{notion_gcal_cal_name}' not found in gcal_name_dict, skipping task '{notion_task_name}'"
+                            f"Calendar '{notion_gcal_cal_name}' not found in gcal_name_dict, "
+                            f"skipping task '{notion_task_page_id}'"
                         )
                         continue
 
