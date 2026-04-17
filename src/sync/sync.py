@@ -156,7 +156,9 @@ def synchronize_notion_and_google_calendar(
                 # Notion Task without Google Calendar Event ID - Create a new event in Google Calendar
                 if not notion_gcal_event_id and should_update_google_events:
                     if notion_deletion:
-                        logger.debug(f"⚪️Deleted Flag & Not Creating in Google Calendar '{notion_task_name}'")
+                        logger.debug(
+                            f"⚪️Deleted Flag & Not Creating in Google Calendar '{notion_task_name}' (last_edited: {notion_task_last_edited_time})"  # noqa: E501
+                        )
                         continue
                     action = "create_gcal"
                     logger.debug(
@@ -210,7 +212,7 @@ def synchronize_notion_and_google_calendar(
                                 and notion_gcal_sync_time > notion_task_last_edited_time
                             ):
                                 logger.debug(
-                                    f"⚪️Already Done. Sync Time: {notion_gcal_sync_time}\nNotion '{notion_task_name}-{notion_task_last_edited_time}' vs Event '{gcal_event_summary}-{gcal_event_updated_time}'"  # noqa: E501
+                                    f"⚪️Already Done. Sync Time: {notion_gcal_sync_time} | Notion '{notion_task_name}' last_edited: {notion_task_last_edited_time} | GCal '{gcal_event_summary}' updated: {gcal_event_updated_time}"  # noqa: E501
                                 )
                                 remove_gcal_event_from_list(gcal_event_list, gcal_event, gcal_event_summary)
                                 break
@@ -253,8 +255,16 @@ def synchronize_notion_and_google_calendar(
                                     {
                                         "notion_task_id": notion_task_page_id,
                                         "notion_task_name": notion_task_name,
+                                        "notion_task_date": (
+                                            notion_task["properties"].get(notion_page_property["Date_Notion_Name"])
+                                            or {}
+                                        )
+                                        .get("date", {})
+                                        .get("start"),  # noqa: E501
                                         "gcal_event_id": gcal_event_id,
                                         "gcal_event_title": gcal_event_summary,
+                                        "gcal_event_start": gcal_event.get("start", {}).get("dateTime")
+                                        or gcal_event.get("start", {}).get("date"),  # noqa: E501
                                         "action": action,
                                         "error": (
                                             f"Skipped: GCal event description exceeds Notion's 2000-character "
@@ -294,6 +304,11 @@ def synchronize_notion_and_google_calendar(
                 sync_errors.append(
                     {
                         "notion_task_id": notion_task_page_id,
+                        "notion_task_date": (
+                            notion_task["properties"].get(notion_page_property["Date_Notion_Name"]) or {}
+                        )
+                        .get("date", {})
+                        .get("start"),  # noqa: E501
                         "gcal_event_id": notion_gcal_event_id,
                         "action": action,
                         "error": str(e),
@@ -319,6 +334,8 @@ def synchronize_notion_and_google_calendar(
                                 "notion_task_name": None,
                                 "gcal_event_id": gcal_event_id,
                                 "gcal_event_title": gcal_event.get("summary", ""),
+                                "gcal_event_start": gcal_event.get("start", {}).get("dateTime")
+                                or gcal_event.get("start", {}).get("date"),  # noqa: E501
                                 "action": "create_notion",
                                 "error": (
                                     f"Skipped: GCal event description exceeds Notion's 2000-character "
@@ -338,6 +355,8 @@ def synchronize_notion_and_google_calendar(
                         {
                             "notion_task_id": None,
                             "gcal_event_id": gcal_event_id,
+                            "gcal_event_start": gcal_event.get("start", {}).get("dateTime")
+                            or gcal_event.get("start", {}).get("date"),  # noqa: E501
                             "action": "create_notion",
                             "error": str(e),
                         }
