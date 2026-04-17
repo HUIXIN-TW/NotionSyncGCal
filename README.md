@@ -194,13 +194,13 @@ A successful sync always returns `statusCode: 200`. Per-task errors are collecte
 
 **`action` values:**
 
-| Value | Description |
-| ----- | ----------- |
-| `create_gcal` | Creating a new GCal event from a Notion task |
-| `delete_gcal` | Deleting a GCal event (and Notion task) from a Notion deletion flag |
-| `update_gcal` | Updating GCal event because Notion task is newer |
-| `update_notion` | Updating Notion task because GCal event is newer |
-| `create_notion` | Creating a new Notion task from a GCal event |
+| Value           | Description                                                         |
+| --------------- | ------------------------------------------------------------------- |
+| `create_gcal`   | Creating a new GCal event from a Notion task                        |
+| `delete_gcal`   | Deleting a GCal event (and Notion task) from a Notion deletion flag |
+| `update_gcal`   | Updating GCal event because Notion task is newer                    |
+| `update_notion` | Updating Notion task because GCal event is newer                    |
+| `create_notion` | Creating a new Notion task from a GCal event                        |
 
 `notion_task_id` is `null` for `create_notion` actions (no Notion page exists yet).
 `gcal_event_id` is `null` for `create_gcal` actions (no GCal event exists yet).
