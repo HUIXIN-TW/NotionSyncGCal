@@ -1,6 +1,6 @@
 # Notion Task Two-Way Synchronise with Google Calendar Event
 
-![Python](https://img.shields.io/badge/Python-3.8%2B-blue)
+![Python](https://img.shields.io/badge/Python-3.11%2B-blue)
 ![Lambda](https://img.shields.io/badge/Serverless-AWS%20Lambda-orange)
 
 > Command-line interface to sync data between Notion Task and Google Calendar Event.
@@ -22,7 +22,7 @@ Do you find yourself juggling between Notion and Google Calendar to manage your 
 
 - Google account
 - Notion account
-- Python 3.8+
+- Python 3.11+
 - GitHub account (optional)
 - AWS account and DynamoDB tables (for serverless mode)
 
@@ -161,6 +161,50 @@ python lambda_function.py
 
 You should see log output from both Notion and Google token readers, calendar events fetched, and sync logs.
 
+### Sync Response Payload
+
+A successful sync always returns `statusCode: 200`. Per-task errors are collected and returned in the `errors` list rather than stopping the entire sync.
+
+```json
+{
+  "statusCode": 200,
+  "body": {
+    "status": "sync_success",
+    "message": {
+      "summary": { "google_event_count": 5, "notion_task_count": 5 },
+      "trigger_time": "2024-01-01T00:00:00.000Z",
+      "errors": [
+        {
+          "notion_task_id": "page-uuid-1",
+          "gcal_event_id": "gcal-event-id-1",
+          "action": "update_gcal",
+          "error": "APIResponseError: ..."
+        },
+        {
+          "notion_task_id": null,
+          "gcal_event_id": "gcal-event-id-2",
+          "action": "create_notion",
+          "error": "APIResponseError: ..."
+        }
+      ]
+    }
+  }
+}
+```
+
+**`action` values:**
+
+| Value | Description |
+| ----- | ----------- |
+| `create_gcal` | Creating a new GCal event from a Notion task |
+| `delete_gcal` | Deleting a GCal event (and Notion task) from a Notion deletion flag |
+| `update_gcal` | Updating GCal event because Notion task is newer |
+| `update_notion` | Updating Notion task because GCal event is newer |
+| `create_notion` | Creating a new Notion task from a GCal event |
+
+`notion_task_id` is `null` for `create_notion` actions (no Notion page exists yet).
+`gcal_event_id` is `null` for `create_gcal` actions (no GCal event exists yet).
+
 ### Monitoring with AWS CloudWatch
 
 View logs in CloudWatch:
@@ -228,10 +272,12 @@ aws logs put-retention-policy \
 ## Tips for First-Time Users
 
 - Start with a small date range:
+
   ```json
   "goback_days": 1,
   "goforward_days": 2
   ```
+
 - Test the tool locally before deploying to Lambda.
 - Use the provided Notion template to avoid configuration issues.
 

@@ -3,14 +3,19 @@ import sys
 from pathlib import Path
 from datetime import datetime, timezone
 from dateutil.parser import isoparse
-import pytz
 from utils.logging_utils import get_logger  # noqa: E402
+from notion.notion_properties import get_checkbox, get_rich_text, get_select, get_title
 
 # Configure logging
 logger = get_logger(__name__, log_file=os.getenv("LOG_FILE_PATH"))
 
 # Cap sync volume to avoid unbounded processing for large datasets.
 SYNC_TASK_LIMIT = 250
+
+
+class SyncAbortError(Exception):
+    """Raised when a fatal condition requires the entire sync to stop immediately."""
+    pass
 
 
 def compare_timezones(notion_time_str, google_time_str):
@@ -22,10 +27,9 @@ def compare_timezones(notion_time_str, google_time_str):
     google_timezone = google_time.tzinfo
     logger.debug(f"Notion Timezone: {notion_timezone}, Google Calendar Timezone: {google_timezone}")
     if notion_timezone != google_timezone:
-        logger.error(
-            f"Timezones are different: Notion {notion_timezone} and Google Calendar {google_timezone}\nStopping the program."  # noqa: E501
+        raise SyncAbortError(
+            f"Timezones are different: Notion {notion_timezone} and Google Calendar {google_timezone}"
         )
-        sys.exit(1)
 
 
 def get_current_time_in_iso_format():
@@ -38,12 +42,6 @@ def get_current_time_in_iso_format():
     # Trim the microseconds to milliseconds (3 decimal places)
     formatted_current_time = formatted_current_time[:-3] + "Z"
     return formatted_current_time
-
-
-def get_perth_time():
-    perth_tz = pytz.timezone("Australia/Perth")
-    current_time = datetime.now(perth_tz)
-    return current_time.isoformat()
 
 
 def remove_gcal_event_from_list(gcal_event_list, gcal_event, gcal_event_summary):
@@ -121,81 +119,61 @@ def synchronize_notion_and_google_calendar(
             return {"statusCode": 500, "body": {"status": "sync_error", "message": str(e)}}
 
         # Check if Notion Task is in Google Calendar
+        sync_errors = []
         for notion_task in notion_task_list:
-            """
-            Notion Task properties & Google Calendar Event properties
-            """
-            # Notion Task properties for comparison: Notion Page ID and Google Calendar Event ID
             notion_task_page_id = notion_task.get("id")
-
+            notion_gcal_event_id = None
+            action = None
             try:
-                gcal_name_column_name_in_notion = notion_page_property["GCal_Name_Notion_Name"]
-                notion_gcal_cal_name = notion_task["properties"][gcal_name_column_name_in_notion]["select"]["name"]
-                notion_gcal_cal_id = gcal_name_dict.get(notion_gcal_cal_name)
-            except Exception as e:
-                notion_gcal_cal_name = user_setting["gcal_default_name"]
-                notion_gcal_cal_id = user_setting["gcal_default_id"]
-                logger.warning(f"Calendar name not found. Use the default calendar: {notion_gcal_cal_name}\n{e}")
-                logger.debug(f"Calendar id not found. Use the default calendar id: {notion_gcal_cal_id}")
-                logger.info("Update Notion Task for default calendar id and calendar name")
-                notion_service.update_notion_task_for_default_calendar(notion_task_page_id, notion_gcal_cal_name)
-
-            try:
-                gcal_event_id_column_name_in_notion = notion_page_property["GCal_EventId_Notion_Name"]
-                notion_gcal_event_id = notion_task["properties"][gcal_event_id_column_name_in_notion]["rich_text"][0][
-                    "plain_text"
-                ]
-            except Exception as e:
-                logger.warning(f"Failed to retrieve Google Calendar Event ID: {e}")
-                notion_gcal_event_id = None
-
-            # Notion Task properties for deletion
-            delete_column_name_in_notion = notion_page_property["Delete_Notion_Name"]
-            notion_deletion = notion_task["properties"][delete_column_name_in_notion]["checkbox"]
-
-            # Notion Task properties for debugging
-            task_column_name_in_notion = notion_page_property["Task_Notion_Name"]
-            notion_task_name = notion_task["properties"][task_column_name_in_notion]["title"][0]["plain_text"]
-
-            # Notion Task properties for sync status
-            # the last time the task was synced between Notion and Google Calendar
-            notion_gcal_sync_time = None
-            try:
-                gcal_sync_time_column_name_in_notion = notion_page_property["GCal_Sync_Time_Notion_Name"]
-                notion_gcal_sync_time = (
-                    notion_task["properties"]
-                    .get(gcal_sync_time_column_name_in_notion, {})
-                    .get("rich_text", [{}])[0]
-                    .get("plain_text")
+                notion_gcal_cal_name = get_select(
+                    notion_task["properties"], notion_page_property["GCal_Name_Notion_Name"]
                 )
-            except Exception as e:
-                logger.warning(f"Failed to retrieve Google Calendar Sync Time: {e}")
+                if not notion_gcal_cal_name:
+                    notion_gcal_cal_name = user_setting["gcal_default_name"]
+                    notion_gcal_cal_id = user_setting["gcal_default_id"]
+                    logger.warning(f"Calendar name not found. Use the default calendar: {notion_gcal_cal_name}")
+                    logger.debug(f"Calendar id not found. Use the default calendar id: {notion_gcal_cal_id}")
+                    logger.info("Update Notion Task for default calendar id and calendar name")
+                    notion_service.update_notion_task_for_default_calendar(notion_task_page_id, notion_gcal_cal_name)
+                else:
+                    notion_gcal_cal_id = gcal_name_dict.get(notion_gcal_cal_name)
+                    if not notion_gcal_cal_id:
+                        logger.warning(
+                            f"Calendar '{notion_gcal_cal_name}' not found in gcal_name_dict, skipping task '{notion_task_name}'"
+                        )
+                        continue
 
-            notion_task_last_edited_time = notion_task.get("last_edited_time")
+                notion_gcal_event_id = get_rich_text(
+                    notion_task["properties"], notion_page_property["GCal_EventId_Notion_Name"]
+                )
+                notion_deletion = get_checkbox(notion_task["properties"], notion_page_property["Delete_Notion_Name"])
+                notion_task_name = get_title(notion_task["properties"], notion_page_property["Task_Notion_Name"]) or ""
+                notion_gcal_sync_time = get_rich_text(
+                    notion_task["properties"], notion_page_property["GCal_Sync_Time_Notion_Name"]
+                )
+                notion_task_last_edited_time = notion_task.get("last_edited_time")
 
-            """
-            Sync Logic: Notion Actions or Google Calendar Actions
-            """
-
-            # Notion Task without Google Calendar Event ID - Create a new event in Google Calendar
-            if not notion_gcal_event_id and should_update_google_events:
-                if notion_deletion:
-                    logger.debug(f"⚪️Deleted Flag & Not Creating in Google Calendar '{notion_task_name}'")
+                # Notion Task without Google Calendar Event ID - Create a new event in Google Calendar
+                if not notion_gcal_event_id and should_update_google_events:
+                    if notion_deletion:
+                        logger.debug(f"⚪️Deleted Flag & Not Creating in Google Calendar '{notion_task_name}'")
+                        continue
+                    action = "create_gcal"
+                    logger.debug(
+                        f"Notion Task: 🟢Creating a new event in Google Calendar for task '{notion_task_name}'"
+                    )
+                    new_gcal_event_id = google_service.create_gcal_event(notion_task, notion_gcal_cal_id)
+                    notion_service.update_notion_task_for_new_gcal_event_id(notion_task_page_id, new_gcal_event_id)
                     continue
-                logger.debug(f"Notion Task: 🟢Creating a new event in Google Calendar for task '{notion_task_name}'")
-                new_gcal_event_id = google_service.create_gcal_event(notion_task, notion_gcal_cal_id)
-                notion_service.update_notion_task_for_new_gcal_event_id(notion_task_page_id, new_gcal_event_id)
-                continue
 
-            # Notion Task with deletion flag - Delete the event in Google Calendar
-            if notion_deletion and notion_gcal_event_id is not None:
-                logger.debug(f"Notion: 🔴Deleting the event in Google Calendar for task '{notion_task_name}'")
-                try:
+                # Notion Task with deletion flag - Delete the event in Google Calendar
+                if notion_deletion and notion_gcal_event_id is not None:
+                    action = "delete_gcal"
+                    logger.debug(f"Notion: 🔴Deleting the event in Google Calendar for task '{notion_task_name}'")
                     google_service.delete_gcal_event(notion_gcal_cal_id, notion_gcal_event_id)
                     notion_service.delete_notion_task(notion_task_page_id)
 
                     duplicate_notion_task_list = notion_service.get_notion_task_by_gcal_event_id(notion_gcal_event_id)
-
                     if duplicate_notion_task_list is not None:
                         for duplicate_notion_task in duplicate_notion_task_list:
                             duplicate_notion_task_page_id = duplicate_notion_task["id"]
@@ -205,124 +183,163 @@ def synchronize_notion_and_google_calendar(
                     deleted_gcal_event = get_gcal_event_from_list(gcal_event_list, notion_gcal_event_id)
                     if deleted_gcal_event is not None:
                         remove_gcal_event_from_list(gcal_event_list, deleted_gcal_event, notion_task_name)
-                except Exception as e:
-                    logger.warning(
-                        f"Error deleting google calendar event ID: {notion_gcal_event_id} "
-                        f"on {notion_gcal_cal_name}: {e}"
-                    )
+                    continue
 
-                continue
+                # Notion Task with Google Calendar Event ID - Check if the event is in Google Calendar
+                for gcal_event in gcal_event_list:
+                    gcal_event_summary = gcal_event.get("summary", "")
+                    gcal_event_id = gcal_event.get("id", "")
+                    gcal_event_updated_time = gcal_event.get("updated")
+                    gcal_cal_id = gcal_event.get("organizer", {}).get("email")
+                    gcal_cal_name = gcal_id_dict.get(gcal_cal_id)
 
-            # Notion Task with Google Calendar Event ID - Check if the event is in Google Calendar
-            for gcal_event in gcal_event_list:
-                # Google Calendar Event properties for comparison: Google Calendar Event ID
-                gcal_event_summary = gcal_event.get("summary", "")
-                gcal_event_id = gcal_event.get("id", "")
+                    if notion_gcal_event_id == gcal_event_id:
+                        if compare_time:
+                            if not notion_task_last_edited_time or not gcal_event_updated_time:
+                                logger.warning(
+                                    f"Missing last edited or updated time. Skipping task '{notion_task_name}' "
+                                    f"Notion: {notion_task_last_edited_time}, Google: {gcal_event_updated_time}"
+                                )
+                                continue
 
-                # Google Calendar Event Updated Time
-                gcal_event_updated_time = gcal_event.get("updated")
+                            compare_timezones(notion_task_last_edited_time, gcal_event_updated_time)
 
-                # Google Calendar Current ID
-                gcal_cal_id = gcal_event.get("organizer", {}).get("email")
+                            if (
+                                notion_gcal_sync_time
+                                and notion_gcal_sync_time > gcal_event_updated_time
+                                and notion_gcal_sync_time > notion_task_last_edited_time
+                            ):
+                                logger.debug(
+                                    f"⚪️Already Done. Sync Time: {notion_gcal_sync_time}\nNotion '{notion_task_name}-{notion_task_last_edited_time}' vs Event '{gcal_event_summary}-{gcal_event_updated_time}'"  # noqa: E501
+                                )
+                                remove_gcal_event_from_list(gcal_event_list, gcal_event, gcal_event_summary)
+                                break
 
-                # Google Calendar Display Name
-                gcal_cal_name = gcal_id_dict.get(gcal_cal_id)
-
-                # Compare the Google Calendar Event ID with the Notion Task Google Calendar Event ID
-                if notion_gcal_event_id == gcal_event_id:
-                    if compare_time:
-                        # Get the last edited time of the Notion Task and the updated time of the Google Calendar Event
-                        compare_timezones(notion_task_last_edited_time, gcal_event_updated_time)
-
-                        if not notion_task_last_edited_time or not gcal_event_updated_time:
-                            logger.warning(
-                                f"Missing last edited or updated time. Skipping task '{notion_task_name}' "
-                                f"Notion: {notion_task_last_edited_time}, Google: {gcal_event_updated_time}"
-                            )
-                            continue
-
-                        if (
-                            notion_gcal_sync_time
-                            and notion_gcal_sync_time > gcal_event_updated_time
-                            and notion_gcal_sync_time > notion_task_last_edited_time
+                        # Update Google Calendar if Notion is newer or force update
+                        if should_update_google_events and (
+                            not compare_time or (notion_task_last_edited_time > gcal_event_updated_time)
                         ):
+                            action = "update_gcal"
                             logger.debug(
-                                f"⚪️Already Done. Sync Time: {notion_gcal_sync_time}\nNotion '{notion_task_name}-{notion_task_last_edited_time}' vs Event '{gcal_event_summary}-{gcal_event_updated_time}'"  # noqa: E501
+                                f"Notion Task Edited Time: '{notion_task_last_edited_time}' vs Google Calendar Event Updated Time: '{gcal_event_updated_time}'"  # noqa: E501
                             )
-                            # Remove the processed Google Calendar event from the list
-                            remove_gcal_event_from_list(gcal_event_list, gcal_event, gcal_event_summary)
-                            break
-
-                    # Update Google Calendar if Notion is newer or force update
-                    # synchronize_notion_and_google_calendar(compare_time=False, should_update_notion_tasks=False)
-                    # True and (True or ______) = True the logic will update the google event no matter time
-                    if should_update_google_events and (
-                        not compare_time or (notion_task_last_edited_time > gcal_event_updated_time)
-                    ):
-                        logger.debug(
-                            f"Notion Task Edited Time: '{notion_task_last_edited_time}' vs Google Calendar Event Updated Time: '{gcal_event_updated_time}'"  # noqa: E501
-                        )
-                        logger.debug(
-                            f"🥐 Notion Task: Updating the event in Google Calendar for task '{notion_task_name}'"
-                        )
-
-                        if notion_gcal_cal_id == gcal_cal_id:
-                            google_service.update_gcal_event(notion_task, notion_gcal_cal_id, notion_gcal_event_id)
+                            logger.debug(
+                                f"🥐 Notion Task: Updating the event in Google Calendar for task '{notion_task_name}'"
+                            )
+                            if notion_gcal_cal_id == gcal_cal_id:
+                                google_service.update_gcal_event(notion_task, notion_gcal_cal_id, notion_gcal_event_id)
+                            else:
+                                logger.debug(
+                                    f"📅 Google Calendar: Moving event '{gcal_event_summary}' "
+                                    f"from '{notion_gcal_cal_id}' to '{gcal_cal_id}'"
+                                )
+                                google_service.move_and_update_gcal_event(
+                                    notion_task,
+                                    notion_gcal_event_id,
+                                    notion_gcal_cal_id,
+                                    gcal_cal_id,
+                                )
+                            notion_service.update_notion_task_for_new_gcal_sync_time(
+                                notion_task_page_id, current_gcal_sync_time
+                            )
+                        # Update Notion if Google Calendar is newer or force update
+                        elif should_update_notion_tasks and (
+                            not compare_time or (notion_task_last_edited_time < gcal_event_updated_time)
+                        ):
+                            action = "update_notion"
+                            description = gcal_event.get("description") or ""
+                            if len(description) > 2000:
+                                sync_errors.append(
+                                    {
+                                        "notion_task_id": notion_task_page_id,
+                                        "gcal_event_id": gcal_event_id,
+                                        "action": action,
+                                        "error": (
+                                            f"Skipped: GCal event description exceeds Notion's 2000-character "
+                                            f"rich_text limit ({len(description)} chars). "
+                                            "Syncing this event would corrupt data integrity."
+                                        ),
+                                    }
+                                )
+                                logger.warning(
+                                    f"Skipped update_notion for '{gcal_event_summary}': "
+                                    f"description too long ({len(description)} chars)"
+                                )
+                            else:
+                                logger.debug(
+                                    f"Google Calendar Event Updated Time: '{gcal_event_updated_time}' vs Notion Task Edited Time: '{notion_task_last_edited_time}'"  # noqa: E501
+                                )
+                                logger.debug(
+                                    f"📅 Google Calendar: Updating the task in Notion for event '{gcal_event_summary}'"
+                                )
+                                notion_service.update_notion_task(
+                                    notion_task_page_id,
+                                    gcal_event,
+                                    gcal_cal_name,
+                                    current_gcal_sync_time,
+                                )
                         else:
                             logger.debug(
-                                f"📅 Google Calendar: Moving event '{gcal_event_summary}' "
-                                f"from '{notion_gcal_cal_id}' to '{gcal_cal_id}'"
+                                f"Already Sync: Notion Task '{notion_task_name}' and Google Calendar Event '{gcal_event_summary}'"  # noqa: E501
                             )
 
-                            google_service.move_and_update_gcal_event(
-                                notion_task,
-                                notion_gcal_event_id,
-                                notion_gcal_cal_id,
-                                gcal_cal_id,
-                            )
+                        remove_gcal_event_from_list(gcal_event_list, gcal_event, gcal_event_summary)
+                        break
 
-                        notion_service.update_notion_task_for_new_gcal_sync_time(
-                            notion_task_page_id, current_gcal_sync_time
-                        )
-                    # Update Notion if Google Calendar is newer or force update
-                    # synchronize_notion_and_google_calendar(compare_time=False, should_update_google_events=False)
-                    # True and (True or ______) = True the logic will update the notion task no matter time
-                    elif should_update_notion_tasks and (
-                        not compare_time or (notion_task_last_edited_time < gcal_event_updated_time)
-                    ):
-                        logger.debug(
-                            f"Google Calendar Event Updated Time: '{gcal_event_updated_time}' vs Notion Task Edited Time: '{notion_task_last_edited_time}'"  # noqa: E501
-                        )
-                        logger.debug(
-                            f"📅 Google Calendar: Updating the task in Notion for event '{gcal_event_summary}'"
-                        )
-                        notion_service.update_notion_task(
-                            notion_task_page_id,
-                            gcal_event,
-                            gcal_cal_name,
-                            current_gcal_sync_time,
-                        )
-                    else:
-                        # Cause of notion has less time precision than google calendar, so this is impossible to happen
-                        logger.debug(
-                            f"Already Sync: Notion Task '{notion_task_name}' and Google Calendar Event '{gcal_event_summary}'"  # noqa: E501
-                        )
-
-                    # Remove the processed Google Calendar event from the list
-                    remove_gcal_event_from_list(gcal_event_list, gcal_event, gcal_event_summary)
-                    break
+            except SyncAbortError:
+                raise
+            except Exception as e:
+                sync_errors.append(
+                    {
+                        "notion_task_id": notion_task_page_id,
+                        "gcal_event_id": notion_gcal_event_id,
+                        "action": action,
+                        "error": str(e),
+                    }
+                )
+                logger.error(f"Error during '{action}' for notion task '{notion_task_page_id}': {e}")
 
         # Create new tasks in Notion for the remaining Google Calendar events
         if len(gcal_event_list) > 0 and should_update_notion_tasks:
             logger.debug(f"🟢Google Calendar: Creating new tasks in Notion for {len(gcal_event_list)} events")
             for gcal_event in gcal_event_list:
+                gcal_event_id = gcal_event.get("id")
                 logger.debug(
                     f"Google Calendar: Creating a new task in Notion for event '{gcal_event.get('summary', '')}'"
                 )
+                try:
+                    gcal_cal_name = gcal_id_dict.get(gcal_event.get("organizer", {}).get("email"))
+                    description = gcal_event.get("description") or ""
+                    if len(description) > 2000:
+                        sync_errors.append(
+                            {
+                                "notion_task_id": None,
+                                "gcal_event_id": gcal_event_id,
+                                "action": "create_notion",
+                                "error": (
+                                    f"Skipped: GCal event description exceeds Notion's 2000-character "
+                                    f"rich_text limit ({len(description)} chars). "
+                                    "Syncing this event would corrupt data integrity."
+                                ),
+                            }
+                        )
+                        logger.warning(
+                            f"Skipped create_notion for gcal event '{gcal_event_id}': "
+                            f"description too long ({len(description)} chars)"
+                        )
+                    else:
+                        notion_service.create_notion_task(gcal_event, gcal_cal_name)
+                except Exception as e:
+                    sync_errors.append(
+                        {
+                            "notion_task_id": None,
+                            "gcal_event_id": gcal_event_id,
+                            "action": "create_notion",
+                            "error": str(e),
+                        }
+                    )
+                    logger.error(f"Error during 'create_notion' for gcal event '{gcal_event_id}': {e}")
 
-                # Google Calendar Display Name
-                gcal_cal_name = gcal_id_dict.get(gcal_event.get("organizer", {}).get("email"))
-                notion_service.create_notion_task(gcal_event, gcal_cal_name)
     except Exception as e:
         logger.error(f"Error during synchronization: {e}")
         return {"statusCode": 500, "body": {"status": "sync_error", "message": str(e)}}
@@ -330,6 +347,7 @@ def synchronize_notion_and_google_calendar(
     message = {
         "summary": sync_summary,
         "trigger_time": trigger_sync_time,
+        "errors": sync_errors,
     }
     return {"statusCode": 200, "body": {"status": "sync_success", "message": message}}
 
