@@ -15,6 +15,7 @@ SYNC_TASK_LIMIT = 250
 
 class SyncAbortError(Exception):
     """Raised when a fatal condition requires the entire sync to stop immediately."""
+
     pass
 
 
@@ -27,9 +28,7 @@ def compare_timezones(notion_time_str, google_time_str):
     google_timezone = google_time.tzinfo
     logger.debug(f"Notion Timezone: {notion_timezone}, Google Calendar Timezone: {google_timezone}")
     if notion_timezone != google_timezone:
-        raise SyncAbortError(
-            f"Timezones are different: Notion {notion_timezone} and Google Calendar {google_timezone}"
-        )
+        raise SyncAbortError(f"Timezones are different: Notion {notion_timezone} and Google Calendar {google_timezone}")
 
 
 def get_current_time_in_iso_format():
@@ -253,7 +252,9 @@ def synchronize_notion_and_google_calendar(
                                 sync_errors.append(
                                     {
                                         "notion_task_id": notion_task_page_id,
+                                        "notion_task_name": notion_task_name,
                                         "gcal_event_id": gcal_event_id,
+                                        "gcal_event_title": gcal_event_summary,
                                         "action": action,
                                         "error": (
                                             f"Skipped: GCal event description exceeds Notion's 2000-character "
@@ -315,7 +316,9 @@ def synchronize_notion_and_google_calendar(
                         sync_errors.append(
                             {
                                 "notion_task_id": None,
+                                "notion_task_name": None,
                                 "gcal_event_id": gcal_event_id,
+                                "gcal_event_title": gcal_event.get("summary", ""),
                                 "action": "create_notion",
                                 "error": (
                                     f"Skipped: GCal event description exceeds Notion's 2000-character "

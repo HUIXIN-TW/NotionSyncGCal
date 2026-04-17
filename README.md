@@ -176,15 +176,19 @@ A successful sync always returns `statusCode: 200`. Per-task errors are collecte
       "errors": [
         {
           "notion_task_id": "page-uuid-1",
+          "notion_task_name": "Weekly Sync Meeting",
           "gcal_event_id": "gcal-event-id-1",
+          "gcal_event_title": "Weekly Sync Meeting",
           "action": "update_gcal",
           "error": "APIResponseError: ..."
         },
         {
           "notion_task_id": null,
+          "notion_task_name": null,
           "gcal_event_id": "gcal-event-id-2",
+          "gcal_event_title": "Team Standup",
           "action": "create_notion",
-          "error": "APIResponseError: ..."
+          "error": "Skipped: GCal event description exceeds Notion's 2000-character rich_text limit (4469 chars). Syncing this event would corrupt data integrity."
         }
       ]
     }
@@ -202,8 +206,8 @@ A successful sync always returns `statusCode: 200`. Per-task errors are collecte
 | `update_notion` | Updating Notion task because GCal event is newer                    |
 | `create_notion` | Creating a new Notion task from a GCal event                        |
 
-`notion_task_id` is `null` for `create_notion` actions (no Notion page exists yet).
-`gcal_event_id` is `null` for `create_gcal` actions (no GCal event exists yet).
+`notion_task_id` and `notion_task_name` are `null` for `create_notion` actions (no Notion page exists yet).
+`gcal_event_id` and `gcal_event_title` are `null` for `create_gcal` actions (no GCal event exists yet).
 
 ### Monitoring with AWS CloudWatch
 
