@@ -64,4 +64,6 @@ jobs:
           set -e
           aws lambda update-function-code \
             --function-name ${{ env.FUNCTION_NAME }} \
-            --image-uri "$ECR_IMAGE_URI"
+            --image-uri "$ECR_IMAGE_URI" \
+            --query 'LastUpdateStatus' \
+            --output text

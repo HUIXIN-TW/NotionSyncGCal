@@ -42,4 +42,6 @@ jobs:
         run: |
           aws lambda update-function-code \
             --function-name NotionSyncGCal \
-            --zip-file fileb://lambda_function.zip
+            --zip-file fileb://lambda_function.zip \
+            --query 'LastUpdateStatus' \
+            --output text

@@ -82,7 +82,8 @@ jobs:
             --image-uri "$ECR_IMAGE_URI" \
             --region "${{ env.AWS_REGION }}" \
             --no-cli-pager \
-            > /dev/null
+            --query 'LastUpdateStatus' \
+            --output text
 
           aws lambda wait function-updated \
             --function-name "${{ env.FUNCTION_NAME }}" \
