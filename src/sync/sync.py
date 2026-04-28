@@ -325,7 +325,30 @@ def synchronize_notion_and_google_calendar(
                     f"Google Calendar: Creating a new task in Notion for event '{gcal_event.get('summary', '')}'"
                 )
                 try:
-                    gcal_cal_name = gcal_id_dict.get(gcal_event.get("organizer", {}).get("email"))
+                    organizer_email = (gcal_event.get("organizer") or {}).get("email")
+                    gcal_cal_name = gcal_id_dict.get(organizer_email)
+                    if not gcal_cal_name:
+                        sync_errors.append(
+                            {
+                                "notion_task_id": None,
+                                "notion_task_name": None,
+                                "gcal_event_id": gcal_event_id,
+                                "gcal_event_title": gcal_event.get("summary", ""),
+                                "gcal_event_start": gcal_event.get("start", {}).get("dateTime")
+                                or gcal_event.get("start", {}).get("date"),
+                                "action": "create_notion",
+                                "error": (
+                                    "Skipped: You are not the owner of this Google Calendar event, "
+                                    "so it was not synced."
+                                ),
+                            }
+                        )
+                        logger.warning(
+                            "Skipped create_notion for non-owned/invited Google Calendar event '%s': organizer=%s",
+                            gcal_event_id,
+                            organizer_email,
+                        )
+                        continue
                     description = gcal_event.get("description") or ""
                     if len(description) > 2000:
                         sync_errors.append(
