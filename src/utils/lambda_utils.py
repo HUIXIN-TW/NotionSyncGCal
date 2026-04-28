@@ -4,7 +4,7 @@ from typing import Any, Dict, Optional
 
 from .dynamodb_utils import save_sync_logs  # noqa: E402
 
-MAX_SYNC_LOG_ERRORS = 1
+MAX_SYNC_LOG_ERRORS = 3
 MAX_SYNC_LOG_ERROR_TEXT_LENGTH = 500
 MAX_SYNC_LOG_TITLE_LENGTH = 160
 
