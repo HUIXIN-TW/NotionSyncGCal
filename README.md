@@ -3,7 +3,7 @@
 ![Python](https://img.shields.io/badge/Python-3.11%2B-blue)
 ![Lambda](https://img.shields.io/badge/Serverless-AWS%20Lambda-orange)
 
-> Command-line interface to sync data between Notion Task and Google Calendar Event.
+> AWS Lambda container that syncs Notion Task databases with Google Calendar events, running serverless with DynamoDB token storage.
 
 Do you find yourself juggling between Notion and Google Calendar to manage your events? Fret not! This awesome code is here to save your day. It magically extracts event details from your Notion Database and seamlessly integrates them into your Google Calendar events. There's more! It even adds a handy URL to your GCal event, so you can effortlessly jump back to the specific Notion Page related to the event. How cool is that?
 
@@ -24,7 +24,7 @@ Do you find yourself juggling between Notion and Google Calendar to manage your 
 - Notion account
 - Python 3.11+
 - GitHub account (optional)
-- AWS account and DynamoDB tables (for serverless mode)
+- AWS account and DynamoDB tables (for serverless/Lambda mode)
 
 ## Current Capabilities
 
@@ -47,40 +47,68 @@ Do you find yourself juggling between Notion and Google Calendar to manage your 
 - Able to name the required Notion columns whatever you want and have the code work by changing `page_property` in `notion_setting.json`
 - Credential and OAuth consent screen with Google Calendar scope
 
-## Local Usage
+## Project Structure
 
-Go to the terminal and run the following commands:
+```
+.
+├── assets/                    # Images referenced by this README
+├── doc/
+│   └── deployment.md          # CI/CD workflow and deployment details
+├── Dockerfile                 # Lambda container image definition
+├── lambda_function.py         # Lambda handler (entrypoint)
+├── pyproject.toml             # Project metadata and runtime dependencies
+├── uv.lock                    # Locked dependency tree
+├── makefile                   # Lint shortcuts
+├── scripts/
+│   ├── check_lambda_deploy_workflows.sh   # CI guardrail: Lambda deploy rules
+│   └── check_no_plaintext_secrets.sh      # CI guardrail: secret scanning
+├── src/
+│   ├── main.py                # Core sync logic, CLI entrypoint
+│   ├── config/config.py       # Local vs serverless mode config
+│   ├── gcal/                  # Google Calendar service + OAuth token handling
+│   ├── notion/                # Notion service + config + token handling
+│   ├── sync/sync.py           # Bidirectional sync logic
+│   ├── user_setting/          # Local notion_setting.json updater
+│   └── utils/                 # Logging, DynamoDB, HTTP, crypto helpers
+├── test/
+│   └── test_token_crypto.py   # Unit tests for token encryption
+├── token/                     # Local credentials (gitignored — never commit)
+│   ├── client_secret.json     # Google OAuth client secret
+│   ├── notion_setting.json    # Notion config + encrypted token
+│   └── token.json             # Google OAuth token
+└── token_template/            # Safe blank templates for token/ setup
+    ├── notion_setting.json
+    └── token.json
+```
+
+## Local Setup
 
 ```bash
 git clone https://github.com/HUIXIN-TW/NotionSyncGCal.git
 cd NotionSyncGCal
-pip install -r requirements.txt
-python3 src/main.py
+
+# Install dependencies (requires uv: https://docs.astral.sh/uv/getting-started/installation/)
+uv sync
 ```
 
-Configure Notion and Google Calendar
+Configure Notion and Google Calendar:
 
 - Duplicate the [Notion Template](https://huixin.notion.site/aa639e48cfee4216976756f33cf57c8e?v=6db9353f3bc54029807c539ffc3dfdb4).
 - Set up a Notion integration and connect it to your database.
 - Enable the Google Calendar API and download the `client_secret.json` file.
-- Complete the `notion_setting.json` file in the `token` folder.
-
-You found the above topic is unfamiliar? No worries! Just follow the [Beginner Guide](doc/beginner_guide.md) to set up your Notion and Google Calendar integration.
+- Copy `token_template/notion_setting.json` → `token/notion_setting.json` and fill in your values.
+- Copy `token_template/token.json` → `token/token.json` and complete the OAuth flow.
 
 ### Basic Synchronization
 
-To run the basic synchronization between Notion and Google Calendar:
-
 ```bash
-python3 src/main.py
+uv run python src/main.py
 ```
 
 ### Synchronization with Specific Date Range
 
-To synchronize events based on a specific date range, use the following command:
-
 ```bash
-python3 src/main.py -t <look_back_days> <look_ahead_days>
+uv run python src/main.py -t <look_back_days> <look_ahead_days>
 ```
 
 `<look_back_days>`: Number of days to look back from the current date.
@@ -91,18 +119,14 @@ python3 src/main.py -t <look_back_days> <look_ahead_days>
 
 #### Sync from Google Calendar to Notion
 
-To force an update of Notion tasks from Google Calendar events within a specified date range, use the following command:
-
 ```bash
-python3 src/main.py -g <look_back_days> <look_ahead_days>
+uv run python src/main.py -g <look_back_days> <look_ahead_days>
 ```
 
 #### Sync from Notion to Google Calendar
 
-To force an update of Google Calendar events from Notion tasks within a specified date range, use the following command:
-
 ```bash
-python3 src/main.py -n <look_back_days> <look_ahead_days>
+uv run python src/main.py -n <look_back_days> <look_ahead_days>
 ```
 
 ## AWS Lambda Integration
@@ -112,6 +136,14 @@ python3 src/main.py -n <look_back_days> <look_ahead_days>
 - Stores user config and OAuth tokens in DynamoDB tables keyed by `uuid`.
 - Lambda reads config/tokens at runtime using the `uuid` provided by your trigger payload (for example, an SQS message body).
 - Token refreshes and sync summaries are written back to DynamoDB (including the sync log table with TTL).
+
+### Lambda Entrypoint
+
+`lambda_function.py` is the Docker `CMD` entrypoint. It dispatches incoming events:
+
+- **SQS**: reads `uuid` from `Records[].body`, calls `src/main.main(uuid)` per record.
+- **EventBridge**: reads `uuid` from the event detail, calls `src/main.main(uuid)`.
+- **API**: placeholder for future test-connection use.
 
 ### Environment Variables
 
@@ -144,19 +176,28 @@ Note: When using Lambda, no CLI arguments are passed. You must configure your `n
 
 ### Deploying to Lambda
 
-Use GitHub Actions:
+Deployment is handled by GitHub Actions workflows. See [doc/deployment.md](doc/deployment.md) for full details on dev, production image release, and manual production Lambda deploy workflows.
 
-- Create a GitHub Action to build and deploy your Lambda function.
-- Use the provided `lambda-ecr-deploy.yml` file in the `.github/workflows` directory.
+## Testing
 
-## Testing and Monitoring
+### Run Unit Tests
 
-### Local Testing
+```bash
+uv run python -m pytest test/
+```
+
+Or using the standard library runner:
+
+```bash
+uv run python -m unittest discover test/
+```
+
+### Local Lambda Test
 
 Run the local mock Lambda handler:
 
 ```bash
-python lambda_function.py
+uv run python lambda_function.py
 ```
 
 You should see log output from both Notion and Google token readers, calendar events fetched, and sync logs.
@@ -209,7 +250,7 @@ A successful sync always returns `statusCode: 200`. Per-task errors are collecte
 `notion_task_id` and `notion_task_name` are `null` for `create_notion` actions (no Notion page exists yet).
 `gcal_event_id` and `gcal_event_title` are `null` for `create_gcal` actions (no GCal event exists yet).
 
-### Monitoring with AWS CloudWatch
+## Monitoring with AWS CloudWatch
 
 View logs in CloudWatch:
 
@@ -272,6 +313,16 @@ aws logs put-retention-policy \
   --log-group-name /aws/lambda/notion-sync-gcal \
   --retention-in-days 7
 ```
+
+## Secrets and Config Handling
+
+The `token/` directory is gitignored and must **never** be committed. It holds:
+
+- `token/client_secret.json` — Google OAuth client credentials (download from Google Cloud Console)
+- `token/notion_setting.json` — Notion API token (encrypted as `enc:v1:…`) + sync configuration
+- `token/token.json` — Google OAuth access/refresh token (written by the OAuth flow)
+
+Use `token_template/` as a reference for the expected JSON shape. In serverless mode (Lambda), all credentials are stored in DynamoDB and loaded by UUID — the `token/` directory is not used at runtime.
 
 ## Tips for First-Time Users
 
