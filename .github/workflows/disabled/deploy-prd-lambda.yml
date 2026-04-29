@@ -1,4 +1,4 @@
-name: Deploy Production Lambda Image
+name: Deploy Production Lambda
 
 on:
   workflow_dispatch:

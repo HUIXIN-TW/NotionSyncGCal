@@ -15,7 +15,7 @@ Do you find yourself juggling between Notion and Google Calendar to manage your 
 
 - Breaking change: serverless storage now uses DynamoDB tables (tokens, user config, sync logs) instead of S3 objects.
 - Lambda reads/writes by `uuid` (SQS/EventBridge payload) and persists refreshed tokens plus sync summaries into DynamoDB.
-- Auto-deploy via GitHub Actions remains; CloudWatch metrics and optional SNS alerts cover spikes, errors, and slow syncs.
+- Dev auto-deploy via GitHub Actions remains; production image publishing and production Lambda deployment are deferred until production infrastructure and IAM are ready.
 - Migration tip: seed the DynamoDB tables with your existing credentials/config and update environment variables to the new `DYNAMODB_*` names.
 
 ## What You Will Need to Get Started
@@ -176,7 +176,14 @@ Note: When using Lambda, no CLI arguments are passed. You must configure your `n
 
 ### Deploying to Lambda
 
-Deployment is handled by GitHub Actions workflows. See [doc/deployment.md](doc/deployment.md) for full details on dev, production image release, and manual production Lambda deploy workflows.
+Deployment is handled by GitHub Actions workflows. See [doc/deployment.md](doc/deployment.md) for full details.
+
+Current workflow split:
+
+- Dev push -> `.github/workflows/deploy-dev-lambda.yml` -> build/push dev image -> deploy dev Lambda.
+- Master push -> `.github/workflows/release-semantic.yml` -> semantic-release only.
+- Production image publish -> deferred until production infrastructure, IAM, and cross-account ECR access are ready.
+- Production Lambda deploy -> `.github/workflows/disabled/deploy-prd-lambda.yml`, disabled until production infrastructure and IAM are ready.
 
 ## Testing
 

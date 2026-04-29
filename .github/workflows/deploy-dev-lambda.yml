@@ -1,4 +1,4 @@
-name: Deploy Lambda Container to ECR
+name: Deploy Dev Lambda
 
 on:
   push:

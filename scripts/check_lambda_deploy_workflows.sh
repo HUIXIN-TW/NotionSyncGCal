@@ -228,7 +228,7 @@ for file in "${active_files[@]}"; do
   fi
 done
 
-dev_workflow="${WORKFLOW_DIR}/lambda-ecr-deploy.dev.yml"
+dev_workflow="${WORKFLOW_DIR}/deploy-dev-lambda.yml"
 if [[ -f "$dev_workflow" ]]; then
   contains_required_literal "$dev_workflow" "DEV_DEPLOY_ROLE_ARN" || report_failure "$dev_workflow must reference DEV_DEPLOY_ROLE_ARN."
   contains_required_literal "$dev_workflow" "ap-southeast-2" || report_failure "$dev_workflow must use AWS region ap-southeast-2."

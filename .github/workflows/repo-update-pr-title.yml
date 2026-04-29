@@ -1,4 +1,4 @@
-name: Update PR Title
+name: Update PR Title on Change
 
 on:
   pull_request:

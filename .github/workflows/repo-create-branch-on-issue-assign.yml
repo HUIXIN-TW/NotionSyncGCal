@@ -1,4 +1,4 @@
-name: Create Branch and Add Branch Link on Issue Assign
+name: Create Branch on Issue Assign
 
 on:
   issues:

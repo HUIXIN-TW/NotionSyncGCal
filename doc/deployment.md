@@ -1,10 +1,23 @@
 # Deployment
 
-This project uses separate workflows for release, dev deployment, and production Lambda deployment.
+This project uses separate workflows for CI validation, semantic release, dev deployment, and production Lambda deployment.
+
+## CI
+
+The CI workflow is `.github/workflows/ci-code-quality.yml`. It runs code quality checks, plaintext secret checks, and Lambda deployment workflow guardrails.
+
+## Current Flow
+
+- Dev push -> `.github/workflows/deploy-dev-lambda.yml` -> build/push dev image -> deploy dev Lambda.
+- Master push -> `.github/workflows/release-semantic.yml` -> semantic-release only.
+- Production image publish -> deferred.
+- Production Lambda deploy -> `.github/workflows/disabled/deploy-prd-lambda.yml`, disabled until production infrastructure and IAM are ready.
 
 ## Release
 
-Release runs automatically on push to `master`.
+Semantic release is repo-level, not environment-specific. There is no dev or production semantic-release workflow.
+
+The release workflow is `.github/workflows/release-semantic.yml`. It runs automatically on push to `master`.
 
 Before creating a release, the workflow validates the repository with:
 
@@ -31,7 +44,7 @@ The release workflow does not:
 
 ## Dev Deployment
 
-Dev deployment runs automatically on push to `dev`.
+The dev deployment workflow is `.github/workflows/deploy-dev-lambda.yml`. It runs automatically on push to `dev`.
 
 Before building the container image, the workflow validates the repository with:
 
@@ -60,9 +73,9 @@ The future production image publish workflow must be manual only with `workflow_
 
 ## Production Lambda Deploy
 
-Production Lambda deployment is manual only. The workflow may remain present, but production infrastructure and IAM setup are not ready yet.
+The production Lambda deployment workflow is `.github/workflows/disabled/deploy-prd-lambda.yml`. It is disabled until production infrastructure and IAM setup are ready.
 
-The production deploy workflow uses `workflow_dispatch` and requires one input:
+When re-enabled, the production deploy workflow uses `workflow_dispatch` and requires one input:
 
 - `image_tag`
 

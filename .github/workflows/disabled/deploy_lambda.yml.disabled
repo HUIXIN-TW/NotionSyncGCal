@@ -4,8 +4,8 @@
 # restored as runnable workflow YAML.
 #
 # Current safe flows:
-# - Dev deploy: .github/workflows/lambda-ecr-deploy.dev.yml
-# - Production image release: .github/workflows/lambda-ecr-release.yml
-# - Production Lambda deploy: .github/workflows/lambda-ecr-deploy.prd.yml
+# - Dev deploy: .github/workflows/deploy-dev-lambda.yml
+# - Semantic release: .github/workflows/release-semantic.yml
+# - Production Lambda deploy: .github/workflows/disabled/deploy-prd-lambda.yml
 #
 # Safety rule: master push must never update Lambda.
