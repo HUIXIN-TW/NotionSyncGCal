@@ -28,12 +28,12 @@ Before creating a release, the workflow validates the repository with:
 - plaintext secret guard
 - Lambda deployment workflow guardrails
 
-The release workflow runs `python-semantic-release` only. It may create or update:
+The release workflow runs `python-semantic-release` only. It creates:
 
-- `pyproject.toml` version
-- `uv.lock`, through the semantic-release `build_command = "uv lock"` setting
 - Git tag
 - GitHub Release
+
+It does not commit version-file updates back to `master`, so it can run under PR-only branch protection.
 
 The release workflow does not:
 
@@ -41,6 +41,16 @@ The release workflow does not:
 - log in to ECR
 - build or push a container image
 - deploy Lambda
+
+## Release Version Source of Truth
+
+Git tag and GitHub Release are the release version source of truth.
+
+This repository is a Lambda application, not a published Python package. `pyproject.toml` `[project].version` is not used as deployment authority and may remain static while the project stays in this shape.
+
+The `master` branch is protected and requires changes through pull requests. The release workflow must not push version bump commits directly to `master`, so semantic-release does not update `pyproject.toml` or `uv.lock` during release.
+
+If this project later becomes a published Python package, revisit this decision and use either release pull requests or a controlled release bot bypass for version-file updates.
 
 ## Dev Deployment
 

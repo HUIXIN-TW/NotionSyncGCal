@@ -26,10 +26,7 @@ dev = [
 package = false
 
 [tool.semantic_release]
-version_toml = ["pyproject.toml:project.version"]
 tag_format = "v{version}"
-build_command = "uv lock"
-commit_message = "chore(release): v{version}"
 
 [tool.semantic_release.branches.master]
 match = "master"
