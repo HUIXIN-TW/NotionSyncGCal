@@ -26,6 +26,20 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          version: "0.5.31"
+
+      - name: Run validation
+        run: |
+          uv sync --frozen --dev
+          uv run black --check src lambda_function.py --line-length 120
+          uv run flake8 --max-line-length=120 src lambda_function.py test
+          uv run python -m unittest discover -s test
+          ./scripts/check_no_plaintext_secrets.sh
+          bash scripts/check_lambda_deploy_workflows.sh
+
       - name: Configure AWS credentials (sharedservice account for ECR push)
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -55,11 +69,11 @@ jobs:
           tags: |
             ${{ steps.login-ecr.outputs.registry }}/${{ env.IMAGE_NAME }}:${{ env.IMAGE_VERSION }}
             ${{ steps.login-ecr.outputs.registry }}/${{ env.IMAGE_NAME }}:${{ env.IMAGE_VERSION }}-${{ steps.vars.outputs.short_sha }}
-            ${{ steps.login-ecr.outputs.registry }}/${{ env.IMAGE_NAME }}:${{ steps.vars.outputs.short_sha }}
+            ${{ steps.login-ecr.outputs.registry }}/${{ env.IMAGE_NAME }}:sha-${{ steps.vars.outputs.short_sha }}
 
       - name: Set image uri env
         run: |
-          echo "ECR_IMAGE_URI=${{ steps.login-ecr.outputs.registry }}/${{ env.IMAGE_NAME }}:${{ steps.vars.outputs.short_sha }}" >> $GITHUB_ENV
+          echo "ECR_IMAGE_URI=${{ steps.login-ecr.outputs.registry }}/${{ env.IMAGE_NAME }}:sha-${{ steps.vars.outputs.short_sha }}" >> $GITHUB_ENV
 
       - name: Configure AWS credentials (dev account for Lambda update)
         uses: aws-actions/configure-aws-credentials@v4
