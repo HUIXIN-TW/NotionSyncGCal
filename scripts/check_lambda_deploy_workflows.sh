@@ -144,14 +144,14 @@ is_workflow_dispatch_only() {
 }
 
 contains_update_function_code() {
-  rg -q "aws[[:space:]]+lambda[[:space:]]+update-function-code" "$1"
+  grep -q "aws[[:space:]]*lambda[[:space:]]*update-function-code" "$1"
 }
 
 contains_required_literal() {
   local file="$1"
   local literal="$2"
 
-  rg -q --fixed-strings "$literal" "$file"
+  grep -qF "$literal" "$file"
 }
 
 check_no_forbidden_env_dumping() {
@@ -165,7 +165,7 @@ check_no_forbidden_env_dumping() {
   fi
 
   violations="$(
-    rg -n -P '^[[:space:]]*(run:[[:space:]]*)?(printenv|env)([[:space:]]|$)|^[[:space:]]*(run:[[:space:]]*)?set[[:space:]]+-x([[:space:]]|$)' "${files[@]}" || true
+    grep -En '^[[:space:]]*(run:[[:space:]]*)?(printenv|env)([[:space:]]|$)|^[[:space:]]*(run:[[:space:]]*)?set[[:space:]]+-x([[:space:]]|$)' "${files[@]}" || true
   )"
 
   if [[ -n "$violations" ]]; then
@@ -217,7 +217,7 @@ fi
 production_workflows=()
 while IFS= read -r file; do
   production_workflows+=("$file")
-done < <(printf "%s\n" "${active_files[@]}" | rg -i '(^|/).*(prd|prod|production).*deploy.*\.ya?ml$|(^|/).*deploy.*(prd|prod|production).*\.ya?ml$' || true)
+done < <(printf "%s\n" "${active_files[@]}" | grep -iE '(^|/).*(prd|prod|production).*deploy.*\.ya?ml$|(^|/).*deploy.*(prd|prod|production).*\.ya?ml$' || true)
 
 if [[ ${#production_workflows[@]} -eq 0 ]]; then
   echo "No active production deploy workflow found; production-specific guardrails will apply once it exists."
