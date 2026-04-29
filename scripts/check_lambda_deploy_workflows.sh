@@ -38,15 +38,36 @@ has_master_push_trigger() {
       return RLENGTH
     }
 
+    function trim(value) {
+      gsub(/^[[:space:]]+|[[:space:]]+$/, "", value)
+      return value
+    }
+
+    function list_allows_master(value) {
+      return value ~ /(^|[^A-Za-z0-9_*.-])(master|\*\*)([^A-Za-z0-9_*.-]|$)/
+    }
+
+    function close_push_if_needed(line) {
+      if (in_push && indent(line) <= push_indent && line !~ /^[[:space:]]*$/) {
+        if (!push_has_branches || push_allows_master) {
+          master_seen = 1
+        }
+        in_push = 0
+        in_branches = 0
+      }
+    }
+
     /^[[:space:]]*#/ { next }
 
     /^on:[[:space:]]*\[[^]]*push[^]]*\]/ {
       push_seen = 1
+      master_seen = 1
       next
     }
 
     /^on:[[:space:]]*push[[:space:]]*$/ {
       push_seen = 1
+      master_seen = 1
       next
     }
 
@@ -60,25 +81,51 @@ has_master_push_trigger() {
       in_on = 0
     }
 
-    in_on && /^[[:space:]]+push:[[:space:]]*$/ {
+    in_on {
+      close_push_if_needed($0)
+    }
+
+    in_on && indent($0) == on_indent + 2 && /^[[:space:]]+push:[[:space:]]*$/ {
       push_seen = 1
+      in_push = 1
+      in_branches = 0
+      push_has_branches = 0
+      push_allows_master = 0
       push_indent = indent($0)
       next
     }
 
-    push_seen && /^[[:space:]]+branches:[[:space:]]*\[[^]]*master[^]]*\]/ {
-      master_seen = 1
+    in_push && indent($0) == push_indent + 2 && /^[[:space:]]+branches:[[:space:]]*/ {
+      push_has_branches = 1
+      in_branches = 1
+      branches_indent = indent($0)
+
+      branch_value = $0
+      sub(/^[[:space:]]+branches:[[:space:]]*/, "", branch_value)
+      if (list_allows_master(branch_value)) {
+        push_allows_master = 1
+      }
+      next
     }
 
-    push_seen && /^[[:space:]]+-[[:space:]]*master[[:space:]]*$/ {
-      master_seen = 1
+    in_branches && indent($0) <= branches_indent && $0 !~ /^[[:space:]]*$/ {
+      in_branches = 0
     }
 
-    push_seen && indent($0) <= push_indent && $0 !~ /^[[:space:]]*$/ && $0 !~ /^[[:space:]]+push:[[:space:]]*$/ {
-      push_indent = -1
+    in_branches && /^[[:space:]]+-[[:space:]]*/ {
+      branch_value = $0
+      sub(/^[[:space:]]+-[[:space:]]*/, "", branch_value)
+      branch_value = trim(branch_value)
+      gsub(/^["'\'']|["'\'']$/, "", branch_value)
+      if (branch_value == "master" || branch_value == "**") {
+        push_allows_master = 1
+      }
     }
 
     END {
+      if (in_push && (!push_has_branches || push_allows_master)) {
+        master_seen = 1
+      }
       exit !(push_seen && master_seen)
     }
   ' "$file"
