@@ -19,7 +19,28 @@ dependencies = [
 dev = [
   "black==24.4.2",
   "flake8==7.3.0",
+  "python-semantic-release==10.5.3",
 ]
 
 [tool.uv]
 package = false
+
+[tool.semantic_release]
+version_toml = ["pyproject.toml:project.version"]
+tag_format = "v{version}"
+build_command = "uv lock"
+commit_message = "chore(release): v{version}"
+
+[tool.semantic_release.branches.master]
+match = "master"
+prerelease = false
+
+[tool.semantic_release.remote]
+type = "github"
+
+[tool.semantic_release.remote.token]
+env = "GITHUB_TOKEN"
+
+[tool.semantic_release.publish]
+dist_glob_patterns = []
+upload_to_vcs_release = true
