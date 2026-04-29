@@ -22,7 +22,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
           ref: master
@@ -30,15 +30,15 @@ jobs:
       - name: Pin checkout to workflow SHA
         run: git reset --hard "${{ github.sha }}"
 
-      - name: Install uv
-        uses: astral-sh/setup-uv@v5
-        with:
-          version: "0.5.31"
-
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: "3.11"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v8
+        with:
+          version: "0.5.31"
 
       - name: Run validation
         run: |
@@ -84,7 +84,7 @@ jobs:
         run: git checkout "${{ steps.release.outputs.commit_sha }}"
 
       - name: Configure AWS credentials for ECR push
-        uses: aws-actions/configure-aws-credentials@v4
+        uses: aws-actions/configure-aws-credentials@v6
         with:
           aws-region: ${{ env.AWS_REGION }}
           role-to-assume: ${{ secrets.PRD_DEPLOY_ROLE_ARN }}
@@ -114,7 +114,7 @@ jobs:
           } >> "$GITHUB_OUTPUT"
 
       - name: Build & Push production image
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         id: build-and-push
         with:
           context: .

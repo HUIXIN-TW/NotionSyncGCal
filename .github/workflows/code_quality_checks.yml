@@ -7,10 +7,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v6
 
       - name: Set up Python
-        uses: actions/setup-python@v3
+        uses: actions/setup-python@v6
         with:
           python-version: "3.11"
 
@@ -21,7 +21,7 @@ jobs:
         run: flake8 --max-line-length=120 .
 
       - name: Install Node.js for Prettier
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v6
         with:
           node-version: "20" # Specify the Node.js version.
 
