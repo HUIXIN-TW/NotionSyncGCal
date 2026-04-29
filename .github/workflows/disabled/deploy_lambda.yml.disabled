@@ -1,47 +1,11 @@
-name: Deploy Lambda Function
-
-on:
-  push:
-    branches:
-      - master
-
-jobs:
-  deploy:
-    runs-on: ubuntu-latest
-    permissions:
-      id-token: write
-      contents: read
-
-    steps:
-      # Step 1: Checkout the code
-      - name: Checkout code
-        uses: actions/checkout@v3
-
-      # Step 2: Prepare the package by copying src and lambda_function.py
-      - name: Prepare Lambda Package
-        run: |
-          mkdir -p package  # Create a package directory
-          cp lambda_function.py package/  # Copy lambda_function.py to the package directory
-          cp -r src/ package/  # Copy the src folder into the package directory
-
-      # Step 3: Zip the package directory
-      - name: Zip Lambda package
-        run: |
-          cd package
-          zip -r ../lambda_function.zip .  # Zip the package directory contents
-
-      # Step 4: Configure AWS credentials using OIDC
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          role-to-assume: ${{ secrets.LAMBDA_DEPLOY_ROLE_ARN }}
-          aws-region: us-east-1
-
-      # Step 5: Deploy Lambda function to AWS
-      - name: Deploy Lambda to AWS
-        run: |
-          aws lambda update-function-code \
-            --function-name NotionSyncGCal \
-            --zip-file fileb://lambda_function.zip \
-            --query 'LastUpdateStatus' \
-            --output text
+# Tombstone: this legacy disabled workflow was intentionally neutralized.
+#
+# It previously encoded unsafe historical deployment behavior and must not be
+# restored as runnable workflow YAML.
+#
+# Current safe flows:
+# - Dev deploy: .github/workflows/lambda-ecr-deploy.dev.yml
+# - Production image release: .github/workflows/lambda-ecr-release.yml
+# - Production Lambda deploy: .github/workflows/lambda-ecr-deploy.prd.yml
+#
+# Safety rule: master push must never update Lambda.
