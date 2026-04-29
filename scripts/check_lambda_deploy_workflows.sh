@@ -147,6 +147,14 @@ contains_update_function_code() {
   grep -q "aws[[:space:]]*lambda[[:space:]]*update-function-code" "$1"
 }
 
+contains_aws_ecr_command() {
+  grep -q "aws[[:space:]]*ecr[[:space:]]" "$1"
+}
+
+contains_docker_push_true() {
+  grep -qE '^[[:space:]]*push:[[:space:]]*true[[:space:]]*$' "$1"
+}
+
 contains_required_literal() {
   local file="$1"
   local literal="$2"
@@ -198,8 +206,25 @@ check_no_forbidden_env_dumping "active" "${active_files[@]}"
 check_no_forbidden_env_dumping "disabled" "${disabled_files[@]}"
 
 for file in "${active_files[@]}"; do
-  if has_master_push_trigger "$file" && contains_update_function_code "$file"; then
-    report_failure "$file is triggered by push to master and calls aws lambda update-function-code."
+  if has_master_push_trigger "$file"; then
+    contains_update_function_code "$file" \
+      && report_failure "$file is triggered by push to master and calls aws lambda update-function-code."
+    contains_required_literal "$file" "docker/build-push-action" \
+      && report_failure "$file is triggered by push to master and uses docker/build-push-action."
+    contains_required_literal "$file" "aws-actions/amazon-ecr-login" \
+      && report_failure "$file is triggered by push to master and logs in to Amazon ECR."
+    contains_required_literal "$file" "aws-actions/configure-aws-credentials" \
+      && report_failure "$file is triggered by push to master and configures AWS credentials."
+    contains_required_literal "$file" "PRD_DEPLOY_ROLE_ARN" \
+      && report_failure "$file is triggered by push to master and references PRD_DEPLOY_ROLE_ARN."
+    contains_required_literal "$file" "PRD_ECR_PUSH_ROLE_ARN" \
+      && report_failure "$file is triggered by push to master and references PRD_ECR_PUSH_ROLE_ARN."
+    contains_required_literal "$file" "PRD_LAMBDA_DEPLOY_ROLE_ARN" \
+      && report_failure "$file is triggered by push to master and references PRD_LAMBDA_DEPLOY_ROLE_ARN."
+    contains_aws_ecr_command "$file" \
+      && report_failure "$file is triggered by push to master and runs aws ecr commands."
+    contains_docker_push_true "$file" \
+      && report_failure "$file is triggered by push to master and enables Docker image push."
   fi
 done
 

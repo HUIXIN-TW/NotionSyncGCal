@@ -1,6 +1,33 @@
 # Deployment
 
-This project uses separate workflows for dev deployment, production image release, and production Lambda deployment.
+This project uses separate workflows for release, dev deployment, and production Lambda deployment.
+
+## Release
+
+Release runs automatically on push to `master`.
+
+Before creating a release, the workflow validates the repository with:
+
+- `uv sync --frozen --dev`
+- Black
+- Flake8
+- `unittest`
+- plaintext secret guard
+- Lambda deployment workflow guardrails
+
+The release workflow runs `python-semantic-release` only. It may create or update:
+
+- `pyproject.toml` version
+- `uv.lock`, through the semantic-release `build_command = "uv lock"` setting
+- Git tag
+- GitHub Release
+
+The release workflow does not:
+
+- configure AWS credentials
+- log in to ECR
+- build or push a container image
+- deploy Lambda
 
 ## Dev Deployment
 
@@ -25,35 +52,15 @@ The dev Lambda update uses the immutable `sha-<short_sha>` image tag. It updates
 
 - `dev-fn-notion-sync-gcal`
 
-## Production Image Release
+## Production Image Publish
 
-Production image release runs automatically on push to `master`.
+Production image publishing is deferred until production infrastructure, IAM, and cross-account ECR access are ready.
 
-Before releasing or building the container image, the workflow validates the repository with:
-
-- `uv sync --frozen --dev`
-- Black
-- Flake8
-- `unittest`
-- plaintext secret guard
-- Lambda deployment workflow guardrails
-
-The release workflow runs `python-semantic-release`.
-
-Every successful master release workflow pushes these ECR image tags:
-
-- `prod-<short_sha>`
-- `sha-<short_sha>`
-
-When `python-semantic-release` creates a release, the workflow also pushes:
-
-- `vX.Y.Z`
-
-The production image release workflow never deploys Lambda.
+The future production image publish workflow must be manual only with `workflow_dispatch`. It must not deploy Lambda.
 
 ## Production Lambda Deploy
 
-Production Lambda deployment is manual only.
+Production Lambda deployment is manual only. The workflow may remain present, but production infrastructure and IAM setup are not ready yet.
 
 The production deploy workflow uses `workflow_dispatch` and requires one input:
 
@@ -104,6 +111,8 @@ Required secrets and variables:
 ## Safety Rules
 
 - `master` push must never update Lambda.
+- `master` push must never push an ECR image.
+- Production image publishing must always be manual.
 - Production Lambda deployment must always be manual.
 - Deploy immutable tags only.
 - Do not use `printenv`, a bare `env` command, or `set -x` in workflows.
