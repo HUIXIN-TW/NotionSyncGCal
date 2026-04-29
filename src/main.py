@@ -55,6 +55,7 @@ def main(uuid: str | None = None) -> dict:
 
     current_dir = Path(__file__).parent.resolve()
     logger.debug(f"Current directory: {current_dir}")
+    logger.debug("Initialization start")
 
     # Initialize services
     try:
@@ -62,9 +63,11 @@ def main(uuid: str | None = None) -> dict:
 
         # Configure paths based on UUID (local vs dynamodb)
         config = generate_config(uuid)  # only return uuid in serverless mode
+        logger.debug(f"Generated config keys: {list(config.keys())}")
 
         # Notion
         notion_config = NotionConfig(config, logger).get()
+        logger.debug(f"Notion config type: {type(notion_config).__name__}")
         notion_token = NotionToken(config, logger).get()
         notion_service = NotionService(notion_token, notion_config, logger)
 
@@ -72,9 +75,11 @@ def main(uuid: str | None = None) -> dict:
         google_token = GoogleToken(config, logger)
         google_service = GoogleService(notion_config, google_token, logger)
     except RefreshError as e:
-        logger.error(f"Google RefreshError during initialization: {e}")
+        logger.error(f"Google RefreshError during initialization: {e}", exc_info=True)
+        return {"error": "google_refresh_error", "message": str(e)}
     except Exception as e:
-        logger.error(f"Error initializing services: {e}")
+        logger.error(f"Error initializing services: {e}", exc_info=True)
+        return {"error": "service_initialization_error", "message": str(e)}
 
     # Parse CLI args (safe for lambda - argv is just script name)
     try:

@@ -1,0 +1,110 @@
+name: Deploy Dev Lambda
+
+on:
+  push:
+    branches:
+      - dev
+
+jobs:
+  deploy:
+    name: Build & Push to ECR
+    runs-on: ubuntu-latest
+    environment: dev
+    permissions:
+      id-token: write
+      contents: read
+
+    env:
+      AWS_REGION: ap-southeast-2
+      ECR_ACCOUNT_ID: 262835400669
+      DOCKER_FILE: Dockerfile
+      IMAGE_NAME: notion-sync-gcal-lambda
+      IMAGE_VERSION: dev
+      FUNCTION_NAME: dev-fn-notion-sync-gcal
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          version: "0.5.31"
+
+      - name: Run validation
+        run: |
+          uv sync --frozen --dev
+          uv run black --check src lambda_function.py --line-length 120
+          uv run flake8 --max-line-length=120 src lambda_function.py test
+          uv run python -m unittest discover -s test
+          ./scripts/check_no_plaintext_secrets.sh
+          bash scripts/check_lambda_deploy_workflows.sh
+
+      - name: Configure AWS credentials (sharedservice account for ECR push)
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          aws-region: ${{ env.AWS_REGION }}
+          role-to-assume: ${{ secrets.DEV_DEPLOY_ROLE_ARN }}
+          role-duration-seconds: 3500
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+        with:
+          registries: ${{ env.ECR_ACCOUNT_ID }}
+
+      - name: Extract short SHA
+        id: vars
+        run: echo "short_sha=${GITHUB_SHA::12}" >> $GITHUB_OUTPUT
+
+      - name: Build & Push (cache)
+        uses: docker/build-push-action@v7
+        id: build-and-push
+        with:
+          context: .
+          file: ${{ env.DOCKER_FILE }}
+          push: true
+          platforms: linux/amd64
+          provenance: false
+          tags: |
+            ${{ steps.login-ecr.outputs.registry }}/${{ env.IMAGE_NAME }}:${{ env.IMAGE_VERSION }}
+            ${{ steps.login-ecr.outputs.registry }}/${{ env.IMAGE_NAME }}:${{ env.IMAGE_VERSION }}-${{ steps.vars.outputs.short_sha }}
+            ${{ steps.login-ecr.outputs.registry }}/${{ env.IMAGE_NAME }}:sha-${{ steps.vars.outputs.short_sha }}
+
+      - name: Set image uri env
+        run: |
+          echo "ECR_IMAGE_URI=${{ steps.login-ecr.outputs.registry }}/${{ env.IMAGE_NAME }}:sha-${{ steps.vars.outputs.short_sha }}" >> $GITHUB_ENV
+
+      - name: Configure AWS credentials (dev account for Lambda update)
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          aws-region: ${{ env.AWS_REGION }}
+          role-to-assume: ${{ secrets.DEV_DEPLOY_ROLE_ARN }}
+          role-duration-seconds: 3500
+
+      - name: Deploy Lambda image
+        run: |
+          set -e
+
+          aws lambda wait function-updated \
+            --function-name "${{ env.FUNCTION_NAME }}" \
+            --region "${{ env.AWS_REGION }}" \
+            --no-cli-pager
+
+          aws lambda update-function-code \
+            --function-name "${{ env.FUNCTION_NAME }}" \
+            --image-uri "$ECR_IMAGE_URI" \
+            --region "${{ env.AWS_REGION }}" \
+            --no-cli-pager \
+            --query 'LastUpdateStatus' \
+            --output text
+
+          aws lambda wait function-updated \
+            --function-name "${{ env.FUNCTION_NAME }}" \
+            --region "${{ env.AWS_REGION }}" \
+            --no-cli-pager

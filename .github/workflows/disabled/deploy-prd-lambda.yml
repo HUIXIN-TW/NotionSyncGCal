@@ -1,0 +1,101 @@
+name: Deploy Production Lambda
+
+on:
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: "Immutable ECR image tag to deploy: vX.Y.Z, sha-<12 hex>, or prod-<12 hex>"
+        required: true
+        type: string
+
+concurrency:
+  group: production-lambda-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Deploy Production Lambda
+    runs-on: ubuntu-latest
+    environment: production
+    permissions:
+      id-token: write
+      contents: read
+
+    env:
+      AWS_REGION: ap-southeast-2
+      ECR_ACCOUNT_ID: 262835400669
+      IMAGE_NAME: notion-sync-gcal-lambda
+      IMAGE_TAG: ${{ inputs.image_tag }}
+      FUNCTION_NAME: ${{ vars.PRD_FUNCTION_NAME }}
+
+    steps:
+      - name: Validate deploy inputs
+        run: |
+          image_tag="${IMAGE_TAG}"
+          function_name="${FUNCTION_NAME}"
+
+          if [[ -z "$function_name" ]]; then
+            echo "PRD_FUNCTION_NAME GitHub Environment variable is required."
+            exit 1
+          fi
+
+          case "$image_tag" in
+            latest | prod | dev)
+              echo "Mutable image tag is not allowed: $image_tag"
+              exit 1
+              ;;
+          esac
+
+          if [[ ! "$image_tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] \
+            && [[ ! "$image_tag" =~ ^sha-[0-9a-f]{12}$ ]] \
+            && [[ ! "$image_tag" =~ ^prod-[0-9a-f]{12}$ ]]; then
+            echo "Invalid image tag. Allowed formats: vX.Y.Z, sha-<12 hex>, prod-<12 hex>."
+            exit 1
+          fi
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          aws-region: ${{ env.AWS_REGION }}
+          role-to-assume: ${{ secrets.PRD_DEPLOY_ROLE_ARN }}
+          role-duration-seconds: 3500
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+        with:
+          registries: ${{ env.ECR_ACCOUNT_ID }}
+
+      - name: Set image URI
+        run: |
+          echo "ECR_IMAGE_URI=${{ steps.login-ecr.outputs.registry }}/${IMAGE_NAME}:${IMAGE_TAG}" >> "$GITHUB_ENV"
+
+      - name: Verify image exists in ECR
+        run: |
+          aws ecr describe-images \
+            --repository-name "$IMAGE_NAME" \
+            --image-ids imageTag="$IMAGE_TAG" \
+            --region "$AWS_REGION" \
+            --no-cli-pager \
+            --query 'imageDetails[0].imageDigest' \
+            --output text
+
+      - name: Deploy Lambda image
+        run: |
+          aws lambda wait function-updated \
+            --function-name "$FUNCTION_NAME" \
+            --region "$AWS_REGION" \
+            --no-cli-pager
+
+          aws lambda update-function-code \
+            --function-name "$FUNCTION_NAME" \
+            --image-uri "$ECR_IMAGE_URI" \
+            --region "$AWS_REGION" \
+            --no-cli-pager \
+            --query 'LastUpdateStatus' \
+            --output text
+
+          aws lambda wait function-updated \
+            --function-name "$FUNCTION_NAME" \
+            --region "$AWS_REGION" \
+            --no-cli-pager

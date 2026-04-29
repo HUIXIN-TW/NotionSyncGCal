@@ -1,4 +1,4 @@
-name: Create Branch and Add Branch Link on Issue Assign
+name: Create Branch on Issue Assign
 
 on:
   issues:
@@ -9,7 +9,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v6
 
       - name: Create Branch for Issue
         id: create_branch
@@ -33,7 +33,7 @@ jobs:
 
       - name: Add branch link to issue body
         if: steps.create_branch.outputs.branch != ''
-        uses: actions/github-script@v5
+        uses: actions/github-script@v9
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |

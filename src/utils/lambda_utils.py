@@ -4,6 +4,61 @@ from typing import Any, Dict, Optional
 
 from .dynamodb_utils import save_sync_logs  # noqa: E402
 
+MAX_SYNC_LOG_ERRORS = 3
+MAX_SYNC_LOG_ERROR_TEXT_LENGTH = 500
+MAX_SYNC_LOG_TITLE_LENGTH = 160
+
+
+def truncate_text(value: Any, max_length: int) -> Any:
+    if not isinstance(value, str):
+        return value
+    if len(value) <= max_length:
+        return value
+    return value[: max_length - 1] + "…"
+
+
+def sanitize_sync_error(error: Any) -> Dict[str, Any]:
+    if not isinstance(error, dict):
+        return {
+            "action": None,
+            "error": truncate_text(str(error), MAX_SYNC_LOG_ERROR_TEXT_LENGTH),
+            "gcal_event_title": None,
+            "notion_task_name": None,
+            "gcal_event_start": None,
+            "gcal_event_id": None,
+            "notion_task_id": None,
+        }
+
+    return {
+        "action": error.get("action"),
+        "error": truncate_text(error.get("error"), MAX_SYNC_LOG_ERROR_TEXT_LENGTH),
+        "gcal_event_title": truncate_text(error.get("gcal_event_title"), MAX_SYNC_LOG_TITLE_LENGTH),
+        "notion_task_name": truncate_text(error.get("notion_task_name"), MAX_SYNC_LOG_TITLE_LENGTH),
+        "gcal_event_start": error.get("gcal_event_start"),
+        "gcal_event_id": error.get("gcal_event_id"),
+        "notion_task_id": error.get("notion_task_id"),
+    }
+
+
+def sanitize_sync_log_payload(payload: Dict[str, Any]) -> Dict[str, Any]:
+    message = payload.get("message")
+    if not isinstance(message, dict):
+        return payload
+
+    errors = message.get("errors")
+    if not isinstance(errors, list):
+        return payload
+
+    original_error_count = len(errors)
+    sanitized_payload = dict(payload)
+    sanitized_message = dict(message)
+    sanitized_message["errors"] = [sanitize_sync_error(err) for err in errors[:MAX_SYNC_LOG_ERRORS]]
+    sanitized_message["error_count"] = original_error_count
+    sanitized_message["errors_truncated"] = original_error_count > MAX_SYNC_LOG_ERRORS
+    sanitized_message["omitted_error_count"] = max(original_error_count - MAX_SYNC_LOG_ERRORS, 0)
+    sanitized_payload["message"] = sanitized_message
+    return sanitized_payload
+
 
 def process_and_log_sync_result(
     logger_obj,
@@ -47,7 +102,7 @@ def process_and_log_sync_result(
     try:
         # Only log individual user syncs, not batch summaries
         if uuid and uuid != "batch":
-            save_sync_logs(uuid, payload)
+            save_sync_logs(uuid, sanitize_sync_log_payload(payload))
     except Exception:
         logger_obj.exception("Failed to persist sync summary to DynamoDB")
     return payload
@@ -65,9 +120,10 @@ def process_sqs_records(
     # Process each SQS record
     for record in event["Records"]:
         logger_obj.debug(f"Processing SQS record: {record}")
+        job_id = record.get("messageId", "unknown")
+        provided_uuid = None
         try:
             body = json.loads(record.get("body", "{}"))
-            job_id = record.get("messageId", "unknown")
             provided_uuid = body.get("uuid")
             sync_result = run_sync(provided_uuid)
             sqs_batch_results.append(
@@ -83,7 +139,14 @@ def process_sqs_records(
             )
         except Exception:
             logger_obj.exception("Error processing SQS record")
-            sqs_batch_results.append({"uuid": provided_uuid, "error": "record processing failed"})
+            sqs_batch_results.append(
+                {
+                    "uuid": provided_uuid,
+                    "job_id": job_id,
+                    "statusCode": 500,
+                    "error": "record processing failed",
+                }
+            )
 
     # Summarize results for batch logging
     success_count = sum(

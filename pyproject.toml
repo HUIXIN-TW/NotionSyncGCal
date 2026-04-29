@@ -1,0 +1,46 @@
+[project]
+name = "notion-sync-gcal-lambda"
+version = "3.0.0"
+description = "AWS Lambda container for syncing Notion tasks with Google Calendar."
+requires-python = ">=3.11"
+dependencies = [
+  "boto3==1.34.46",
+  "cryptography==44.0.3",
+  "emoji==2.12.1",
+  "google-api-python-client==2.130.0",
+  "google-auth==2.29.0",
+  "google-auth-oauthlib==1.2.0",
+  "notion-client==2.2.1",
+  "python-dateutil==2.9.0.post0",
+  "pytz==2024.1",
+]
+
+[dependency-groups]
+dev = [
+  "black==24.4.2",
+  "flake8==7.3.0",
+  "python-semantic-release==10.5.3",
+]
+
+[tool.uv]
+package = false
+
+[tool.semantic_release]
+version_toml = ["pyproject.toml:project.version"]
+tag_format = "v{version}"
+build_command = "uv lock"
+commit_message = "chore(release): v{version}"
+
+[tool.semantic_release.branches.master]
+match = "master"
+prerelease = false
+
+[tool.semantic_release.remote]
+type = "github"
+
+[tool.semantic_release.remote.token]
+env = "GITHUB_TOKEN"
+
+[tool.semantic_release.publish]
+dist_glob_patterns = []
+upload_to_vcs_release = true
