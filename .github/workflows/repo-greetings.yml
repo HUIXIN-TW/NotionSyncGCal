@@ -8,11 +8,12 @@ jobs:
     permissions:
       issues: write
       pull-requests: write
+
     steps:
       - uses: actions/first-interaction@v3
         with:
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
-          issue-message: >
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          issue_message: >
             🎉 **Welcome to the repository!** 🎉
 
             Thank you for opening your first issue! We appreciate your feedback and are here to assist you. Our team will review your issue and get back to you as soon as possible.
@@ -20,7 +21,7 @@ jobs:
             In the meantime, please ensure you've provided all the necessary details to help us address your issue efficiently. If you have any questions, feel free to ask.
 
             Happy contributing!
-          pr-message: >
+          pr_message: >
             👋 **Hello and Welcome!** 👋
 
             Thank you for submitting your first pull request! We appreciate your contribution to the project. Our team will review your PR and provide feedback shortly.
