@@ -88,6 +88,11 @@ is_workflow_dispatch_only() {
   local file="$1"
 
   awk '
+    function indent(line) {
+      match(line, /^[ ]*/)
+      return RLENGTH
+    }
+
     function trim(value) {
       gsub(/^[[:space:]]+|[[:space:]]+$/, "", value)
       return value
@@ -110,14 +115,19 @@ is_workflow_dispatch_only() {
 
     /^on:[[:space:]]*$/ {
       in_on = 1
+      on_indent = indent($0)
       next
     }
 
-    in_on && /^[^[:space:]]/ {
+    in_on && indent($0) <= on_indent && $0 !~ /^[[:space:]]*$/ {
       in_on = 0
     }
 
     in_on && /^[[:space:]]+[A-Za-z_]+:/ {
+      if (indent($0) != on_indent + 2) {
+        next
+      }
+
       event = trim($0)
       sub(/:.*/, "", event)
       if (event == "workflow_dispatch") {
