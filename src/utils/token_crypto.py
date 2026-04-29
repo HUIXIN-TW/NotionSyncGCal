@@ -16,9 +16,7 @@ def _get_aesgcm():
     try:
         from cryptography.hazmat.primitives.ciphers.aead import AESGCM
     except ImportError as exc:
-        raise TokenCryptoError(
-            "Token encryption requires 'cryptography'. Install dependencies with: uv sync"
-        ) from exc
+        raise TokenCryptoError("Token encryption requires 'cryptography'. Install dependencies with: uv sync") from exc
     return AESGCM
 
 
