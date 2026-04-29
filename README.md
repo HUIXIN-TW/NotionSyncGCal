@@ -16,6 +16,7 @@ Do you find yourself juggling between Notion and Google Calendar to manage your 
 - Breaking change: serverless storage now uses DynamoDB tables (tokens, user config, sync logs) instead of S3 objects.
 - Lambda reads/writes by `uuid` (SQS/EventBridge payload) and persists refreshed tokens plus sync summaries into DynamoDB.
 - Dev auto-deploy via GitHub Actions remains; production image publishing and production Lambda deployment are deferred until production infrastructure and IAM are ready.
+- Release versions are tracked by Git tag and GitHub Release; `pyproject.toml` may stay static while this remains a Lambda app. See [doc/deployment.md](doc/deployment.md).
 - Migration tip: seed the DynamoDB tables with your existing credentials/config and update environment variables to the new `DYNAMODB_*` names.
 
 ## What You Will Need to Get Started

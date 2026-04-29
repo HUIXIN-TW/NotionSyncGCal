@@ -44,4 +44,4 @@ jobs:
         run: |
           git config user.name github-actions
           git config user.email actions@users.noreply.github.com
-          uv run semantic-release version --no-changelog --vcs-release
+          uv run semantic-release version --no-commit --no-changelog --vcs-release
