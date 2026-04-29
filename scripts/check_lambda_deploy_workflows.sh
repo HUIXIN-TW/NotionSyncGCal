@@ -234,6 +234,93 @@ check_no_forbidden_env_dumping() {
   fi
 }
 
+check_aws_cli_output_safety() {
+  local scope_name="$1"
+  shift
+  local files=("$@")
+  local violations=""
+
+  if [[ ${#files[@]} -eq 0 ]]; then
+    return 0
+  fi
+
+  violations="$(
+    awk '
+      function starts_checked_command(line) {
+        return line ~ /aws[[:space:]]+lambda[[:space:]]+(update-function-code|get-function-configuration|get-function|update-function-configuration)([[:space:]\\]|$)/ \
+          || line ~ /aws[[:space:]]+ecr[[:space:]]+describe-images([[:space:]\\]|$)/
+      }
+
+      function continues(line) {
+        return line ~ /\\[[:space:]]*$/
+      }
+
+      function finish_command() {
+        if (command == "") {
+          return
+        }
+
+        if (command ~ /aws[[:space:]]+lambda[[:space:]]+update-function-code([[:space:]\\]|$)/) {
+          if (command !~ /--query[[:space:]]+['\''"]?LastUpdateStatus['\''"]?/ || command !~ /--output[[:space:]]+text([[:space:]\\]|$)/) {
+            print FILENAME ":" start_line ": aws lambda update-function-code must include --query '\''LastUpdateStatus'\'' and --output text."
+          }
+        }
+
+        if (command ~ /aws[[:space:]]+ecr[[:space:]]+describe-images([[:space:]\\]|$)/) {
+          if (command !~ /--query[[:space:]]+['\''"]?imageDetails\[0\]\.imageDigest['\''"]?/ || command !~ /--output[[:space:]]+text([[:space:]\\]|$)/) {
+            print FILENAME ":" start_line ": aws ecr describe-images must include --query '\''imageDetails[0].imageDigest'\'' and --output text."
+          }
+        }
+
+        if (command ~ /aws[[:space:]]+lambda[[:space:]]+(get-function-configuration|get-function|update-function-configuration)([[:space:]\\]|$)/) {
+          if (command !~ /--query[[:space:]]+/ || command ~ /Environment/) {
+            print FILENAME ":" start_line ": aws lambda get/update function configuration commands must not print full configuration or Environment values."
+          }
+        }
+
+        command = ""
+        start_line = 0
+      }
+
+      FNR == 1 {
+        finish_command()
+      }
+
+      {
+        if (command != "") {
+          command = command " " $0
+          if (!continues($0)) {
+            finish_command()
+          }
+          next
+        }
+
+        if (starts_checked_command($0)) {
+          command = $0
+          start_line = FNR
+          if (!continues($0)) {
+            finish_command()
+          }
+        }
+      }
+
+      END {
+        finish_command()
+      }
+    ' "${files[@]}" || true
+  )"
+
+  if [[ -n "$violations" ]]; then
+    if [[ "$scope_name" == "active" ]]; then
+      report_failure "Active workflows must constrain AWS Lambda/ECR CLI output:"
+      echo "$violations"
+    else
+      echo "WARNING: Disabled legacy workflows contain AWS Lambda/ECR CLI output issues:"
+      echo "$violations"
+    fi
+  fi
+}
+
 active_files=()
 while IFS= read -r file; do
   active_files+=("$file")
@@ -251,6 +338,8 @@ fi
 
 check_no_forbidden_env_dumping "active" "${active_files[@]}"
 check_no_forbidden_env_dumping "disabled" "${disabled_files[@]}"
+check_aws_cli_output_safety "active" "${active_files[@]}"
+check_aws_cli_output_safety "disabled" "${disabled_files[@]}"
 
 for file in "${active_files[@]}"; do
   if has_master_push_trigger "$file"; then
