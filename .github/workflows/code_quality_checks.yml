@@ -33,3 +33,6 @@ jobs:
 
       - name: Block plaintext secrets in workflows
         run: ./scripts/check_no_plaintext_secrets.sh
+
+      - name: Check Lambda deploy workflow guardrails
+        run: ./scripts/check_lambda_deploy_workflows.sh
