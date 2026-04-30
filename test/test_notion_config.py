@@ -120,7 +120,9 @@ class TestNotionConfigLocalMode(unittest.TestCase):
 
 class TestNotionConfigCloudMode(unittest.TestCase):
     def test_cloud_calls_dynamodb(self):
-        with patch("utils.dynamodb_utils.get_notion_config_by_uuid", return_value=copy.deepcopy(VALID_LOCAL_CONFIG)) as mock_db:
+        with patch(
+            "utils.dynamodb_utils.get_notion_config_by_uuid", return_value=copy.deepcopy(VALID_LOCAL_CONFIG)
+        ) as mock_db:
             config = {"mode": "cloud", "uuid": "uuid-cloud-123"}
             nc = NotionConfig(config, _make_logger())
             mock_db.assert_called_once_with("uuid-cloud-123")

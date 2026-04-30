@@ -25,6 +25,7 @@ class NotionToken:
         if self.mode == "cloud":
             try:
                 from utils.dynamodb_utils import get_notion_token_by_uuid
+
                 response = get_notion_token_by_uuid(uuid)
                 try:
                     return decrypt_token_if_encrypted(response.get("accessToken"))
@@ -37,9 +38,7 @@ class NotionToken:
         if self.mode == "local":
             token = os.environ.get("NOTION_TOKEN", "").strip()
             if not token:
-                raise SettingError(
-                    "NOTION_TOKEN environment variable is required in local mode but is not set."
-                )
+                raise SettingError("NOTION_TOKEN environment variable is required in local mode but is not set.")
             try:
                 return decrypt_token_if_encrypted(token)
             except TokenCryptoError as e:

@@ -39,6 +39,7 @@ class NotionConfig:
         if self.mode == "cloud":
             try:
                 from utils.dynamodb_utils import get_notion_config_by_uuid
+
                 response = get_notion_config_by_uuid(config.get("uuid"))
                 self.logger.debug(f"Loading Notion Configuration from DynamoDB: type={type(response).__name__}")
                 return response
@@ -57,9 +58,7 @@ class NotionConfig:
                 raise SettingError(f"Error reading local Notion config: {e}") from e
             missing = _REQUIRED_LOCAL_KEYS - set(data.keys())
             if missing:
-                raise SettingError(
-                    f"Local Notion config is missing required keys: {sorted(missing)}"
-                )
+                raise SettingError(f"Local Notion config is missing required keys: {sorted(missing)}")
             return data
         raise SettingError(f"Unknown config mode '{self.mode}'. Expected 'cloud' or 'local'.")
 

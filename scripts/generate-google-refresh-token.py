@@ -110,9 +110,7 @@ def run_oauth_flow(client_id: str, client_secret: str, scopes: list[str], no_bro
 
 
 def parse_args(argv: list[str] | None = None):
-    parser = argparse.ArgumentParser(
-        description="Generate GOOGLE_REFRESH_TOKEN for local .env.local setup."
-    )
+    parser = argparse.ArgumentParser(description="Generate GOOGLE_REFRESH_TOKEN for local .env.local setup.")
     parser.add_argument("--client-id", help="Google OAuth Desktop client ID")
     parser.add_argument("--client-secret", help="Google OAuth Desktop client secret")
     parser.add_argument(

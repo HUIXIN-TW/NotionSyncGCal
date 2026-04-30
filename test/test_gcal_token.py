@@ -235,7 +235,9 @@ class TestGoogleTokenCloudMode(unittest.TestCase):
             "refreshToken": "enc:v1:encrypted-cloud-refresh-token",
         }
         with patch("utils.dynamodb_utils.get_google_token_by_uuid", return_value=response):
-            with patch("gcal.gcal_token.decrypt_token_if_encrypted", return_value="plain-cloud-refresh-token") as mock_decrypt:
+            with patch(
+                "gcal.gcal_token.decrypt_token_if_encrypted", return_value="plain-cloud-refresh-token"
+            ) as mock_decrypt:
                 with patch.dict(os.environ, _CLOUD_ENV):
                     gt = GoogleToken(self._cloud_config(), _make_logger())
         mock_decrypt.assert_any_call("enc:v1:encrypted-cloud-refresh-token")
@@ -247,7 +249,9 @@ class TestGoogleTokenCloudMode(unittest.TestCase):
             "accessToken": "enc:v1:encrypted-cloud-access-token",
         }
         with patch("utils.dynamodb_utils.get_google_token_by_uuid", return_value=response):
-            with patch("gcal.gcal_token.decrypt_token_if_encrypted", return_value="plain-cloud-access-token") as mock_decrypt:
+            with patch(
+                "gcal.gcal_token.decrypt_token_if_encrypted", return_value="plain-cloud-access-token"
+            ) as mock_decrypt:
                 with patch.dict(os.environ, _CLOUD_ENV):
                     gt = GoogleToken(self._cloud_config(), _make_logger())
         mock_decrypt.assert_any_call("enc:v1:encrypted-cloud-access-token")

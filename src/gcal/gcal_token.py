@@ -89,9 +89,7 @@ class GoogleToken:
             if not val
         ]
         if missing:
-            raise SettingError(
-                f"Required environment variables for local Google auth are missing or empty: {missing}"
-            )
+            raise SettingError(f"Required environment variables for local Google auth are missing or empty: {missing}")
         try:
             refresh_token = decrypt_token_if_encrypted(refresh_token)
         except TokenCryptoError as e:
@@ -128,9 +126,7 @@ class GoogleToken:
                     "Failed to refresh Google credentials in local mode. "
                     "GOOGLE_REFRESH_TOKEN is likely invalid/expired; renew it outside runtime and update .env.local."
                 ) from e
-            raise RefreshError(
-                "Failed to refresh Google credentials. Refresh token is likely invalid/expired."
-            ) from e
+            raise RefreshError("Failed to refresh Google credentials. Refresh token is likely invalid/expired.") from e
 
     def _save_credentials(self, credentials):
         try:
