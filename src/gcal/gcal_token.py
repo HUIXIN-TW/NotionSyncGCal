@@ -1,9 +1,9 @@
 import os
 from datetime import datetime, timezone
 from google.auth.transport.requests import Request
-from google_auth_oauthlib.flow import InstalledAppFlow
 from google.oauth2.credentials import Credentials
 from google.auth.exceptions import RefreshError
+from utils.token_crypto import TokenCryptoError, decrypt_token_if_encrypted
 
 _DEFAULT_TOKEN_URI = "https://oauth2.googleapis.com/token"
 _DEFAULT_SCOPES = [
@@ -49,9 +49,14 @@ class GoogleToken:
 
                 self.logger.debug("Loading credentials from DynamoDB")
                 data = get_google_token_by_uuid(self.config.get("uuid"))
+                try:
+                    access_token = decrypt_token_if_encrypted(data.get("accessToken"))
+                    refresh_token = decrypt_token_if_encrypted(data.get("refreshToken"))
+                except TokenCryptoError as e:
+                    raise SettingError(f"Failed to decrypt encrypted Google OAuth token: {e}") from e
                 credentials_data = {
-                    "token": data.get("accessToken"),
-                    "refresh_token": data.get("refreshToken"),
+                    "token": access_token,
+                    "refresh_token": refresh_token,
                     "token_uri": _DEFAULT_TOKEN_URI,
                     "scopes": list(_DEFAULT_SCOPES),
                     "expiry": self._convert_google_expiry_date_format(data.get("expiryDate")),
@@ -87,6 +92,10 @@ class GoogleToken:
             raise SettingError(
                 f"Required environment variables for local Google auth are missing or empty: {missing}"
             )
+        try:
+            refresh_token = decrypt_token_if_encrypted(refresh_token)
+        except TokenCryptoError as e:
+            raise SettingError(f"Failed to decrypt encrypted Google OAuth token: {e}") from e
 
         token_uri = os.environ.get("GOOGLE_TOKEN_URI", "").strip() or _DEFAULT_TOKEN_URI
 
@@ -115,23 +124,13 @@ class GoogleToken:
             return credentials
         except Exception as e:
             if self.mode == "local":
-                raise RefreshError(f"Failed to refresh Google credentials in local mode: {e}") from e
-            self.logger.warning(f"Token refresh failed: {e}, running OAuth flow locally.")
-            try:
-                credentials = self._perform_oauth_flow(credentials.scopes)
-                return credentials
-            except Exception as inner_e:
-                raise RefreshError(f"Failed to refresh Google credentials: {inner_e}")
-
-    def _perform_oauth_flow(self, scopes):
-        self.logger.info("Google Scope: " + str(scopes))
-        flow = InstalledAppFlow.from_client_secrets_file(
-            str(self.config.get("local_google_client_secret_path")), scopes
-        )
-        credentials = flow.run_local_server(port=0)
-        self.logger.info("Successfully fetched new Google tokens via OAuth flow.")
-        self._save_credentials(credentials)
-        return credentials
+                raise RefreshError(
+                    "Failed to refresh Google credentials in local mode. "
+                    "GOOGLE_REFRESH_TOKEN is likely invalid/expired; renew it outside runtime and update .env.local."
+                ) from e
+            raise RefreshError(
+                "Failed to refresh Google credentials. Refresh token is likely invalid/expired."
+            ) from e
 
     def _save_credentials(self, credentials):
         try:

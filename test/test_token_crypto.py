@@ -52,6 +52,35 @@ class TokenCryptoTests(unittest.TestCase):
             with self.assertRaises(token_crypto.TokenCryptoError):
                 token_crypto.decrypt_token("plain-token")
 
+    def test_decrypt_token_if_encrypted_returns_plaintext_unchanged(self):
+        with patch.dict(os.environ, {}, clear=True):
+            self.assertEqual(
+                token_crypto.decrypt_token_if_encrypted("plain-token"),
+                "plain-token",
+            )
+
+    def test_decrypt_token_if_encrypted_returns_falsy_values_unchanged(self):
+        self.assertIsNone(token_crypto.decrypt_token_if_encrypted(None))
+        self.assertEqual(token_crypto.decrypt_token_if_encrypted(""), "")
+        self.assertEqual(token_crypto.decrypt_token_if_encrypted(0), 0)
+
+    def test_decrypt_token_if_encrypted_decrypts_encrypted_payload(self):
+        with (
+            patch.dict(os.environ, {"TOKEN_ENCRYPTION_KEY": self.key}, clear=True),
+            patch.object(token_crypto, "_get_aesgcm", return_value=_FakeAESGCM),
+            patch.object(token_crypto.os, "urandom", return_value=b"\x00" * 12),
+        ):
+            encrypted = token_crypto.encrypt_token("my-secret-token")
+            self.assertEqual(
+                token_crypto.decrypt_token_if_encrypted(encrypted),
+                "my-secret-token",
+            )
+
+    def test_decrypt_token_if_encrypted_raises_for_malformed_encrypted_payload(self):
+        with patch.dict(os.environ, {"TOKEN_ENCRYPTION_KEY": self.key}, clear=True):
+            with self.assertRaises(token_crypto.TokenCryptoError):
+                token_crypto.decrypt_token_if_encrypted("enc:v1:broken")
+
     def test_encrypted_payload_requires_key(self):
         encrypted = "enc:v1:000000000000000000000000:54545454545454545454545454545454:616263"
         with patch.dict(os.environ, {}, clear=True):

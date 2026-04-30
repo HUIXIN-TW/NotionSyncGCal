@@ -1,4 +1,5 @@
 import os
+from utils.token_crypto import TokenCryptoError, decrypt_token_if_encrypted
 
 
 class SettingError(Exception):
@@ -25,7 +26,12 @@ class NotionToken:
             try:
                 from utils.dynamodb_utils import get_notion_token_by_uuid
                 response = get_notion_token_by_uuid(uuid)
-                return response.get("accessToken")
+                try:
+                    return decrypt_token_if_encrypted(response.get("accessToken"))
+                except TokenCryptoError as e:
+                    raise SettingError(f"Failed to decrypt Notion token: {e}") from e
+            except SettingError:
+                raise
             except Exception as e:
                 raise SettingError(f"Error loading Notion token from DynamoDB: {e}") from e
         if self.mode == "local":
@@ -34,7 +40,10 @@ class NotionToken:
                 raise SettingError(
                     "NOTION_TOKEN environment variable is required in local mode but is not set."
                 )
-            return token
+            try:
+                return decrypt_token_if_encrypted(token)
+            except TokenCryptoError as e:
+                raise SettingError(f"Failed to decrypt Notion token: {e}") from e
         raise SettingError(f"Unknown config mode '{self.mode}'. Expected 'cloud' or 'local'.")
 
     def get(self):

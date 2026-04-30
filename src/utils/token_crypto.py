@@ -67,6 +67,14 @@ def decrypt_token(value: str) -> str:
         raise TokenCryptoError("Failed to decrypt encrypted token payload.") from exc
 
 
+def decrypt_token_if_encrypted(value: str) -> str:
+    if not isinstance(value, str) or not value:
+        return value
+    if value.startswith(TOKEN_ENCRYPTION_PREFIX):
+        return decrypt_token(value)
+    return value
+
+
 def encrypt_token(value: str) -> str:
     if not isinstance(value, str) or not value:
         return value
