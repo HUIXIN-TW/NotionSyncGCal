@@ -8,7 +8,6 @@ from unittest.mock import MagicMock, patch
 SRC_ROOT = Path(__file__).resolve().parents[1] / "src"
 sys.path.insert(0, str(SRC_ROOT))
 os.environ.setdefault("APP_REGION", "ap-southeast-2")
-import utils.dynamodb_utils  # noqa: E402 — force boto3 init before test imports
 
 from gcal.gcal_token import GoogleToken, SettingError, _DEFAULT_SCOPES, _DEFAULT_TOKEN_URI  # noqa: E402
 from google.oauth2.credentials import Credentials  # noqa: E402

@@ -10,7 +10,6 @@ from unittest.mock import MagicMock, patch
 SRC_ROOT = Path(__file__).resolve().parents[1] / "src"
 sys.path.insert(0, str(SRC_ROOT))
 os.environ.setdefault("APP_REGION", "ap-southeast-2")
-import utils.dynamodb_utils  # noqa: E402 — force boto3 init before test imports
 
 from notion.notion_config import NotionConfig, SettingError  # noqa: E402
 
