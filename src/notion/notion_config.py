@@ -1,11 +1,19 @@
 import json
 from datetime import timedelta, date
 
-_REQUIRED_LOCAL_KEYS = frozenset({
-    "database_id", "goback_days", "goforward_days", "urlroot",
-    "timecode", "timezone", "default_event_length", "default_start_time",
-    "gcal_dic", "page_property",
-})
+_REQUIRED_LOCAL_KEYS = frozenset(
+    {
+        "database_id",
+        "goback_days",
+        "goforward_days",
+        "timecode",
+        "timezone",
+        "default_event_length",
+        "default_start_time",
+        "gcal_dic",
+        "page_property",
+    }
+)
 
 
 class SettingError(Exception):

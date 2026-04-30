@@ -3,35 +3,23 @@
 
 # Local env / secrets
 .env
+.env.dev
 .env.local
-.env.*.local
-!.env.example
 !.env.local.example
 
-# Local secret/config files
-token/
-src/config/local.notion-setting.json
-!src/config/local.notion-setting.example.json
+# Local config files
+config/local.notion-setting.json
+!config/local.notion-setting.example.json
 
 # Local runtime output
-tmp/
-logs/
-src/**/logs/
-*.log
-sync.log
-
-# Generated debug payloads
-settings.json
-get_gcal_event.json
-get_notion_task.json
+**/logs/
+*.json
 
 # Python
 .venv/
-__pycache__/
 **/__pycache__/
 *.py[cod]
 *$py.class
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
-

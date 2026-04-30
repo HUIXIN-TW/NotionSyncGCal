@@ -34,9 +34,10 @@ def generate_config(user_uuid: str = None, app_mode: str = None):
         }
 
     if resolved_mode == "local":
+        notion_setting_path = CURRENT_DIR / "config" / "local.notion-setting.json"
         return {
             "mode": "local",
-            "notion_setting_path": CURRENT_DIR / "config" / "local.notion-setting.json",
+            "notion_setting_path": notion_setting_path,
         }
 
     raise ConfigError(f"Unknown APP_MODE '{resolved_mode}'. Expected 'cloud' or 'local'.")

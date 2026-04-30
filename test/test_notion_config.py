@@ -18,7 +18,6 @@ VALID_LOCAL_CONFIG = {
     "database_id": "test-db-id",
     "goback_days": 3,
     "goforward_days": 90,
-    "urlroot": "https://www.notion.so/",
     "timecode": "+08:00",
     "timezone": "Asia/Taipei",
     "default_event_length": 60,
