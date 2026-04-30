@@ -43,19 +43,48 @@ class GoogleService:
         try:
             events = []
             for cal_id in self.notion_setting["gcal_name_dict"].values():
-                response = (
-                    self.service.events()
-                    .list(
-                        calendarId=cal_id,
-                        timeMin=self.notion_setting["google_timemin"],
-                        timeMax=self.notion_setting["google_timemax"],
-                    )
-                    .execute()
-                )
+                page_token = None
+                cal_fetched = 0
+                cal_skipped = 0
+                while True:
+                    params = {
+                        "calendarId": cal_id,
+                        "timeMin": self.notion_setting["google_timemin"],
+                        "timeMax": self.notion_setting["google_timemax"],
+                        "singleEvents": True,
+                        "orderBy": "startTime",
+                    }
+                    if page_token:
+                        params["pageToken"] = page_token
 
-                if response.get("items"):
-                    events.extend(response["items"])
-                self.logger.debug(f"Retrieved {len(response.get('items', []))} events from calendar ID {cal_id}")
+                    response = self.service.events().list(**params).execute()
+
+                    for item in response.get("items", []):
+                        if item.get("status") == "cancelled":
+                            self.logger.debug(
+                                f"Skipping cancelled recurring exception: id={item.get('id')} "
+                                f"originalStartTime={item.get('originalStartTime', {})}"
+                            )
+                            cal_skipped += 1
+                            continue
+                        if not item.get("start"):
+                            self.logger.warning(
+                                f"Skipping event with missing start field: id={item.get('id')} "
+                                f"summary={item.get('summary', '')!r}"
+                            )
+                            cal_skipped += 1
+                            continue
+                        events.append(item)
+                        cal_fetched += 1
+
+                    page_token = response.get("nextPageToken")
+                    if not page_token:
+                        break
+
+                self.logger.debug(
+                    f"Retrieved {cal_fetched} valid events from calendar ID {cal_id} "
+                    f"({cal_skipped} skipped)"
+                )
 
             self.logger.debug(f"Total events retrieved: {len(events)}")
             return events
