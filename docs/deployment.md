@@ -75,6 +75,26 @@ The dev Lambda update uses the immutable `sha-<short_sha>` image tag. It updates
 
 - `dev-fn-notion-sync-gcal`
 
+### Dev Lambda Environment
+
+The dev Lambda must run in explicit cloud mode:
+
+```bash
+APP_MODE=cloud
+APP_STAGE=dev
+APP_REGION=<aws-region>
+AWS_REGION=<aws-region>
+DYNAMODB_USER_TABLE=<dev-user-table>
+DYNAMODB_GOOGLE_OAUTH_TOKEN_TABLE=<dev-google-token-table>
+DYNAMODB_NOTION_OAUTH_TOKEN_TABLE=<dev-notion-token-table>
+DYNAMODB_SYNC_LOGS_TABLE=<dev-sync-logs-table>
+GOOGLE_CALENDAR_CLIENT_ID=<google-oauth-client-id>
+GOOGLE_CALENDAR_CLIENT_SECRET=<google-oauth-client-secret>
+TOKEN_ENCRYPTION_KEY=<64-character-hex-key>
+```
+
+`TOKEN_ENCRYPTION_KEY` is required when DynamoDB tokens are stored as `enc:v1:` encrypted payloads. Cloud Lambda loads user config, Notion tokens, and Google OAuth tokens from DynamoDB by UUID. It should not require local-mode variables such as `NOTION_TOKEN`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, or `GOOGLE_REFRESH_TOKEN`.
+
 ## Production Image Publish
 
 Production image publishing is deferred until production infrastructure, IAM, and cross-account ECR access are ready.
