@@ -23,9 +23,7 @@ def generate_config(user_uuid: str = None, app_mode: str = None):
     logger.debug(f"APP_MODE: {resolved_mode}, uuid: {user_uuid}")
 
     if not resolved_mode:
-        raise ConfigError(
-            "APP_MODE environment variable is required. Set APP_MODE=cloud or APP_MODE=local."
-        )
+        raise ConfigError("APP_MODE environment variable is required. Set APP_MODE=cloud or APP_MODE=local.")
 
     if resolved_mode == "cloud":
         if not user_uuid:

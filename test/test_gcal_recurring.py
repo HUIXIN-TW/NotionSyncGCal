@@ -342,9 +342,7 @@ class TestGetGcalEventPagination(unittest.TestCase):
         return gs, mock_service
 
     def test_single_page_no_token(self):
-        gs, _ = self._make_paginated_service(
-            [{"items": [SINGLE_TIMED_EVENT]}]
-        )
+        gs, _ = self._make_paginated_service([{"items": [SINGLE_TIMED_EVENT]}])
         result = gs.get_gcal_event()
         self.assertEqual(len(result), 1)
 
@@ -487,9 +485,7 @@ class TestRecurringEventIdentity(unittest.TestCase):
     def test_two_instances_same_series_create_two_separate_tasks(self):
         # Two instances share recurringEventId "abc123" but have distinct instance IDs.
         # Each must become its own Notion task.
-        ns, result = self._run_sync(
-            [{**RECURRING_EXPANDED_INSTANCE}, {**RECURRING_INSTANCE_JUN6}]
-        )
+        ns, result = self._run_sync([{**RECURRING_EXPANDED_INSTANCE}, {**RECURRING_INSTANCE_JUN6}])
         self.assertEqual(ns.create_notion_task.call_count, 2)
         created_events = [c[0][0] for c in ns.create_notion_task.call_args_list]
         created_ids = {e["id"] for e in created_events}
@@ -530,9 +526,7 @@ class TestRecurringEventIdentity(unittest.TestCase):
     def test_no_notion_query_per_recurring_instance(self):
         # get_notion_task_by_gcal_event_id must NOT be called for recurring instances
         # that arrive in the create_notion path — only event["id"] matching is used.
-        ns, _ = self._run_sync(
-            [{**RECURRING_EXPANDED_INSTANCE}, {**RECURRING_INSTANCE_JUN6}]
-        )
+        ns, _ = self._run_sync([{**RECURRING_EXPANDED_INSTANCE}, {**RECURRING_INSTANCE_JUN6}])
         ns.get_notion_task_by_gcal_event_id.assert_not_called()
 
     def test_no_notion_query_for_non_recurring_event_either(self):
