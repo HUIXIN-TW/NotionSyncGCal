@@ -1,15 +1,14 @@
 {
-  "goback_days": 3,
-  "goforward_days": 90,
-  "notion_token": "xxxxxxx",
-  "urlroot": "https://www.notion.so/",
+  "database_id": "replace_with_your_notion_database_id",
+  "goback_days": 1,
+  "goforward_days": 2,
   "timecode": "+08:00",
   "timezone": "Asia/Taipei",
   "default_event_length": 60,
   "default_start_time": 8,
   "gcal_dic": [
     {
-      "Calendar_Name1": "xxxxxx@gmail.com"
+      "My Calendar": "your_calendar_id@gmail.com"
     }
   ],
   "page_property": [

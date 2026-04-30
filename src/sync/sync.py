@@ -1,4 +1,3 @@
-import os
 import sys
 from pathlib import Path
 from datetime import datetime, timezone
@@ -7,7 +6,7 @@ from utils.logging_utils import get_logger  # noqa: E402
 from notion.notion_properties import get_checkbox, get_rich_text, get_select, get_title
 
 # Configure logging
-logger = get_logger(__name__, log_file=os.getenv("LOG_FILE_PATH"))
+logger = get_logger(__name__)
 
 # Cap sync volume to avoid unbounded processing for large datasets.
 SYNC_TASK_LIMIT = 250

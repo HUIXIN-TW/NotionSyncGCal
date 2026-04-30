@@ -1,15 +1,22 @@
 import os
-import json
 from datetime import datetime, timezone
 from google.auth.transport.requests import Request
-from google_auth_oauthlib.flow import InstalledAppFlow
 from google.oauth2.credentials import Credentials
 from google.auth.exceptions import RefreshError
-from utils.dynamodb_utils import get_google_token_by_uuid, update_google_token_by_uuid  # noqa: E402
+from utils.token_crypto import TokenCryptoError, decrypt_token_if_encrypted
+
+_DEFAULT_TOKEN_URI = "https://oauth2.googleapis.com/token"
+_DEFAULT_SCOPES = [
+    "https://www.googleapis.com/auth/calendar.events",
+    "openid",
+    "https://www.googleapis.com/auth/calendar.calendarlist.readonly",
+    "https://www.googleapis.com/auth/userinfo.profile",
+    "https://www.googleapis.com/auth/userinfo.email",
+]
 
 
 class SettingError(Exception):
-    """Custom exception to handle setting errors in the Notion class."""
+    """Custom exception to handle setting errors in the GoogleToken class."""
 
     def __init__(self, message):
         super().__init__(message)
@@ -26,45 +33,86 @@ class GoogleToken:
     def activate_token(self):
         credentials = self._load_credentials()
         if self.mode == "local":
-            self.logger.info("Running in local mode. Proceeding with OAuth flow via local server")
-            credentials = self._perform_oauth_flow(credentials.scopes) if credentials.expired else credentials
-        if credentials.expired and credentials.refresh_token:
+            self.logger.info("Local mode: refreshing Google credentials in memory")
+            credentials = self._refresh_tokens(credentials)
+        elif credentials.expired and credentials.refresh_token:
             self.logger.info("Credentials has expired. Refreshing tokens...")
             credentials = self._refresh_tokens(credentials)
         self.credentials = credentials
 
     def _load_credentials(self):
-        try:
-            if not self.config:
-                raise SettingError("Configuration is required to load settings.")
-            if self.mode == "serverless":
+        if not self.config:
+            raise SettingError("Configuration is required to load settings.")
+        if self.mode == "cloud":
+            try:
+                from utils.dynamodb_utils import get_google_token_by_uuid
+
                 self.logger.debug("Loading credentials from DynamoDB")
                 data = get_google_token_by_uuid(self.config.get("uuid"))
+                try:
+                    access_token = decrypt_token_if_encrypted(data.get("accessToken"))
+                    refresh_token = decrypt_token_if_encrypted(data.get("refreshToken"))
+                except TokenCryptoError as e:
+                    raise SettingError(f"Failed to decrypt encrypted Google OAuth token: {e}") from e
                 credentials_data = {
-                    "token": data.get("accessToken"),
-                    "refresh_token": data.get("refreshToken"),
-                    "token_uri": "https://oauth2.googleapis.com/token",
-                    "scopes": [
-                        "https://www.googleapis.com/auth/calendar.events",
-                        "openid",
-                        "https://www.googleapis.com/auth/calendar.calendarlist.readonly",
-                        "https://www.googleapis.com/auth/userinfo.profile",
-                        "https://www.googleapis.com/auth/userinfo.email",
-                    ],
+                    "token": access_token,
+                    "refresh_token": refresh_token,
+                    "token_uri": _DEFAULT_TOKEN_URI,
+                    "scopes": list(_DEFAULT_SCOPES),
                     "expiry": self._convert_google_expiry_date_format(data.get("expiryDate")),
                     "client_id": os.environ.get("GOOGLE_CALENDAR_CLIENT_ID"),
                     "client_secret": os.environ.get("GOOGLE_CALENDAR_CLIENT_SECRET"),
                 }
-            elif self.mode == "local":
-                self.logger.info(f"Loading google token from local file: {self.config.get('local_google_token_path')}")
-                with self.config.get("local_google_token_path").open("r") as f:
-                    credentials_data = json.load(f)
-            credentials = Credentials(**credentials_data)
-            self._verify_credentials(credentials)
-            return credentials
-        except SettingError as e:
-            self.logger.error(f"SettingError: {e}")
-            raise
+                credentials = Credentials(**credentials_data)
+                self._verify_credentials(credentials)
+                return credentials
+            except SettingError:
+                raise
+            except Exception as e:
+                raise SettingError(f"Error loading Google credentials from DynamoDB: {e}") from e
+        if self.mode == "local":
+            return self._load_local_credentials()
+        raise SettingError(f"Unknown config mode '{self.mode}'. Expected 'cloud' or 'local'.")
+
+    def _load_local_credentials(self):
+        client_id = os.environ.get("GOOGLE_CLIENT_ID", "").strip()
+        client_secret = os.environ.get("GOOGLE_CLIENT_SECRET", "").strip()
+        refresh_token = os.environ.get("GOOGLE_REFRESH_TOKEN", "").strip()
+
+        missing = [
+            name
+            for name, val in [
+                ("GOOGLE_CLIENT_ID", client_id),
+                ("GOOGLE_CLIENT_SECRET", client_secret),
+                ("GOOGLE_REFRESH_TOKEN", refresh_token),
+            ]
+            if not val
+        ]
+        if missing:
+            raise SettingError(f"Required environment variables for local Google auth are missing or empty: {missing}")
+        try:
+            refresh_token = decrypt_token_if_encrypted(refresh_token)
+        except TokenCryptoError as e:
+            raise SettingError(f"Failed to decrypt encrypted Google OAuth token: {e}") from e
+
+        token_uri = os.environ.get("GOOGLE_TOKEN_URI", "").strip() or _DEFAULT_TOKEN_URI
+
+        scopes_raw = os.environ.get("GOOGLE_SCOPES", "").strip()
+        if scopes_raw:
+            scopes = [s.strip() for s in scopes_raw.split(",") if s.strip()]
+            if not scopes:
+                raise SettingError("GOOGLE_SCOPES is set but resulted in an empty scope list after parsing.")
+        else:
+            scopes = list(_DEFAULT_SCOPES)
+
+        return Credentials(
+            token=None,
+            refresh_token=refresh_token,
+            token_uri=token_uri,
+            client_id=client_id,
+            client_secret=client_secret,
+            scopes=scopes,
+        )
 
     def _refresh_tokens(self, credentials):
         try:
@@ -73,32 +121,20 @@ class GoogleToken:
             self.logger.info("Successfully refreshed tokens.")
             return credentials
         except Exception as e:
-            self.logger.warning(f"Token refresh failed: {e}, running OAuth flow locally.")
-            try:
-                credentials = self._perform_oauth_flow(credentials.scopes)
-                return credentials
-            except Exception as e:
-                raise RefreshError(f"Failed to refresh Google credentials: {e}")
-
-    def _perform_oauth_flow(self, scopes):
-        self.logger.info("Google Scope: " + str(scopes))
-        flow = InstalledAppFlow.from_client_secrets_file(
-            str(self.config.get("local_google_client_secret_path")), scopes
-        )
-        credentials = flow.run_local_server(port=0)
-        self.logger.info(f"Successfully fetched new google tokens to {self.config.get('local_google_token_path')}")
-        self._save_credentials(credentials)
-        return credentials
+            if self.mode == "local":
+                raise RefreshError(
+                    "Failed to refresh Google credentials in local mode. "
+                    "GOOGLE_REFRESH_TOKEN is likely invalid/expired; renew it outside runtime and update .env.local."
+                ) from e
+            raise RefreshError("Failed to refresh Google credentials. Refresh token is likely invalid/expired.") from e
 
     def _save_credentials(self, credentials):
-        # serialize credentials as JSON, all attributes of credentials
-        # refresh_token, token_uri, client_id, and client_secret
-        # 'expiry': datetime.datetime(2025, 11, 13, 18, 19, 39, 221090)
-        payload = {"token": credentials.token, "refresh_token": credentials.refresh_token, "expiry": credentials.expiry}
         try:
-            if self.mode == "serverless":
+            if self.mode == "cloud":
+                from utils.dynamodb_utils import update_google_token_by_uuid
+
                 expiry_str = self._convert_notica_expiry_date_format(credentials.expiry)
-                updated_str = expiry_str  # using expiry as updatedAt for simplicity
+                updated_str = expiry_str
                 update_google_token_by_uuid(
                     self.config.get("uuid"),
                     credentials.token,
@@ -108,12 +144,9 @@ class GoogleToken:
                 )
                 self.logger.info("Saved credentials to DynamoDB.")
             elif self.mode == "local":
-                os.remove(self.config.get("local_google_token_path"))
-                with self.config.get("local_google_token_path").open("w") as token:
-                    json.dump(payload, token)
-                self.logger.info("Saved credentials to local file.")
+                self.logger.debug("Local mode: skipping credential persistence.")
         except Exception as e:
-            self.logger.error(f"Error saving credentials to local file: {e}")
+            self.logger.error(f"Error saving credentials: {e}")
             raise SettingError(f"Error saving credentials: {e}")
 
     def _convert_google_expiry_date_format(self, expiryDate):
@@ -123,15 +156,12 @@ class GoogleToken:
     def _convert_notica_expiry_date_format(self, expiryDate):
         if not expiryDate:
             return None
-
         if expiryDate.tzinfo is None:
             expiryDate = expiryDate.replace(tzinfo=timezone.utc)
-
         expiryDate = expiryDate.astimezone(timezone.utc)
         return str(int(expiryDate.timestamp() * 1000))
 
     def _verify_credentials(self, credentials):
-        # refresh_token, token_uri, client_id, and client_secret
         if not isinstance(credentials, Credentials):
             raise SettingError("Invalid credentials object.")
         if not credentials.expiry:
@@ -160,7 +190,8 @@ if __name__ == "__main__":
     sys.path.append(str(Path(__file__).resolve().parent.parent))
     from config.config import generate_config  # noqa: E402
 
-    config = generate_config("")
+    # APP_MODE must be set in the shell (e.g. APP_MODE=local or APP_MODE=cloud)
+    config = generate_config()
     gt = GoogleToken(config, logger)
     service = build("calendar", "v3", credentials=gt.credentials)
     if service:

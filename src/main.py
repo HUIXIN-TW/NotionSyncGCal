@@ -1,4 +1,3 @@
-import os
 import sys
 import argparse
 import json
@@ -51,7 +50,7 @@ def _parse_args(argv: list[str] | None = None):
 
 
 def main(uuid: str | None = None) -> dict:
-    logger = get_logger(__name__, log_file=os.getenv("LOG_FILE_PATH"))
+    logger = get_logger(__name__)
 
     current_dir = Path(__file__).parent.resolve()
     logger.debug(f"Current directory: {current_dir}")
@@ -62,7 +61,7 @@ def main(uuid: str | None = None) -> dict:
         logger.debug(f"Using UUID: {uuid}")
 
         # Configure paths based on UUID (local vs dynamodb)
-        config = generate_config(uuid)  # only return uuid in serverless mode
+        config = generate_config(uuid)  # APP_MODE determines cloud or local config shape
         logger.debug(f"Generated config keys: {list(config.keys())}")
 
         # Notion

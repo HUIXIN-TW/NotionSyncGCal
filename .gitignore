@@ -1,31 +1,32 @@
+# macOS
 .DS_Store
 
-/tmp
-/token
-/logs
-
-/node_modules
-
-/src/__pycache__
-/src/logs
-/src/notion/logs
-/src/gcal/logs
-/src/sync/logs
-
-src/notion/__pycache__/*.pyc
-src/sync/__pycache__/*.pyc
-src/gcal/__pycache__/*.pyc
-src/user_setting/__pycache__/*.pyc
-src/config/__pycache__/*.pyc
-
-/.venv
-/lambda_layer/**
-/dist
+# Local env / secrets
 .env
-*.zip
-/*.log
-sync.log
+.env.dev
+.env.local
+!.env.local.example
+
+# Local config files (real files are ignored; example templates are tracked)
+config/local.notion-setting.json
+src/config/local.notion-setting.json
+
+# Generated/local JSON output files
 settings.json
 get_gcal_event.json
 get_notion_task.json
-**/__pycache__/*.pyc
+
+# Local token directory
+token/
+
+# Local runtime output
+**/logs/
+
+# Python
+.venv/
+**/__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
