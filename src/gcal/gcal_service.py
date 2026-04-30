@@ -12,6 +12,11 @@ class SettingError(Exception):
         super().__init__(message)
 
 
+GCAL_PAGE_SIZE = 2500
+MAX_GCAL_PAGES_PER_CALENDAR = 100
+MAX_GCAL_EVENTS_PER_CALENDAR = 5000
+
+
 class GoogleService:
 
     def __init__(self, user_setting, google_token, logger):
@@ -42,18 +47,37 @@ class GoogleService:
         # Calculate the start and end dates for the event range
         try:
             events = []
-            for cal_id in self.notion_setting["gcal_name_dict"].values():
+
+            for cal_id in set(self.notion_setting["gcal_name_dict"].values()):
                 page_token = None
+                seen_page_tokens = set()
+                page_count = 0
                 cal_fetched = 0
                 cal_skipped = 0
+
                 while True:
+                    page_count += 1
+
+                    if page_count > MAX_GCAL_PAGES_PER_CALENDAR:
+                        raise RuntimeError(
+                            f"Exceeded Google Calendar pagination limit for calendar ID {cal_id}: "
+                            f"{MAX_GCAL_PAGES_PER_CALENDAR} pages"
+                        )
+
+                    if page_token:
+                        if page_token in seen_page_tokens:
+                            raise RuntimeError(f"Repeated Google Calendar page token detected for calendar ID {cal_id}")
+                        seen_page_tokens.add(page_token)
+
                     params = {
                         "calendarId": cal_id,
                         "timeMin": self.notion_setting["google_timemin"],
                         "timeMax": self.notion_setting["google_timemax"],
                         "singleEvents": True,
                         "orderBy": "startTime",
+                        "maxResults": GCAL_PAGE_SIZE,
                     }
+
                     if page_token:
                         params["pageToken"] = page_token
 
@@ -67,6 +91,7 @@ class GoogleService:
                             )
                             cal_skipped += 1
                             continue
+
                         if not item.get("start"):
                             self.logger.warning(
                                 f"Skipping event with missing start field: id={item.get('id')} "
@@ -74,6 +99,11 @@ class GoogleService:
                             )
                             cal_skipped += 1
                             continue
+                        if cal_fetched > MAX_GCAL_EVENTS_PER_CALENDAR:
+                            raise RuntimeError(
+                                f"Exceeded Google Calendar event limit for calendar ID {cal_id}: "
+                                f"{MAX_GCAL_EVENTS_PER_CALENDAR} events"
+                            )
                         events.append(item)
                         cal_fetched += 1
 
@@ -83,16 +113,18 @@ class GoogleService:
 
                 self.logger.debug(
                     f"Retrieved {cal_fetched} valid events from calendar ID {cal_id} "
-                    f"({cal_skipped} skipped)"
+                    f"({cal_skipped} skipped, {page_count} pages)"
                 )
 
             self.logger.debug(f"Total events retrieved: {len(events)}")
             return events
+
         except RefreshError as e:
             self.logger.error(f"RefreshError: {e}")
             raise
-        except Exception as e:
-            self.logger.error(f"Error retrieving Google Calendar events: {e}")
+
+        except Exception:
+            self.logger.exception("Error retrieving Google Calendar events")
             raise
 
     def update_gcal_event(self, notion_task, existing_gcal_cal_id, existing_gcal_event_id):
