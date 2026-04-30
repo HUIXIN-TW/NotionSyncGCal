@@ -2,56 +2,53 @@ import os
 from pathlib import Path
 from utils.logging_utils import get_logger  # noqa: E402
 
-# Get the current directory
 CURRENT_DIR = Path(__file__).resolve().parent.parent.parent
-logger = get_logger(__name__, os.getenv("LOG_FILE_PATH"))
-
-current_dir = Path(__file__).parent.resolve()
-logger.debug(f"Current directory: {CURRENT_DIR}")
+logger = get_logger(__name__)
 
 
-class SettingError(Exception):
-    """Custom exception to handle setting errors in the Notion class."""
-
-    def __init__(self, message):
-        super().__init__(message)
+class ConfigError(Exception):
+    """Raised when APP_MODE or required config values are missing or invalid."""
 
 
-def generate_config(user_uuid: str):
-    """Dynamically generate CONFIG based on whether UUID is provided.
+def generate_config(user_uuid: str = None, app_mode: str = None):
+    """Generate a config dict based on APP_MODE.
 
-    - If user_uuid is provided: use DynamoDB tables
-    - If user_uuid is empty: use local token files under repo 'token/'
+    APP_MODE=cloud  — DynamoDB-backed path; uuid is required.
+    APP_MODE=local  — env-var + local JSON config path; uuid is not required.
+
+    APP_MODE must be set explicitly; mode is never inferred from uuid.
+    token/*.json paths are not supported.
     """
-    mode = "local" if not user_uuid else "serverless"
-    logger.debug(f"Configuration mode: {mode}, UUID: {user_uuid}")
+    resolved_mode = app_mode or os.environ.get("APP_MODE")
+    logger.debug(f"APP_MODE: {resolved_mode}, uuid: {user_uuid}")
 
-    if mode == "serverless":
+    if not resolved_mode:
+        raise ConfigError(
+            "APP_MODE environment variable is required. Set APP_MODE=cloud or APP_MODE=local."
+        )
+
+    if resolved_mode == "cloud":
+        if not user_uuid:
+            raise ConfigError("uuid is required when APP_MODE=cloud.")
         return {
-            "mode": mode,
+            "mode": "cloud",
             "uuid": user_uuid,
         }
-    else:
-        LOCAL_NOTION_SETTINGS_PATH = os.environ.get(
-            "LOCAL_NOTION_SETTINGS_PATH", CURRENT_DIR / "token/notion_setting.json"
-        )
-        LOCAL_GOOGLE_CLIENT_SECRET_PATH = os.environ.get(
-            "LOCAL_GOOGLE_CLIENT_SECRET_PATH", CURRENT_DIR / "token/client_secret.json"
-        )
-        LOCAL_GOOGLE_TOKEN_PATH = os.environ.get("LOCAL_GOOGLE_TOKEN_PATH", CURRENT_DIR / "token/token.json")
+
+    if resolved_mode == "local":
         return {
-            "mode": mode,
-            "local_notion_settings_path": Path(LOCAL_NOTION_SETTINGS_PATH),
-            "local_google_client_secret_path": Path(LOCAL_GOOGLE_CLIENT_SECRET_PATH),
-            "local_google_token_path": Path(LOCAL_GOOGLE_TOKEN_PATH),
+            "mode": "local",
+            "notion_setting_path": CURRENT_DIR / "config" / "local.notion-setting.json",
         }
+
+    raise ConfigError(f"Unknown APP_MODE '{resolved_mode}'. Expected 'cloud' or 'local'.")
 
 
 if __name__ == "__main__":
     from rich.console import Console
     from rich.pretty import pprint
 
-    # python -m config.config
+    # python -m config.config  (APP_MODE must be set in the shell)
     console = Console()
     console.rule("[bold green]🔧 Configuration Source")
-    pprint(generate_config(""), max_depth=3)
+    pprint(generate_config(), max_depth=3)

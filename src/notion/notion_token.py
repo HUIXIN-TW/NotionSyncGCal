@@ -17,14 +17,14 @@ class NotionToken:
         self.config = config
         self.mode = config.get("mode")
         self.uuid = config.get("uuid")
-        self.token = self.load_settings(self.uuid if self.mode == "serverless" else None)
+        self.token = self.load_settings(self.uuid if self.mode == "cloud" else None)
 
     def load_settings(self, uuid=None):
         config = self.config
         if not config:
             raise SettingError("Configuration is required to load settings.")
         try:
-            if self.mode == "serverless":
+            if self.mode == "cloud":
                 response = get_notion_token_by_uuid(uuid)
                 return response.get("accessToken")
             elif self.mode == "local":

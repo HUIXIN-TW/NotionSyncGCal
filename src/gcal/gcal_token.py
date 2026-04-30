@@ -37,7 +37,7 @@ class GoogleToken:
         try:
             if not self.config:
                 raise SettingError("Configuration is required to load settings.")
-            if self.mode == "serverless":
+            if self.mode == "cloud":
                 self.logger.debug("Loading credentials from DynamoDB")
                 data = get_google_token_by_uuid(self.config.get("uuid"))
                 credentials_data = {
@@ -96,7 +96,7 @@ class GoogleToken:
         # 'expiry': datetime.datetime(2025, 11, 13, 18, 19, 39, 221090)
         payload = {"token": credentials.token, "refresh_token": credentials.refresh_token, "expiry": credentials.expiry}
         try:
-            if self.mode == "serverless":
+            if self.mode == "cloud":
                 expiry_str = self._convert_notica_expiry_date_format(credentials.expiry)
                 updated_str = expiry_str  # using expiry as updatedAt for simplicity
                 update_google_token_by_uuid(

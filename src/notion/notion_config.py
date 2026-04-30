@@ -25,7 +25,7 @@ class NotionConfig:
         if not config:
             raise SettingError("Configuration is required to load settings.")
         try:
-            if self.mode == "serverless":
+            if self.mode == "cloud":
                 response = get_notion_config_by_uuid(config.get("uuid"))
                 self.logger.debug(f"Loading Notion Configuration from DynamoDB: type={type(response).__name__}")
                 return response
