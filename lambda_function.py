@@ -17,7 +17,7 @@ from src.utils import get_logger  # noqa: E402
 from src.utils.lambda_utils import detect_event_source, process_sqs_records, process_eventbridge_event  # noqa: E402
 
 # Set up logger to write to file
-logger_obj = get_logger(__name__, log_file=os.getenv("LOG_FILE_PATH"))
+logger_obj = get_logger(__name__)
 
 
 # Main Lambda handler: dispatch to SQS or API event processing
