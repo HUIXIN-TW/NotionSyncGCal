@@ -59,7 +59,6 @@ MINIMAL_USER_SETTING = {
     "default_event_length": 60,
 }
 
-# Payloads (from the bug report)
 SINGLE_TIMED_EVENT = {
     "kind": "calendar#event",
     "id": "single001",
@@ -532,6 +531,53 @@ class TestRecurringEventIdentity(unittest.TestCase):
     def test_no_notion_query_for_non_recurring_event_either(self):
         ns, _ = self._run_sync([{**SINGLE_TIMED_EVENT}])
         ns.get_notion_task_by_gcal_event_id.assert_not_called()
+
+
+# ---------------------------------------------------------------------------
+# Tests: per-calendar event limit (MAX_GCAL_EVENTS_PER_CALENDAR)
+# ---------------------------------------------------------------------------
+
+
+class TestGetGcalEventLimit(unittest.TestCase):
+    """Verify the per-calendar event cap: exactly MAX events succeeds, MAX+1 raises."""
+
+    def _make_n_events(self, n):
+        return [
+            {**SINGLE_TIMED_EVENT, "id": f"evt{i:04d}"}
+            for i in range(n)
+        ]
+
+    def _make_service_with_items(self, items):
+        mock_service = MagicMock()
+        mock_service.events.return_value.list.return_value.execute.return_value = {"items": items}
+        logger = MagicMock()
+        with patch("gcal.gcal_service.build", return_value=mock_service):
+            gs = GoogleService(MINIMAL_USER_SETTING, MagicMock(), logger)
+        gs.service = mock_service
+        gs.logger = logger
+        return gs
+
+    def test_exactly_max_events_is_accepted(self):
+        from gcal.gcal_service import MAX_GCAL_EVENTS_PER_CALENDAR
+
+        gs = self._make_service_with_items(self._make_n_events(MAX_GCAL_EVENTS_PER_CALENDAR))
+        result = gs.get_gcal_event()
+        self.assertEqual(len(result), MAX_GCAL_EVENTS_PER_CALENDAR)
+
+    def test_one_over_max_raises_runtime_error(self):
+        from gcal.gcal_service import MAX_GCAL_EVENTS_PER_CALENDAR
+
+        gs = self._make_service_with_items(self._make_n_events(MAX_GCAL_EVENTS_PER_CALENDAR + 1))
+        with self.assertRaises(RuntimeError) as ctx:
+            gs.get_gcal_event()
+        self.assertIn(str(MAX_GCAL_EVENTS_PER_CALENDAR), str(ctx.exception))
+
+    def test_over_limit_event_is_not_appended(self):
+        from gcal.gcal_service import MAX_GCAL_EVENTS_PER_CALENDAR
+
+        gs = self._make_service_with_items(self._make_n_events(MAX_GCAL_EVENTS_PER_CALENDAR + 1))
+        with self.assertRaises(RuntimeError):
+            gs.get_gcal_event()
 
 
 if __name__ == "__main__":

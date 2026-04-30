@@ -7,13 +7,20 @@
 .env.local
 !.env.local.example
 
-# Local config files
+# Local config files (real files are ignored; example templates are tracked)
 config/local.notion-setting.json
-!config/local.notion-setting.example.json
+src/config/local.notion-setting.json
+
+# Generated/local JSON output files
+settings.json
+get_gcal_event.json
+get_notion_task.json
+
+# Local token directory
+token/
 
 # Local runtime output
 **/logs/
-*.json
 
 # Python
 .venv/

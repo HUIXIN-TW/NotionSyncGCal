@@ -14,7 +14,7 @@ class SettingError(Exception):
 
 GCAL_PAGE_SIZE = 2500
 MAX_GCAL_PAGES_PER_CALENDAR = 100
-MAX_GCAL_EVENTS_PER_CALENDAR = 5000
+MAX_GCAL_EVENTS_PER_CALENDAR = 500
 
 
 class GoogleService:
@@ -99,7 +99,7 @@ class GoogleService:
                             )
                             cal_skipped += 1
                             continue
-                        if cal_fetched > MAX_GCAL_EVENTS_PER_CALENDAR:
+                        if cal_fetched >= MAX_GCAL_EVENTS_PER_CALENDAR:
                             raise RuntimeError(
                                 f"Exceeded Google Calendar event limit for calendar ID {cal_id}: "
                                 f"{MAX_GCAL_EVENTS_PER_CALENDAR} events"
