@@ -1,6 +1,11 @@
 import json
 from datetime import timedelta, date
-from utils.dynamodb_utils import get_notion_config_by_uuid  # noqa: E402
+
+_REQUIRED_LOCAL_KEYS = frozenset({
+    "database_id", "goback_days", "goforward_days", "urlroot",
+    "timecode", "timezone", "default_event_length", "default_start_time",
+    "gcal_dic", "page_property",
+})
 
 
 class SettingError(Exception):
@@ -20,22 +25,35 @@ class NotionConfig:
         self.setting = self.format_settings(self.load_settings())
 
     def load_settings(self):
-        """Loads settings from either S3 or a local JSON file based on the config."""
         config = self.config
         if not config:
             raise SettingError("Configuration is required to load settings.")
-        try:
-            if self.mode == "cloud":
+        if self.mode == "cloud":
+            try:
+                from utils.dynamodb_utils import get_notion_config_by_uuid
                 response = get_notion_config_by_uuid(config.get("uuid"))
                 self.logger.debug(f"Loading Notion Configuration from DynamoDB: type={type(response).__name__}")
                 return response
-
-            elif self.mode == "local":
-                self.logger.info(f"Loading settings from local file: {config.get('local_notion_settings_path')}")
-                with open(config.get("local_notion_settings_path"), encoding="utf-8") as f:
-                    return json.load(f)
-        except Exception as e:
-            raise SettingError(f"Error loading local settings file: {e}")
+            except Exception as e:
+                raise SettingError(f"Error loading Notion config from DynamoDB: {e}") from e
+        if self.mode == "local":
+            path = config.get("notion_setting_path")
+            try:
+                with open(path, encoding="utf-8") as f:
+                    data = json.load(f)
+            except FileNotFoundError:
+                raise SettingError(f"Local Notion config file not found: {path}")
+            except json.JSONDecodeError as e:
+                raise SettingError(f"Local Notion config file is not valid JSON: {e}")
+            except Exception as e:
+                raise SettingError(f"Error reading local Notion config: {e}") from e
+            missing = _REQUIRED_LOCAL_KEYS - set(data.keys())
+            if missing:
+                raise SettingError(
+                    f"Local Notion config is missing required keys: {sorted(missing)}"
+                )
+            return data
+        raise SettingError(f"Unknown config mode '{self.mode}'. Expected 'cloud' or 'local'.")
 
     def format_settings(self, setting):
         """Applies settings from the data dictionary to attributes of the Notion class."""
@@ -98,7 +116,8 @@ if __name__ == "__main__":
     sys.path.append(str(Path(__file__).resolve().parent.parent))
     from config.config import generate_config  # noqa: E402
 
-    config = generate_config("")
+    # APP_MODE must be set in the shell (e.g. APP_MODE=local or APP_MODE=cloud)
+    config = generate_config()
     notion = NotionConfig(config, logger)
 
     from rich.console import Console
