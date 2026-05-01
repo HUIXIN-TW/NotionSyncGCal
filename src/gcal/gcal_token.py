@@ -3,7 +3,7 @@ from datetime import datetime, timezone
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 from google.auth.exceptions import RefreshError
-from utils.token_crypto import TokenCryptoError, decrypt_token_if_encrypted
+from utils.token_crypto import TokenCryptoError, decrypt_token_if_encrypted, encrypt_token
 
 _DEFAULT_TOKEN_URI = "https://oauth2.googleapis.com/token"
 _DEFAULT_SCOPES = [
@@ -135,10 +135,12 @@ class GoogleToken:
 
                 expiry_str = self._convert_notica_expiry_date_format(credentials.expiry)
                 updated_str = expiry_str
+                encrypted_access_token = encrypt_token(credentials.token)
+                encrypted_refresh_token = encrypt_token(credentials.refresh_token)
                 update_google_token_by_uuid(
                     self.config.get("uuid"),
-                    credentials.token,
-                    credentials.refresh_token,
+                    encrypted_access_token,
+                    encrypted_refresh_token,
                     expiry_str,
                     updated_str,
                 )

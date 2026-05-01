@@ -11,7 +11,7 @@ os.environ.setdefault("APP_REGION", "ap-southeast-2")
 
 from gcal.gcal_token import GoogleToken, SettingError, _DEFAULT_SCOPES, _DEFAULT_TOKEN_URI  # noqa: E402
 from google.oauth2.credentials import Credentials  # noqa: E402
-from utils.token_crypto import TokenCryptoError  # noqa: E402
+from utils.token_crypto import TokenCryptoError, encrypt_token  # noqa: E402
 
 # A far-future expiry in ms — prevents credentials.expired from being True in cloud tests
 _FUTURE_EXPIRY_MS = str(int(datetime(2030, 1, 1, tzinfo=timezone.utc).timestamp() * 1000))
@@ -30,6 +30,7 @@ _BASE_LOCAL_ENV = {
     "GOOGLE_CLIENT_SECRET": "test-client-secret",
     "GOOGLE_REFRESH_TOKEN": "test-refresh-token",
 }
+_TOKEN_ENCRYPTION_KEY = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
 
 
 def _make_logger():
@@ -265,8 +266,71 @@ class TestGoogleTokenCloudMode(unittest.TestCase):
         mock_creds.refresh_token = "new-refresh-token"
         mock_creds.expiry = datetime(2030, 1, 1, tzinfo=timezone.utc)
         with patch("utils.dynamodb_utils.update_google_token_by_uuid") as mock_updater:
-            gt._save_credentials(mock_creds)
+            with patch.dict(os.environ, {"TOKEN_ENCRYPTION_KEY": _TOKEN_ENCRYPTION_KEY}, clear=True):
+                gt._save_credentials(mock_creds)
             mock_updater.assert_called_once()
+
+    def test_cloud_save_credentials_writes_encrypted_tokens(self):
+        with patch("utils.dynamodb_utils.get_google_token_by_uuid", return_value=_CLOUD_DYNAMO_RESPONSE):
+            with patch.dict(os.environ, _CLOUD_ENV):
+                gt = GoogleToken(self._cloud_config("uuid-encrypted-save"), _make_logger())
+        mock_creds = MagicMock()
+        mock_creds.token = "new-access-token"
+        mock_creds.refresh_token = "new-refresh-token"
+        mock_creds.expiry = datetime(2030, 1, 1, tzinfo=timezone.utc)
+
+        with patch("utils.dynamodb_utils.update_google_token_by_uuid") as mock_updater:
+            with patch.dict(os.environ, {"TOKEN_ENCRYPTION_KEY": _TOKEN_ENCRYPTION_KEY}, clear=True):
+                gt._save_credentials(mock_creds)
+
+        _, saved_access_token, saved_refresh_token, _, _ = mock_updater.call_args[0]
+        self.assertTrue(saved_access_token.startswith("enc:v1:"))
+        self.assertTrue(saved_refresh_token.startswith("enc:v1:"))
+        self.assertNotEqual(saved_access_token, "new-access-token")
+        self.assertNotEqual(saved_refresh_token, "new-refresh-token")
+
+    def test_cloud_save_credentials_missing_encryption_key_raises_setting_error(self):
+        with patch("utils.dynamodb_utils.get_google_token_by_uuid", return_value=_CLOUD_DYNAMO_RESPONSE):
+            with patch.dict(os.environ, _CLOUD_ENV):
+                gt = GoogleToken(self._cloud_config(), _make_logger())
+        mock_creds = MagicMock()
+        mock_creds.token = "new-access-token"
+        mock_creds.refresh_token = "new-refresh-token"
+        mock_creds.expiry = datetime(2030, 1, 1, tzinfo=timezone.utc)
+
+        with patch("utils.dynamodb_utils.update_google_token_by_uuid") as mock_updater:
+            with patch.dict(os.environ, {}, clear=True):
+                with self.assertRaises(SettingError) as ctx:
+                    gt._save_credentials(mock_creds)
+        mock_updater.assert_not_called()
+        self.assertIn("TOKEN_ENCRYPTION_KEY", str(ctx.exception))
+
+    def test_encrypted_cloud_load_refresh_save_keeps_dynamodb_tokens_encrypted(self):
+        expired_response = {
+            "accessToken": None,
+            "refreshToken": None,
+            "expiryDate": str(int(datetime(2000, 1, 1, tzinfo=timezone.utc).timestamp() * 1000)),
+        }
+
+        def refresh_credentials(credentials, request):  # noqa: ARG001
+            credentials.token = "refreshed-access-token"
+            credentials._refresh_token = "refreshed-refresh-token"
+            credentials.expiry = datetime(2030, 1, 1, tzinfo=timezone.utc)
+
+        with patch.dict(os.environ, {**_CLOUD_ENV, "TOKEN_ENCRYPTION_KEY": _TOKEN_ENCRYPTION_KEY}, clear=True):
+            expired_response["accessToken"] = encrypt_token("old-access-token")
+            expired_response["refreshToken"] = encrypt_token("old-refresh-token")
+
+            with patch("utils.dynamodb_utils.get_google_token_by_uuid", return_value=expired_response):
+                with patch("utils.dynamodb_utils.update_google_token_by_uuid") as mock_updater:
+                    with patch("google.oauth2.credentials.Credentials.refresh", new=refresh_credentials):
+                        gt = GoogleToken(self._cloud_config(), _make_logger())
+
+        self.assertEqual(gt.credentials.token, "refreshed-access-token")
+        self.assertEqual(gt.credentials.refresh_token, "refreshed-refresh-token")
+        _, saved_access_token, saved_refresh_token, _, _ = mock_updater.call_args[0]
+        self.assertTrue(saved_access_token.startswith("enc:v1:"))
+        self.assertTrue(saved_refresh_token.startswith("enc:v1:"))
 
     def test_cloud_dynamodb_error_raises_setting_error(self):
         with patch("utils.dynamodb_utils.get_google_token_by_uuid", side_effect=RuntimeError("DDB down")):
