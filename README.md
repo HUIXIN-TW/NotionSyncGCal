@@ -221,13 +221,9 @@ Current workflow split:
 ### Run Unit Tests
 
 ```bash
-uv run python -m pytest test/
-```
-
-Or using the standard library runner:
-
-```bash
-uv run python -m unittest discover test/
+uv run python -m unittest discover -s test -v
+uv run coverage run -m unittest discover -s test -v
+uv run coverage report -m
 ```
 
 ### Local Cloud Runner

@@ -15,8 +15,9 @@ uv sync
 ./scripts/local-run-dev-sync.sh --mode cloud --uuid <uuid>
 
 # Run tests
-uv run python -m pytest test/
 uv run python -m unittest discover test/ -v
+uv run coverage run -m unittest discover -s test -v
+uv run coverage report -m
 
 # Lint
 make lint

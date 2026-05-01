@@ -1,0 +1,9 @@
+[run]
+source = src
+branch = true
+
+[report]
+show_missing = true
+skip_empty = true
+precision = 2
+fail_under = 50
