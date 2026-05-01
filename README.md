@@ -1,376 +1,238 @@
-# Notion Task Two-Way Synchronise with Google Calendar Event
+# NotionSyncGCal Lambda
 
 ![Python](https://img.shields.io/badge/Python-3.11%2B-blue)
-![Lambda](https://img.shields.io/badge/AWS%20Lambda-DynamoDB-orange)
+![Lambda](https://img.shields.io/badge/AWS%20Lambda-Container-orange)
 
-> AWS Lambda container and local developer runner that sync Notion Task databases with Google Calendar events.
+AWS Lambda container and local developer runner for synchronizing Notion task databases with Google Calendar events.
 
-Do you find yourself juggling between Notion and Google Calendar to manage your events? Fret not! This awesome code is here to save your day. It magically extracts event details from your Notion Database and seamlessly integrates them into your Google Calendar events. There's more! It even adds a handy URL to your GCal event, so you can effortlessly jump back to the specific Notion Page related to the event. How cool is that?
+This tool mutates both Notion and Google Calendar data. Validate configuration and run against test data first.
 
-**Warning**: Proceed with caution! This repo wields the power to make changes to your Notion database and Google Calendar. So, if you're not confident about what you're doing, buckle up and brace yourself for some unexpected surprises.
+Releases: https://github.com/HUIXIN-TW/NotionSyncGCal/releases
 
-🆕 [View Release v3.0.0 →](https://github.com/HUIXIN-TW/NotionSyncGCal/releases)
+## What It Does
 
-## Release v3.0.0 – DynamoDB Cloud Edition
+- Bidirectional sync between Notion tasks and Google Calendar events.
+- Supports multiple Google calendars via `gcal_dic`.
+- Supports custom Notion property mapping via `page_property`.
+- Supports force-sync modes via CLI (`-g`, `-n`).
+- Handles cancelled Google Calendar events during sync filtering.
+- Expands recurring Google Calendar events and uses each expanded event instance ID for matching/sync.
+- Persists cloud sync logs in DynamoDB.
 
-- Breaking change: cloud storage now uses DynamoDB tables (tokens, user config, sync logs) instead of S3 objects.
-- Lambda reads/writes by `uuid` (SQS/EventBridge payload) and persists refreshed tokens plus sync summaries into DynamoDB.
-- Dev auto-deploy via GitHub Actions remains; production image publishing and production Lambda deployment are deferred until production infrastructure and IAM are ready.
-- Release versions are tracked by Git tag and GitHub Release; `pyproject.toml` may stay static while this remains a Lambda app. See [docs/deployment.md](docs/deployment.md).
-- Migration tip: seed the DynamoDB tables with your existing credentials/config and update environment variables to the new `DYNAMODB_*` names.
+## Sync Behavior
 
-## What You Will Need to Get Started
+- A Notion task without a linked GCal event ID creates a Google Calendar event.
+- An unmatched Google Calendar event creates a Notion task.
+- Matched Notion/GCal records are updated based on last-modified timestamps.
+- A Notion deletion flag deletes the linked Google Calendar event and the Notion task.
+- CLI date flags are runtime in-memory overrides only and do not rewrite local JSON config.
 
-- Google account
-- Notion account
-- Python 3.11+
-- GitHub account (optional)
-- AWS account and DynamoDB tables (for cloud/Lambda mode)
+## Current Architecture
 
-## Current Capabilities
+The runtime uses an explicit mode switch via `APP_MODE`:
 
-- Update from Google Calendar to Notion task
-- Update from Notion task to Google Calendar
-- Automatically deletes GCal events when marked as deleted in Notion
-- Timezone and date range customization in `config/local.notion-setting.json` or cloud user config
-- Sync across _multiple calendars_ by changing `gcal_dic` in local config or cloud user config
-- Custom Notion column names
-- Google Calendar OAuth integration
-- DynamoDB + Lambda integration for cloud execution
+- `APP_MODE=local`: uses `.env.local` secrets and `config/local.notion-setting.json` for local development.
+- `APP_MODE=cloud`: uses DynamoDB records keyed by `uuid` and resolves cloud secrets from SSM SecureString paths at runtime.
 
-## Functions You Can Configure
+Current cloud/runtime notes:
 
-- Ability to change timezones by changing `timecode` and `timezone`
-- Ability to change the date range by changing `goback_days` and `goforward_days`
-- Able to decide the default length of new GCal events by changing `default_event_length`
-- Option to delete GCal events if checked off as `GCal Deleted?` column in Notion
-- Sync across _multiple calendars_ and choose which calendar you would like to sync by changing `gcal_dic`
-- Able to name the required Notion columns whatever you want and have the code work by changing `page_property`
-- Credential and OAuth consent screen with Google Calendar scope
+- Cloud secret values are resolved via:
+  - `GOOGLE_CALENDAR_CLIENT_SECRET_SSM_PATH`
+  - `TOKEN_ENCRYPTION_KEY_SSM_PATH`
+- Cloud runtime should not use plaintext `GOOGLE_CALENDAR_CLIENT_SECRET` or plaintext `TOKEN_ENCRYPTION_KEY` env vars.
+- Token JSON files under `token/` are not runtime inputs.
+- Cloud token payloads at rest in DynamoDB should remain `enc:v1:` encrypted.
 
-## Project Structure
+## Requirements
 
-```
-.
-├── assets/                    # Images referenced by this README
-├── docs/
-│   ├── deployment.md          # CI/CD workflow and deployment details
-│   └── local-dev-sync-runner.md  # Detailed local/cloud runbook
-├── Dockerfile                 # Lambda container image definition
-├── lambda_function.py         # Lambda handler (entrypoint)
-├── pyproject.toml             # Project metadata and runtime dependencies
-├── uv.lock                    # Locked dependency tree
-├── makefile                   # Lint shortcuts
-├── scripts/
-│   ├── check_lambda_deploy_workflows.sh   # CI guardrail: Lambda deploy rules
-│   └── check_no_plaintext_secrets.sh      # CI guardrail: secret scanning
-├── src/
-│   ├── main.py                # Core sync logic, CLI entrypoint
-│   ├── config/config.py       # APP_MODE cloud/local config branch
-│   ├── gcal/                  # Google Calendar service + OAuth token handling
-│   ├── notion/                # Notion service + config + token handling
-│   ├── sync/sync.py           # Bidirectional sync logic
-│   ├── user_setting/          # Date-range update helpers
-│   └── utils/                 # Logging, DynamoDB, HTTP, crypto helpers
-├── test/
-│   └── test_token_crypto.py   # Unit tests for token encryption
-├── config/
-│   └── local.notion-setting.example.json  # Safe local config template
-└── .env.local.example        # Safe local env template
-```
+- Python `>=3.11` (from `pyproject.toml`)
+- `uv`
+- Notion account + Notion integration token
+- Google account + OAuth client credentials
+- AWS account only for `APP_MODE=cloud`
 
-## Setup
+## Quick Setup
+
+Install dependencies:
 
 ```bash
-git clone https://github.com/HUIXIN-TW/NotionSyncGCal.git
-cd NotionSyncGCal
-
-# Install dependencies (requires uv: https://docs.astral.sh/uv/getting-started/installation/)
 uv sync
 ```
 
 Run tests:
 
 ```bash
-uv run python -m unittest discover test/ -v
+uv run python -m unittest discover -s test -v
 ```
+
+Run coverage:
+
+```bash
+uv run coverage run -m unittest discover -s test -v
+uv run coverage report -m
+```
+
+Coverage enforcement is configured in `.coveragerc` (`fail_under = 50`).
 
 ## Runtime Modes
 
-Runtime mode is explicit. Set `APP_MODE` instead of inferring behavior from whether a UUID exists.
+### `APP_MODE=local`
 
-- `APP_MODE=local`: no AWS required. `NOTION_TOKEN` and Google OAuth credentials are loaded from `.env.local`; Notion database/calendar/property config is loaded from `config/local.notion-setting.json`.
-- `APP_MODE=cloud`: UUID required. Config and tokens are loaded from DynamoDB tables keyed by `uuid`.
+No AWS dependency for runtime.
 
-Tokens may be plaintext or `enc:v1:` encrypted. Encrypted tokens require `TOKEN_ENCRYPTION_KEY` to match the key used to encrypt them. The old `token/` path is deprecated and is not the runtime path anymore.
+- Secrets are read from `.env.local`:
+  - `NOTION_TOKEN`
+  - `GOOGLE_CLIENT_ID`
+  - `GOOGLE_CLIENT_SECRET`
+  - `GOOGLE_REFRESH_TOKEN`
+  - `TOKEN_ENCRYPTION_KEY` only when local token values are stored as `enc:v1:` payloads
+- Structured local sync config is read from:
+  - `config/local.notion-setting.json`
 
-## Local Setup
+### `APP_MODE=cloud`
 
-Configure Notion and Google Calendar:
+Requires a `uuid` and AWS access.
 
-- Duplicate the [Notion Template](https://huixin.notion.site/aa639e48cfee4216976756f33cf57c8e?v=6db9353f3bc54029807c539ffc3dfdb4).
-- Set up a Notion integration and connect it to your database.
-- Enable the Google Calendar API and create OAuth credentials.
-- Create local files from the safe examples:
+- Loads user config and tokens from DynamoDB tables (UUID-keyed):
+  - user config table
+  - Google OAuth token table
+  - Notion OAuth token table
+  - sync logs table
+- Lambda environment includes SSM parameter paths:
+  - `GOOGLE_CALENDAR_CLIENT_SECRET_SSM_PATH`
+  - `TOKEN_ENCRYPTION_KEY_SSM_PATH`
+- Runtime resolves SSM SecureString values with decryption.
+- Runtime does not use plaintext `GOOGLE_CALENDAR_CLIENT_SECRET` or plaintext `TOKEN_ENCRYPTION_KEY` env vars.
+- Runtime does not use local `token/*.json` files.
 
-  ```bash
-  cp .env.local.example .env.local
-  cp config/local.notion-setting.example.json config/local.notion-setting.json
-  ```
+## Local Development
 
-- Fill `.env.local` with `APP_MODE=local`, `NOTION_TOKEN`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, and `GOOGLE_REFRESH_TOKEN`. Optional `GOOGLE_TOKEN_URI` and `GOOGLE_SCOPES` can override defaults.
-- Fill `config/local.notion-setting.json` with your Notion database ID, calendar mapping (`gcal_dic`), and Notion page property mapping (`page_property`).
-
-For detailed local and cloud runner usage, see [docs/local-dev-sync-runner.md](docs/local-dev-sync-runner.md).
-
-### Basic Synchronization
-
-```bash
-uv run python src/main.py
-```
-
-### Synchronization with Specific Date Range
-
-```bash
-uv run python src/main.py -t <look_back_days> <look_ahead_days>
-```
-
-`<look_back_days>`: Number of days to look back from the current date.
-
-`<look_ahead_days>`: Number of days to look forward from the current date.
-
-### Force Sync Options
-
-#### Sync from Google Calendar to Notion
+Create local files from examples:
 
 ```bash
-uv run python src/main.py -g <look_back_days> <look_ahead_days>
+cp .env.local.example .env.local
+cp config/local.notion-setting.example.json config/local.notion-setting.json
 ```
 
-#### Sync from Notion to Google Calendar
+Run sync locally with explicit mode:
 
 ```bash
-uv run python src/main.py -n <look_back_days> <look_ahead_days>
+APP_MODE=local uv run python src/main.py
+APP_MODE=local uv run python src/main.py -t <goback_days> <goforward_days>
+APP_MODE=local uv run python src/main.py -g <goback_days> <goforward_days>
+APP_MODE=local uv run python src/main.py -n <goback_days> <goforward_days>
 ```
 
-## AWS Lambda Integration
+CLI date range flags (`-t`, `-g`, `-n`) are runtime in-memory overrides only. They do not modify `config/local.notion-setting.json`.
 
-### How It Works
-
-- Stores user config and OAuth tokens in DynamoDB tables keyed by `uuid`.
-- Lambda reads config/tokens at runtime using the `uuid` provided by your trigger payload (for example, an SQS message body).
-- Token refreshes and sync summaries are written back to DynamoDB (including the sync log table with TTL).
-- Lambda must run with `APP_MODE=cloud`.
-
-### Lambda Entrypoint
-
-`lambda_function.py` is the Docker `CMD` entrypoint. It dispatches incoming events:
-
-- **SQS**: reads `uuid` from `Records[].body`, calls `src/main.main(uuid)` per record.
-- **EventBridge**: reads `uuid` from the event detail, calls `src/main.main(uuid)`.
-- **API**: placeholder for future test-connection use.
-
-### Environment Variables
-
-Set the following variables in your Lambda configuration or `.env` file:
+Generate a local `GOOGLE_REFRESH_TOKEN` with:
 
 ```bash
-export APP_MODE='cloud'
-export APP_STAGE='dev'
-export APP_REGION=''
-export AWS_REGION=''
-export DYNAMODB_USER_TABLE=''
-export DYNAMODB_SYNC_LOGS_TABLE=''
-export DYNAMODB_GOOGLE_OAUTH_TOKEN_TABLE=''
-export DYNAMODB_NOTION_OAUTH_TOKEN_TABLE=''
-export GOOGLE_CALENDAR_CLIENT_ID=''
-export GOOGLE_CALENDAR_CLIENT_SECRET=''
-export TOKEN_ENCRYPTION_KEY=''  # required when DynamoDB tokens use enc:v1: encryption
+uv run python scripts/generate-google-refresh-token.py --client-id <client_id> --client-secret <client_secret>
 ```
 
-Cloud Lambda does not use local-mode variables such as `NOTION_TOKEN`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, or `GOOGLE_REFRESH_TOKEN`. It loads user config and tokens from DynamoDB by UUID. Note: When using Lambda, no CLI arguments are passed. Configure user config values such as `goback_days` and `goforward_days` in DynamoDB.
+Do not commit `.env.local`.
 
-### IAM Permissions Required for Lambda Role
+## Cloud Deployment
 
-```json
-{
-  "Effect": "Allow",
-  "Action": ["dynamodb:GetItem", "dynamodb:UpdateItem", "dynamodb:PutItem"],
-  "Resource": [
-    "arn:aws:dynamodb:<region>:<account-id>:table/<DYNAMODB_USER_TABLE>",
-    "arn:aws:dynamodb:<region>:<account-id>:table/<DYNAMODB_SYNC_LOGS_TABLE>",
-    "arn:aws:dynamodb:<region>:<account-id>:table/<DYNAMODB_GOOGLE_OAUTH_TOKEN_TABLE>",
-    "arn:aws:dynamodb:<region>:<account-id>:table/<DYNAMODB_NOTION_OAUTH_TOKEN_TABLE>"
-  ]
-}
-```
-
-### Deploying to Lambda
-
-Deployment is handled by GitHub Actions workflows. See [docs/deployment.md](docs/deployment.md) for full details.
-
-Current workflow split:
-
-- Dev push -> `.github/workflows/deploy-dev-lambda.yml` -> build/push dev image -> deploy dev Lambda.
-- Master push -> `.github/workflows/release-semantic.yml` -> semantic-release only.
-- Production image publish -> deferred until production infrastructure, IAM, and cross-account ECR access are ready.
-- Production Lambda deploy -> `.github/workflows/disabled/deploy-prd-lambda.yml`, disabled until production infrastructure and IAM are ready.
-
-## Testing
-
-### Run Unit Tests
+Required Lambda environment shape:
 
 ```bash
-uv run python -m pytest test/
+APP_MODE=cloud
+APP_STAGE=dev
+APP_REGION=ap-southeast-2
+DYNAMODB_USER_TABLE=...
+DYNAMODB_SYNC_LOGS_TABLE=...
+DYNAMODB_GOOGLE_OAUTH_TOKEN_TABLE=...
+DYNAMODB_NOTION_OAUTH_TOKEN_TABLE=...
+GOOGLE_CALENDAR_CLIENT_ID=...
+GOOGLE_CALENDAR_CLIENT_SECRET_SSM_PATH=/dev/notica/google_calendar_client_secret
+TOKEN_ENCRYPTION_KEY_SSM_PATH=/dev/notica/token_encryption_key
 ```
 
-Or using the standard library runner:
+IAM for Lambda execution role should include least privilege:
 
-```bash
-uv run python -m unittest discover test/
-```
+- DynamoDB read/write permissions for exact tables and required indexes.
+- SSM permissions:
+  - `ssm:GetParameter` for runtime single-parameter secret resolution.
+  - `ssm:GetParameters` only if batch secret lookup is introduced.
+  - Permissions must be scoped to exact parameter ARNs.
+- `kms:Decrypt` only if those SecureString parameters use a customer-managed KMS key.
 
-### Local Cloud Runner
+Avoid wildcard permissions such as `ssm:*`.
 
-Run local code with dev AWS-backed config by UUID:
+Detailed deployment workflow behavior is documented in `docs/deployment.md`.
+
+## Local Cloud Runner
+
+Run local code with dev cloud configuration:
 
 ```bash
 ./scripts/local-run-dev-sync.sh --mode cloud --uuid <uuid>
 ```
 
-You should see log output from both Notion and Google token readers, calendar events fetched, and sync logs.
-
-### Sync Response Payload
-
-A successful sync always returns `statusCode: 200`. Per-task errors are collected and returned in the `errors` list rather than stopping the entire sync.
-
-```json
-{
-  "statusCode": 200,
-  "body": {
-    "status": "sync_success",
-    "message": {
-      "summary": { "google_event_count": 5, "notion_task_count": 5 },
-      "trigger_time": "2024-01-01T00:00:00.000Z",
-      "errors": [
-        {
-          "notion_task_id": "page-uuid-1",
-          "notion_task_name": "Weekly Sync Meeting",
-          "gcal_event_id": "gcal-event-id-1",
-          "gcal_event_title": "Weekly Sync Meeting",
-          "action": "update_gcal",
-          "error": "APIResponseError: ..."
-        },
-        {
-          "notion_task_id": null,
-          "notion_task_name": null,
-          "gcal_event_id": "gcal-event-id-2",
-          "gcal_event_title": "Team Standup",
-          "action": "create_notion",
-          "error": "Skipped: GCal event description exceeds Notion's 2000-character rich_text limit (4469 chars). Syncing this event would corrupt data integrity."
-        }
-      ]
-    }
-  }
-}
-```
-
-**`action` values:**
-
-| Value           | Description                                                         |
-| --------------- | ------------------------------------------------------------------- |
-| `create_gcal`   | Creating a new GCal event from a Notion task                        |
-| `delete_gcal`   | Deleting a GCal event (and Notion task) from a Notion deletion flag |
-| `update_gcal`   | Updating GCal event because Notion task is newer                    |
-| `update_notion` | Updating Notion task because GCal event is newer                    |
-| `create_notion` | Creating a new Notion task from a GCal event                        |
-
-`notion_task_id` and `notion_task_name` are `null` for `create_notion` actions (no Notion page exists yet).
-`gcal_event_id` and `gcal_event_title` are `null` for `create_gcal` actions (no GCal event exists yet).
-
-## Monitoring with AWS CloudWatch
-
-View logs in CloudWatch:
+Run local-only mode:
 
 ```bash
-aws logs describe-log-streams \
-  --log-group-name /aws/lambda/<lambda-function-name> \
-  --order-by LastEventTime \
-  --descending \
-  --limit 1
-
-aws logs get-log-events \
-  --log-group-name /aws/lambda/<lambda-function-name> \
-  --log-stream-name <log-stream-name>
+./scripts/local-run-dev-sync.sh --mode local
 ```
 
-### Setting Up CloudWatch Alarms
+Notes:
 
-To monitor your Lambda function effectively, you can set up CloudWatch alarms to notify you of any issues or performance metrics that exceed your thresholds.
+- Cloud runner loads dev Lambda env configuration and resolves SSM values using your current AWS credentials.
+- Local runner reads `.env.local`.
+- Runner output is designed not to print sensitive secret values.
 
-1. Go to the CloudWatch console.
-2. Select "Alarms" from the left navigation pane.
-3. Click on "Create Alarm".
-4. Choose the metric you want to monitor (e.g., "Errors", "Duration").
-5. Set the conditions for the alarm.
-6. Configure actions to notify you (e.g., via SNS).
-7. Review and create the alarm.
+## Project Structure
 
-![alt text](/assets/cloudwatch_alarms.png)
-
-### Setting Up CloudWatch Dashboard
-
-To visualize your Lambda function's performance, you can create a CloudWatch dashboard:
-
-1. Go to the CloudWatch console.
-2. Select "Dashboards" from the left navigation pane.
-3. Click on "Create dashboard".
-4. Choose a name for your dashboard.
-5. Add widgets to visualize metrics like "Invocations", "Errors", "Duration", etc.
-6. Customize the layout and save the dashboard.
-
-![alt text](/assets/cloudwatch_dashboard.png)
-
-## Cost-Effective Setup
-
-This prevents your function from being invoked in parallel, and guarantees:
-
-- Only one sync runs at a time
-- Any overlapping triggers will be throttled instead of stacking
-
-```bash
-aws lambda put-function-concurrency \
-  --function-name notion-sync-gcal \
-  --reserved-concurrent-executions 1
+```text
+.
+├── .coveragerc
+├── .env.local.example
+├── config/
+│   └── local.notion-setting.example.json
+├── docs/
+│   ├── deployment.md
+│   └── local-dev-sync-runner.md
+├── lambda_function.py
+├── pyproject.toml
+├── scripts/
+│   ├── generate-google-refresh-token.py
+│   ├── local-run-dev-sync.sh
+│   └── local_invoke_sync_lambda.py
+├── src/
+│   ├── config/config.py
+│   ├── gcal/
+│   ├── notion/
+│   ├── sync/sync.py
+│   └── utils/
+│       ├── ssm_secrets.py
+│       └── token_crypto.py
+└── test/
 ```
 
-By default, CloudWatch keeps logs forever = `$$$` long-term. Set a retention policy to keep logs for 7 days.
+## Security and Config Handling
 
-```bash
-aws logs put-retention-policy \
-  --log-group-name /aws/lambda/notion-sync-gcal \
-  --retention-in-days 7
-```
+- Local secrets (`.env.local`) are gitignored.
+- `config/local.notion-setting.json` is gitignored.
+- `token/` is deprecated and ignored.
+- Cloud secret inputs are SSM path env vars, not plaintext secret env values.
+- Cloud token payloads in DynamoDB should stay `enc:v1:` encrypted at rest.
+- Do not log tokens or secret values.
 
-## Secrets and Config Handling
+## CI and Deployment Workflows
 
-Local mode uses:
+- Dev deploy: `.github/workflows/deploy-dev-lambda.yml`
+  - Trigger: push to `dev`
+  - Runs validation (format/lint/unit tests/coverage/secret checks/workflow guardrails) before deploy
+  - Builds and pushes image, then updates dev Lambda
+- Release: `.github/workflows/release-semantic.yml`
+  - Trigger: push to `master`
+  - Runs validation before semantic release
+  - Creates Git tag and GitHub Release only
+- Production Lambda deploy workflow exists under `.github/workflows/disabled/` and is currently disabled/manual.
 
-- `.env.local` for `NOTION_TOKEN` and Google OAuth env vars.
-- `config/local.notion-setting.json` for Notion database, calendar, date range, and page property mapping.
+## Further Documentation
 
-Cloud mode uses DynamoDB by UUID for config and tokens. Plaintext and `enc:v1:` encrypted tokens are supported; encrypted tokens require the matching `TOKEN_ENCRYPTION_KEY`. The `token/` directory is deprecated, gitignored, and must not be reintroduced as a runtime path.
-
-## Tips for First-Time Users
-
-- Start with a small date range:
-
-  ```json
-  "goback_days": 1,
-  "goforward_days": 2
-  ```
-
-- Test the tool locally before deploying to Lambda.
-- Use the provided Notion template to avoid configuration issues.
-
-Happy syncing! ✨
+- `docs/local-dev-sync-runner.md`: detailed local/cloud runner behavior and troubleshooting
+- `docs/deployment.md`: CI/CD and environment-level deployment policy

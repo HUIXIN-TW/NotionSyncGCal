@@ -2,11 +2,13 @@ import json
 from datetime import datetime, timezone
 from typing import Any, Dict, Optional
 
-from .dynamodb_utils import save_sync_logs  # noqa: E402
-
 MAX_SYNC_LOG_ERRORS = 3
 MAX_SYNC_LOG_ERROR_TEXT_LENGTH = 500
 MAX_SYNC_LOG_TITLE_LENGTH = 160
+
+# Sentinel used as the uuid field on SQS batch-aggregate summaries.
+# It is never a real user UUID and must never be written to DynamoDB.
+_BATCH_SUMMARY_UUID = "batch"
 
 
 def truncate_text(value: Any, max_length: int) -> Any:
@@ -60,6 +62,12 @@ def sanitize_sync_log_payload(payload: Dict[str, Any]) -> Dict[str, Any]:
     return sanitized_payload
 
 
+def _save_sync_logs(uuid: str, payload: Dict[str, Any]) -> None:
+    from .dynamodb_utils import save_sync_logs
+
+    save_sync_logs(uuid, payload)
+
+
 def process_and_log_sync_result(
     logger_obj,
     sync_result: Dict[str, Any],
@@ -100,9 +108,10 @@ def process_and_log_sync_result(
         }
     # Persist summary to DynamoDB; don't fail the handler on logging errors
     try:
-        # Only log individual user syncs, not batch summaries
-        if uuid and uuid != "batch":
-            save_sync_logs(uuid, sanitize_sync_log_payload(payload))
+        # _BATCH_SUMMARY_UUID is a sentinel for SQS aggregate results — never a real user UUID.
+        # Batch summaries must never be written to DynamoDB as user sync logs.
+        if uuid and uuid != _BATCH_SUMMARY_UUID:
+            _save_sync_logs(uuid, sanitize_sync_log_payload(payload))
     except Exception:
         logger_obj.exception("Failed to persist sync summary to DynamoDB")
     return payload
@@ -176,7 +185,7 @@ def process_sqs_records(
         logger_obj=logger_obj,
         sync_result=batch_sync_result,
         context=context,
-        uuid="batch",
+        uuid=_BATCH_SUMMARY_UUID,
         lambda_start_time=lambda_start_time,
         trigger_name="sqs_batch",
         extra={

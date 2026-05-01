@@ -7,10 +7,12 @@ from google.auth.exceptions import RefreshError
 # Ensure this module can import sibling packages when run as a script
 sys.path.append(str(Path(__file__).resolve().parent))
 
-from user_setting import update_local_notion_setting  # noqa: E402
 from config.config import generate_config  # noqa: E402
 from notion.notion_service import NotionService  # noqa: E402
-from notion.notion_config import NotionConfig  # noqa: E402
+from notion.notion_config import (  # noqa: E402
+    NotionConfig,
+    apply_date_range,
+)
 from notion.notion_token import NotionToken  # noqa: E402
 from gcal.gcal_token import GoogleToken  # noqa: E402
 from gcal.gcal_service import GoogleService  # noqa: E402
@@ -47,6 +49,18 @@ def _parse_args(argv: list[str] | None = None):
         help="Force: Update Google Calendar from Notion Task [start end]",
     )
     return parser.parse_args(argv)
+
+
+def _apply_date_range_override(
+    user_setting: dict,
+    goback_days: int,
+    goforward_days: int,
+    logger,
+) -> None:
+    apply_date_range(user_setting, goback_days, goforward_days)
+    logger.debug(
+        "Applied in-memory CLI date range override: " f"goback_days={goback_days}, goforward_days={goforward_days}"
+    )
 
 
 def main(uuid: str | None = None) -> dict:
@@ -114,7 +128,12 @@ def main(uuid: str | None = None) -> dict:
 
         if args.timestamp:
             logger.debug(f"▶ Syncing with timestamp range: {args.timestamp}")
-            update_local_notion_setting.update_date_range(args.timestamp[0], args.timestamp[1])
+            _apply_date_range_override(
+                notion_config,
+                args.timestamp[0],
+                args.timestamp[1],
+                logger,
+            )
             from sync import sync
 
             res = sync.synchronize_notion_and_google_calendar(
@@ -128,22 +147,32 @@ def main(uuid: str | None = None) -> dict:
 
         if args.google:
             logger.debug(f"▶ Forcing update: Notion from Google for {args.google}")
-            update_local_notion_setting.update_date_range(args.google[0], args.google[1])
+            _apply_date_range_override(
+                notion_config,
+                args.google[0],
+                args.google[1],
+                logger,
+            )
             from sync import sync
 
             res = sync.force_update_notion_tasks_by_google_event_and_ignore_time(
-                user_setting=notion_config.user_setting,
+                user_setting=notion_config,
                 notion_service=notion_service,
                 google_service=google_service,
             )
 
         if args.notion:
             logger.debug(f"▶ Forcing update: Google from Notion for {args.notion}")
-            update_local_notion_setting.update_date_range(args.notion[0], args.notion[1])
+            _apply_date_range_override(
+                notion_config,
+                args.notion[0],
+                args.notion[1],
+                logger,
+            )
             from sync import sync
 
             res = sync.force_update_google_event_by_notion_task_and_ignore_time(
-                user_setting=notion_config.user_setting,
+                user_setting=notion_config,
                 notion_service=notion_service,
                 google_service=google_service,
             )

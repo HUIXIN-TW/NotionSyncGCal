@@ -4,43 +4,45 @@ from datetime import datetime, timezone
 import boto3
 from utils.token_crypto import decrypt_token, encrypt_token
 
-USERS_TABLE = os.getenv("DYNAMODB_USER_TABLE")
-LOGS_TABLE = os.getenv("DYNAMODB_SYNC_LOGS_TABLE")
-GOOGLE_OAUTH_TOKEN_TABLE = os.getenv("DYNAMODB_GOOGLE_OAUTH_TOKEN_TABLE")
-NOTION_OAUTH_TOKEN_TABLE = os.getenv("DYNAMODB_NOTION_OAUTH_TOKEN_TABLE")
-REGION = os.getenv("APP_REGION")
 
-dynamodb = boto3.resource("dynamodb", region_name=REGION)
+def _get_dynamodb():
+    return boto3.resource("dynamodb", region_name=os.getenv("APP_REGION"))
 
 
 def _get_users_table():
-    if not USERS_TABLE:
+    users_table = os.getenv("DYNAMODB_USER_TABLE")
+    if not users_table:
         raise ValueError("DYNAMODB_USER_TABLE env var is not set")
-    users_tbl = dynamodb.Table(USERS_TABLE)
+    users_tbl = _get_dynamodb().Table(users_table)
     return users_tbl
 
 
 def _get_logs_tables():
-    if not USERS_TABLE:
+    users_table = os.getenv("DYNAMODB_USER_TABLE")
+    logs_table = os.getenv("DYNAMODB_SYNC_LOGS_TABLE")
+    if not users_table:
         raise ValueError("DYNAMODB_USER_TABLE env var is not set")
-    if not LOGS_TABLE:
+    if not logs_table:
         raise ValueError("DYNAMODB_SYNC_LOGS_TABLE env var is not set")
-    users_tbl = dynamodb.Table(USERS_TABLE)
-    logs_tbl = dynamodb.Table(LOGS_TABLE)
+    dynamodb = _get_dynamodb()
+    users_tbl = dynamodb.Table(users_table)
+    logs_tbl = dynamodb.Table(logs_table)
     return users_tbl, logs_tbl
 
 
 def _get_google_tables():
-    if not GOOGLE_OAUTH_TOKEN_TABLE:
+    google_oauth_token_table = os.getenv("DYNAMODB_GOOGLE_OAUTH_TOKEN_TABLE")
+    if not google_oauth_token_table:
         raise ValueError("DYNAMODB_GOOGLE_OAUTH_TOKEN_TABLE env var is not set")
-    google_oauth_token_tbl = dynamodb.Table(GOOGLE_OAUTH_TOKEN_TABLE)
+    google_oauth_token_tbl = _get_dynamodb().Table(google_oauth_token_table)
     return google_oauth_token_tbl
 
 
 def _get_notion_tables():
-    if not NOTION_OAUTH_TOKEN_TABLE:
+    notion_oauth_token_table = os.getenv("DYNAMODB_NOTION_OAUTH_TOKEN_TABLE")
+    if not notion_oauth_token_table:
         raise ValueError("DYNAMODB_NOTION_OAUTH_TOKEN_TABLE env var is not set")
-    notion_oauth_token_tbl = dynamodb.Table(NOTION_OAUTH_TOKEN_TABLE)
+    notion_oauth_token_tbl = _get_dynamodb().Table(notion_oauth_token_table)
     return notion_oauth_token_tbl
 
 

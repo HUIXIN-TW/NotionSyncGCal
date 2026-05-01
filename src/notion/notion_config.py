@@ -16,6 +16,22 @@ _REQUIRED_LOCAL_KEYS = frozenset(
 )
 
 
+def apply_date_range(setting, goback_days, goforward_days):
+    """Apply date-window fields to an already-loaded Notion setting."""
+    today = date.today()
+    setting["goback_days"] = goback_days
+    setting["goforward_days"] = goforward_days
+    setting["after_date"] = (today + timedelta(days=-int(goback_days))).strftime("%Y-%m-%d")
+    setting["before_date"] = (today + timedelta(days=int(goforward_days))).strftime("%Y-%m-%d")
+    setting["google_timemin"] = (today + timedelta(days=-int(goback_days))).strftime(
+        f"%Y-%m-%dT%H:%M:%S{setting['timecode']}"
+    )
+    setting["google_timemax"] = (today + timedelta(days=int(goforward_days))).strftime(
+        f"%Y-%m-%dT%H:%M:%S{setting['timecode']}"
+    )
+    return setting
+
+
 class SettingError(Exception):
     """Custom exception to handle setting errors in the Notion class."""
 
@@ -67,20 +83,9 @@ class NotionConfig:
         try:
             self.logger.debug(f"Formatting Notion settings: type={type(setting).__name__}")
             # Date range settings
-            setting["after_date"] = (date.today() + timedelta(days=-int(setting["goback_days"]))).strftime("%Y-%m-%d")
-            setting["before_date"] = (date.today() + timedelta(days=int(setting["goforward_days"]))).strftime(
-                "%Y-%m-%d"
-            )
+            apply_date_range(setting, setting["goback_days"], setting["goforward_days"])
             setting.setdefault("notion_api_version", "2022-06-28")
             setting.setdefault("data_source_id", None)
-
-            # ISO format for Google Calendar API
-            setting["google_timemin"] = (date.today() + timedelta(days=-int(setting["goback_days"]))).strftime(
-                f"%Y-%m-%dT%H:%M:%S{setting['timecode']}"
-            )
-            setting["google_timemax"] = (date.today() + timedelta(days=int(setting["goforward_days"]))).strftime(
-                f"%Y-%m-%dT%H:%M:%S{setting['timecode']}"
-            )
 
             # Clean Page properties
             setting["page_property"] = setting["page_property"][0]

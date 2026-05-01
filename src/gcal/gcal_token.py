@@ -3,7 +3,8 @@ from datetime import datetime, timezone
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 from google.auth.exceptions import RefreshError
-from utils.token_crypto import TokenCryptoError, decrypt_token_if_encrypted
+from utils.ssm_secrets import SSMSecretError, get_ssm_parameter
+from utils.token_crypto import TokenCryptoError, decrypt_token_if_encrypted, encrypt_token
 
 _DEFAULT_TOKEN_URI = "https://oauth2.googleapis.com/token"
 _DEFAULT_SCOPES = [
@@ -54,6 +55,15 @@ class GoogleToken:
                     refresh_token = decrypt_token_if_encrypted(data.get("refreshToken"))
                 except TokenCryptoError as e:
                     raise SettingError(f"Failed to decrypt encrypted Google OAuth token: {e}") from e
+                client_secret_ssm_path = os.environ.get("GOOGLE_CALENDAR_CLIENT_SECRET_SSM_PATH", "").strip()
+                if not client_secret_ssm_path:
+                    raise SettingError(
+                        "GOOGLE_CALENDAR_CLIENT_SECRET_SSM_PATH env var is required but not set in APP_MODE=cloud."
+                    )
+                try:
+                    client_secret = get_ssm_parameter(client_secret_ssm_path)
+                except SSMSecretError as e:
+                    raise SettingError(f"Failed to resolve Google client secret from SSM: {e}") from e
                 credentials_data = {
                     "token": access_token,
                     "refresh_token": refresh_token,
@@ -61,7 +71,7 @@ class GoogleToken:
                     "scopes": list(_DEFAULT_SCOPES),
                     "expiry": self._convert_google_expiry_date_format(data.get("expiryDate")),
                     "client_id": os.environ.get("GOOGLE_CALENDAR_CLIENT_ID"),
-                    "client_secret": os.environ.get("GOOGLE_CALENDAR_CLIENT_SECRET"),
+                    "client_secret": client_secret,
                 }
                 credentials = Credentials(**credentials_data)
                 self._verify_credentials(credentials)
@@ -135,10 +145,12 @@ class GoogleToken:
 
                 expiry_str = self._convert_notica_expiry_date_format(credentials.expiry)
                 updated_str = expiry_str
+                encrypted_access_token = encrypt_token(credentials.token)
+                encrypted_refresh_token = encrypt_token(credentials.refresh_token)
                 update_google_token_by_uuid(
                     self.config.get("uuid"),
-                    credentials.token,
-                    credentials.refresh_token,
+                    encrypted_access_token,
+                    encrypted_refresh_token,
                     expiry_str,
                     updated_str,
                 )

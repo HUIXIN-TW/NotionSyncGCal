@@ -15,8 +15,9 @@ uv sync
 ./scripts/local-run-dev-sync.sh --mode cloud --uuid <uuid>
 
 # Run tests
-uv run python -m pytest test/
 uv run python -m unittest discover test/ -v
+uv run coverage run -m unittest discover -s test -v
+uv run coverage report -m
 
 # Lint
 make lint
@@ -37,9 +38,9 @@ prettier --write .
 
 Do not infer mode from UUID. Do not fallback to `token/*.json`. Do not commit secrets.
 
-Local secrets live in `.env.local`: `NOTION_TOKEN`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, and `GOOGLE_REFRESH_TOKEN`. Cloud uses DynamoDB-backed config/tokens and `GOOGLE_CALENDAR_CLIENT_ID` / `GOOGLE_CALENDAR_CLIENT_SECRET`.
+Local secrets live in `.env.local`: `NOTION_TOKEN`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, and `GOOGLE_REFRESH_TOKEN`. Cloud uses DynamoDB-backed config/tokens, `GOOGLE_CALENDAR_CLIENT_ID`, `GOOGLE_CALENDAR_CLIENT_SECRET_SSM_PATH`, and `TOKEN_ENCRYPTION_KEY_SSM_PATH`.
 
-Tokens may be plaintext or `enc:v1:` encrypted. Use `src/utils/token_crypto.py:decrypt_token_if_encrypted()` at token read boundaries; `decrypt_token()` stays strict. Encrypted tokens require matching `TOKEN_ENCRYPTION_KEY`.
+Tokens may be plaintext or `enc:v1:` encrypted. Use `src/utils/token_crypto.py:decrypt_token_if_encrypted()` at token read boundaries; `decrypt_token()` stays strict. In cloud mode, token encryption keys are resolved from SSM via `TOKEN_ENCRYPTION_KEY_SSM_PATH`; local mode may still use plaintext `TOKEN_ENCRYPTION_KEY`.
 
 All downstream services (`NotionToken`, `NotionConfig`, `GoogleToken`, `GoogleService`) accept the config dict and handle the active mode internally.
 
@@ -82,7 +83,7 @@ Four tables, all keyed by `uuid` (set via env vars):
 
 ### Token encryption
 
-Notion and Google OAuth tokens may use `src/utils/token_crypto.py`. The `enc:v1:` prefix signals an encrypted value; the crypto key comes from `TOKEN_ENCRYPTION_KEY` at decrypt time.
+Notion and Google OAuth tokens may use `src/utils/token_crypto.py`. The `enc:v1:` prefix signals an encrypted value; in cloud mode the crypto key comes from SSM (`TOKEN_ENCRYPTION_KEY_SSM_PATH`), while local mode can read `TOKEN_ENCRYPTION_KEY`.
 
 ## Deployment
 

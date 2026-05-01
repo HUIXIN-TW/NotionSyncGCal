@@ -211,6 +211,10 @@ APP_MODE=cloud
 The local cloud runner also exports `APP_MODE=cloud` before invoking the helper.
 
 Cloud Lambda should not require local-mode variables such as `NOTION_TOKEN`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, or `GOOGLE_REFRESH_TOKEN`. It uses DynamoDB-backed config/tokens and cloud Google OAuth client env vars instead.
+Cloud mode also requires:
+- `GOOGLE_CALENDAR_CLIENT_SECRET_SSM_PATH`
+- `TOKEN_ENCRYPTION_KEY_SSM_PATH`
+Cloud mode does not use plaintext `GOOGLE_CALENDAR_CLIENT_SECRET` or plaintext `TOKEN_ENCRYPTION_KEY`.
 
 ## Verify Ignored Local Files
 
@@ -270,7 +274,8 @@ If sync fails with a Google refresh error, the local `GOOGLE_REFRESH_TOKEN` may 
 
 If sync fails with `Failed to decrypt Notion token` or `Failed to decrypt encrypted Google OAuth token`, check:
 
-- `TOKEN_ENCRYPTION_KEY` is set when the token starts with `enc:v1:`.
+- Local mode: `TOKEN_ENCRYPTION_KEY` is set when the token starts with `enc:v1:`.
+- Cloud mode: `TOKEN_ENCRYPTION_KEY_SSM_PATH` points to a valid SecureString parameter.
 - The key is the same 64-character hex key used to encrypt the token.
 - The encrypted payload was copied without truncation or extra whitespace.
 

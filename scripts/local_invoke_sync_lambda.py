@@ -96,9 +96,9 @@ def _invoke_cloud(uuid: str, logger: logging.Logger):
             "DYNAMODB_SYNC_LOGS_TABLE",
             "DYNAMODB_GOOGLE_OAUTH_TOKEN_TABLE",
             "DYNAMODB_NOTION_OAUTH_TOKEN_TABLE",
-            "TOKEN_ENCRYPTION_KEY",
+            "TOKEN_ENCRYPTION_KEY_SSM_PATH",
             "GOOGLE_CALENDAR_CLIENT_ID",
-            "GOOGLE_CALENDAR_CLIENT_SECRET",
+            "GOOGLE_CALENDAR_CLIENT_SECRET_SSM_PATH",
             "APP_REGION",
         ]
     )

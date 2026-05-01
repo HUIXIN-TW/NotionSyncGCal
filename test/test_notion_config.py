@@ -1,5 +1,4 @@
 import copy
-import os
 import sys
 import json
 import tempfile
@@ -9,9 +8,12 @@ from unittest.mock import MagicMock, patch
 
 SRC_ROOT = Path(__file__).resolve().parents[1] / "src"
 sys.path.insert(0, str(SRC_ROOT))
-os.environ.setdefault("APP_REGION", "ap-southeast-2")
 
-from notion.notion_config import NotionConfig, SettingError  # noqa: E402
+from notion.notion_config import (  # noqa: E402
+    NotionConfig,
+    SettingError,
+    apply_date_range,
+)
 
 VALID_LOCAL_CONFIG = {
     "database_id": "test-db-id",
@@ -115,6 +117,23 @@ class TestNotionConfigLocalMode(unittest.TestCase):
         with patch("utils.dynamodb_utils.get_notion_config_by_uuid") as mock_db:
             NotionConfig(self._local_config(), _make_logger())
             mock_db.assert_not_called()
+
+
+class TestDateRangeOverride(unittest.TestCase):
+    def test_apply_date_range_updates_in_memory_setting_only(self):
+        setting = copy.deepcopy(VALID_LOCAL_CONFIG)
+
+        result = apply_date_range(setting, 5, 14)
+
+        self.assertIs(result, setting)
+        self.assertEqual(setting["goback_days"], 5)
+        self.assertEqual(setting["goforward_days"], 14)
+        self.assertIn("after_date", setting)
+        self.assertIn("before_date", setting)
+        self.assertIn("google_timemin", setting)
+        self.assertIn("google_timemax", setting)
+        self.assertTrue(setting["google_timemin"].endswith("+08:00"))
+        self.assertTrue(setting["google_timemax"].endswith("+08:00"))
 
 
 class TestNotionConfigCloudMode(unittest.TestCase):
