@@ -4,12 +4,8 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-# Add src/ to sys.path so config.config and its transitive imports resolve.
-# dynamodb_utils.py calls boto3.resource() at module level — set a dummy APP_REGION
-# so boto3 does not raise NoRegionError when the module is first imported.
 SRC_ROOT = Path(__file__).resolve().parents[1] / "src"
 sys.path.insert(0, str(SRC_ROOT))
-os.environ.setdefault("APP_REGION", "ap-southeast-2")
 
 from config.config import generate_config, ConfigError  # noqa: E402
 

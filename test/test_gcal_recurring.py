@@ -12,7 +12,6 @@ Covers:
 - No N+1 Notion queries per recurring instance
 """
 
-import os
 import sys
 import unittest
 from pathlib import Path
@@ -20,11 +19,6 @@ from unittest.mock import MagicMock, patch
 
 SRC_ROOT = Path(__file__).resolve().parents[1] / "src"
 sys.path.insert(0, str(SRC_ROOT))
-
-# dynamodb_utils.py calls boto3.resource() at module level and requires APP_REGION.
-# Set a dummy value so importing sync.sync (which transitively imports dynamodb_utils)
-# does not raise NoRegionError in test environments.
-os.environ.setdefault("APP_REGION", "ap-southeast-2")
 
 from gcal.gcal_service import GoogleService  # noqa: E402
 from notion.notion_service import NotionService  # noqa: E402

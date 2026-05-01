@@ -1,5 +1,4 @@
 import copy
-import os
 import sys
 import unittest
 from pathlib import Path
@@ -7,7 +6,6 @@ from unittest.mock import MagicMock, patch
 
 SRC_ROOT = Path(__file__).resolve().parents[1] / "src"
 sys.path.insert(0, str(SRC_ROOT))
-os.environ.setdefault("APP_REGION", "ap-southeast-2")
 
 import main as main_module  # noqa: E402
 

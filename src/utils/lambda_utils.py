@@ -2,8 +2,6 @@ import json
 from datetime import datetime, timezone
 from typing import Any, Dict, Optional
 
-from .dynamodb_utils import save_sync_logs  # noqa: E402
-
 MAX_SYNC_LOG_ERRORS = 3
 MAX_SYNC_LOG_ERROR_TEXT_LENGTH = 500
 MAX_SYNC_LOG_TITLE_LENGTH = 160
@@ -64,6 +62,12 @@ def sanitize_sync_log_payload(payload: Dict[str, Any]) -> Dict[str, Any]:
     return sanitized_payload
 
 
+def _save_sync_logs(uuid: str, payload: Dict[str, Any]) -> None:
+    from .dynamodb_utils import save_sync_logs
+
+    save_sync_logs(uuid, payload)
+
+
 def process_and_log_sync_result(
     logger_obj,
     sync_result: Dict[str, Any],
@@ -107,7 +111,7 @@ def process_and_log_sync_result(
         # _BATCH_SUMMARY_UUID is a sentinel for SQS aggregate results — never a real user UUID.
         # Batch summaries must never be written to DynamoDB as user sync logs.
         if uuid and uuid != _BATCH_SUMMARY_UUID:
-            save_sync_logs(uuid, sanitize_sync_log_payload(payload))
+            _save_sync_logs(uuid, sanitize_sync_log_payload(payload))
     except Exception:
         logger_obj.exception("Failed to persist sync summary to DynamoDB")
     return payload

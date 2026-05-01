@@ -1,5 +1,4 @@
 import json
-import os
 import sys
 import unittest
 from datetime import datetime, timezone
@@ -8,9 +7,8 @@ from unittest.mock import MagicMock, patch
 
 SRC_ROOT = Path(__file__).resolve().parents[1] / "src"
 sys.path.insert(0, str(SRC_ROOT))
-os.environ.setdefault("APP_REGION", "ap-southeast-2")
 
-from utils import lambda_utils  # noqa: E402
+import utils.lambda_utils as lambda_utils  # noqa: E402
 
 
 def _make_context(function_name="test-fn", aws_request_id="test-req-id"):
@@ -64,20 +62,20 @@ class TestProcessAndLogSyncResult(unittest.TestCase):
 
     def test_persists_for_real_uuid(self):
         real_uuid = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
-        with patch("utils.lambda_utils.save_sync_logs") as mock_save:
+        with patch.object(lambda_utils, "_save_sync_logs") as mock_save:
             self._call(real_uuid)
         mock_save.assert_called_once()
         saved_uuid = mock_save.call_args[0][0]
         self.assertEqual(saved_uuid, real_uuid)
 
     def test_does_not_persist_for_batch_sentinel(self):
-        with patch("utils.lambda_utils.save_sync_logs") as mock_save:
+        with patch.object(lambda_utils, "_save_sync_logs") as mock_save:
             result = self._call(lambda_utils._BATCH_SUMMARY_UUID)
         mock_save.assert_not_called()
         self.assertEqual(result["uuid"], lambda_utils._BATCH_SUMMARY_UUID)
 
     def test_does_not_persist_for_none_uuid(self):
-        with patch("utils.lambda_utils.save_sync_logs") as mock_save:
+        with patch.object(lambda_utils, "_save_sync_logs") as mock_save:
             self._call(None)
         mock_save.assert_not_called()
 
@@ -102,26 +100,26 @@ class TestProcessSqsRecords(unittest.TestCase):
 
     def test_each_record_saved_under_its_real_uuid(self):
         uuids = ["uuid-001", "uuid-002"]
-        with patch("utils.lambda_utils.save_sync_logs") as mock_save:
+        with patch.object(lambda_utils, "_save_sync_logs") as mock_save:
             self._process(uuids)
         self.assertEqual(mock_save.call_count, len(uuids))
         saved_uuids = [c[0][0] for c in mock_save.call_args_list]
         self.assertEqual(saved_uuids, uuids)
 
     def test_save_sync_logs_never_called_with_batch_sentinel(self):
-        with patch("utils.lambda_utils.save_sync_logs") as mock_save:
+        with patch.object(lambda_utils, "_save_sync_logs") as mock_save:
             self._process(["uuid-aaa", "uuid-bbb"])
         saved_uuids = [c[0][0] for c in mock_save.call_args_list]
         self.assertNotIn(lambda_utils._BATCH_SUMMARY_UUID, saved_uuids)
 
     def test_batch_summary_uuid_is_sentinel(self):
-        with patch("utils.lambda_utils.save_sync_logs"):
+        with patch.object(lambda_utils, "_save_sync_logs"):
             result = self._process(["uuid-xyz"])
         self.assertEqual(result["uuid"], lambda_utils._BATCH_SUMMARY_UUID)
 
     def test_batch_summary_contains_record_summaries(self):
         uuids = ["uuid-p", "uuid-q"]
-        with patch("utils.lambda_utils.save_sync_logs"):
+        with patch.object(lambda_utils, "_save_sync_logs"):
             result = self._process(uuids)
         self.assertEqual(result["record_count"], 2)
         self.assertEqual(result["success_count"], 2)
