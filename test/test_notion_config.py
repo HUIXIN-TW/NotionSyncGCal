@@ -9,7 +9,6 @@ from unittest.mock import MagicMock, patch
 
 SRC_ROOT = Path(__file__).resolve().parents[1] / "src"
 sys.path.insert(0, str(SRC_ROOT))
-os.environ.setdefault("APP_REGION", "ap-southeast-2")
 
 from notion.notion_config import (  # noqa: E402
     NotionConfig,
