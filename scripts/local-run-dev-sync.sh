@@ -230,9 +230,9 @@ validate_cloud_mode() {
     DYNAMODB_SYNC_LOGS_TABLE \
     DYNAMODB_GOOGLE_OAUTH_TOKEN_TABLE \
     DYNAMODB_NOTION_OAUTH_TOKEN_TABLE \
-    TOKEN_ENCRYPTION_KEY \
+    TOKEN_ENCRYPTION_KEY_SSM_PATH \
     GOOGLE_CALENDAR_CLIENT_ID \
-    GOOGLE_CALENDAR_CLIENT_SECRET \
+    GOOGLE_CALENDAR_CLIENT_SECRET_SSM_PATH \
     APP_MODE \
     APP_STAGE; do
     export_lambda_var "${name}"
@@ -249,9 +249,9 @@ validate_cloud_mode() {
     DYNAMODB_SYNC_LOGS_TABLE \
     DYNAMODB_GOOGLE_OAUTH_TOKEN_TABLE \
     DYNAMODB_NOTION_OAUTH_TOKEN_TABLE \
-    TOKEN_ENCRYPTION_KEY \
+    TOKEN_ENCRYPTION_KEY_SSM_PATH \
     GOOGLE_CALENDAR_CLIENT_ID \
-    GOOGLE_CALENDAR_CLIENT_SECRET \
+    GOOGLE_CALENDAR_CLIENT_SECRET_SSM_PATH \
     APP_REGION; do
     require_env "${name}"
   done
@@ -264,9 +264,9 @@ validate_cloud_mode() {
   echo "  DYNAMODB_SYNC_LOGS_TABLE: [set, not printed]"
   echo "  DYNAMODB_GOOGLE_OAUTH_TOKEN_TABLE: [set, not printed]"
   echo "  DYNAMODB_NOTION_OAUTH_TOKEN_TABLE: [set, not printed]"
-  echo "  TOKEN_ENCRYPTION_KEY: [set, not printed]"
+  echo "  TOKEN_ENCRYPTION_KEY_SSM_PATH: [set, not printed]"
   echo "  GOOGLE_CALENDAR_CLIENT_ID: [set, not printed]"
-  echo "  GOOGLE_CALENDAR_CLIENT_SECRET: [set, not printed]"
+  echo "  GOOGLE_CALENDAR_CLIENT_SECRET_SSM_PATH: [set, not printed]"
 }
 
 run_helper() {

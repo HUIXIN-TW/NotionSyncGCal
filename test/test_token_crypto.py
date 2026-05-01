@@ -1,10 +1,12 @@
 import os
+import sys
 import unittest
 import importlib.util
 from pathlib import Path
 from unittest.mock import patch
 
 SRC_ROOT = Path(__file__).resolve().parents[1] / "src"
+sys.path.insert(0, str(SRC_ROOT))
 TOKEN_CRYPTO_PATH = SRC_ROOT / "utils" / "token_crypto.py"
 spec = importlib.util.spec_from_file_location("token_crypto", TOKEN_CRYPTO_PATH)
 if not spec or not spec.loader:
@@ -105,6 +107,55 @@ class TokenCryptoTests(unittest.TestCase):
         ):
             with self.assertRaises(token_crypto.TokenCryptoError):
                 token_crypto.decrypt_token(payload)
+
+    def test_cloud_mode_requires_ssm_path(self):
+        with patch.dict(os.environ, {"APP_MODE": "cloud"}, clear=True):
+            with self.assertRaises(token_crypto.TokenCryptoError) as ctx:
+                token_crypto.encrypt_token("plain-token")
+        self.assertIn("TOKEN_ENCRYPTION_KEY_SSM_PATH", str(ctx.exception))
+
+    def test_cloud_mode_uses_ssm_parameter_for_key(self):
+        with (
+            patch.dict(
+                os.environ,
+                {"APP_MODE": "cloud", "TOKEN_ENCRYPTION_KEY_SSM_PATH": "/dev/notica/token_encryption_key"},
+                clear=True,
+            ),
+            patch.object(token_crypto, "get_ssm_parameter", return_value=self.key) as mock_ssm,
+            patch.object(token_crypto, "_get_aesgcm", return_value=_FakeAESGCM),
+            patch.object(token_crypto.os, "urandom", return_value=b"\x00" * 12),
+        ):
+            encrypted = token_crypto.encrypt_token("my-secret-token")
+        mock_ssm.assert_called_once_with("/dev/notica/token_encryption_key")
+        self.assertTrue(encrypted.startswith("enc:v1:"))
+
+    def test_cloud_mode_does_not_read_plaintext_key_env(self):
+        with (
+            patch.dict(
+                os.environ,
+                {
+                    "APP_MODE": "cloud",
+                    "TOKEN_ENCRYPTION_KEY": self.key,
+                    "TOKEN_ENCRYPTION_KEY_SSM_PATH": "/dev/notica/token_encryption_key",
+                },
+                clear=True,
+            ),
+            patch.object(token_crypto, "get_ssm_parameter", return_value="not-a-hex-key"),
+        ):
+            with self.assertRaises(token_crypto.TokenCryptoError) as ctx:
+                token_crypto.encrypt_token("my-secret-token")
+        self.assertIn("resolved from SSM", str(ctx.exception))
+
+    def test_local_mode_still_reads_plaintext_key_env(self):
+        with (
+            patch.dict(os.environ, {"APP_MODE": "local", "TOKEN_ENCRYPTION_KEY": self.key}, clear=True),
+            patch.object(token_crypto, "get_ssm_parameter") as mock_ssm,
+            patch.object(token_crypto, "_get_aesgcm", return_value=_FakeAESGCM),
+            patch.object(token_crypto.os, "urandom", return_value=b"\x00" * 12),
+        ):
+            encrypted = token_crypto.encrypt_token("my-secret-token")
+        mock_ssm.assert_not_called()
+        self.assertTrue(encrypted.startswith("enc:v1:"))
 
 
 if __name__ == "__main__":

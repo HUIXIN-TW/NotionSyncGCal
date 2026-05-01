@@ -1,8 +1,10 @@
 import os
 import re
+from utils.ssm_secrets import SSMSecretError, get_ssm_parameter
 
 TOKEN_ENCRYPTION_PREFIX = "enc:v1:"
 TOKEN_ENCRYPTION_KEY_ENV = "TOKEN_ENCRYPTION_KEY"
+TOKEN_ENCRYPTION_KEY_SSM_PATH_ENV = "TOKEN_ENCRYPTION_KEY_SSM_PATH"
 _KEY_HEX_PATTERN = re.compile(r"^[0-9a-fA-F]{64}$")
 _TOKEN_IV_BYTES = 12
 _TOKEN_TAG_BYTES = 16
@@ -21,11 +23,25 @@ def _get_aesgcm():
 
 
 def _get_key_bytes() -> bytes:
-    raw = os.getenv(TOKEN_ENCRYPTION_KEY_ENV, "").strip()
-    if not raw:
-        raise TokenCryptoError("TOKEN_ENCRYPTION_KEY env var is required but not set.")
+    app_mode = (os.getenv("APP_MODE") or "").strip().lower()
+
+    if app_mode == "cloud":
+        ssm_path = os.getenv(TOKEN_ENCRYPTION_KEY_SSM_PATH_ENV, "").strip()
+        if not ssm_path:
+            raise TokenCryptoError("TOKEN_ENCRYPTION_KEY_SSM_PATH env var is required but not set in APP_MODE=cloud.")
+        try:
+            raw = get_ssm_parameter(ssm_path).strip()
+        except SSMSecretError as exc:
+            raise TokenCryptoError(f"Failed to resolve TOKEN_ENCRYPTION_KEY from SSM: {exc}") from exc
+        source_name = "TOKEN_ENCRYPTION_KEY resolved from SSM"
+    else:
+        raw = os.getenv(TOKEN_ENCRYPTION_KEY_ENV, "").strip()
+        if not raw:
+            raise TokenCryptoError("TOKEN_ENCRYPTION_KEY env var is required but not set.")
+        source_name = "TOKEN_ENCRYPTION_KEY"
+
     if not _KEY_HEX_PATTERN.match(raw):
-        raise TokenCryptoError("TOKEN_ENCRYPTION_KEY must be a 64-character hex string.")
+        raise TokenCryptoError(f"{source_name} must be a 64-character hex string.")
     return bytes.fromhex(raw)
 
 

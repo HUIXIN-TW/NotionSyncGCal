@@ -102,7 +102,7 @@ Runtime mode is explicit. Set `APP_MODE` instead of inferring behavior from whet
 - `APP_MODE=local`: no AWS required. `NOTION_TOKEN` and Google OAuth credentials are loaded from `.env.local`; Notion database/calendar/property config is loaded from `config/local.notion-setting.json`.
 - `APP_MODE=cloud`: UUID required. Config and tokens are loaded from DynamoDB tables keyed by `uuid`.
 
-Tokens may be plaintext or `enc:v1:` encrypted. Encrypted tokens require `TOKEN_ENCRYPTION_KEY` to match the key used to encrypt them. The old `token/` path is deprecated and is not the runtime path anymore.
+Tokens may be plaintext or `enc:v1:` encrypted. In `APP_MODE=cloud`, Lambda resolves secrets from SSM parameter paths and does not read plaintext secret env values. In local mode, `TOKEN_ENCRYPTION_KEY` remains supported for local encrypted-token testing. The old `token/` path is deprecated and is not the runtime path anymore.
 
 ## Local Setup
 
@@ -184,11 +184,11 @@ export DYNAMODB_SYNC_LOGS_TABLE=''
 export DYNAMODB_GOOGLE_OAUTH_TOKEN_TABLE=''
 export DYNAMODB_NOTION_OAUTH_TOKEN_TABLE=''
 export GOOGLE_CALENDAR_CLIENT_ID=''
-export GOOGLE_CALENDAR_CLIENT_SECRET=''
-export TOKEN_ENCRYPTION_KEY=''  # required when DynamoDB tokens use enc:v1: encryption
+export GOOGLE_CALENDAR_CLIENT_SECRET_SSM_PATH=''
+export TOKEN_ENCRYPTION_KEY_SSM_PATH=''
 ```
 
-Cloud Lambda does not use local-mode variables such as `NOTION_TOKEN`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, or `GOOGLE_REFRESH_TOKEN`. It loads user config and tokens from DynamoDB by UUID. Note: When using Lambda, no CLI arguments are passed. Configure user config values such as `goback_days` and `goforward_days` in DynamoDB.
+Cloud Lambda does not use local-mode variables such as `NOTION_TOKEN`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, or `GOOGLE_REFRESH_TOKEN`. It also does not use plaintext `GOOGLE_CALENDAR_CLIENT_SECRET` or plaintext `TOKEN_ENCRYPTION_KEY`. It loads user config and tokens from DynamoDB by UUID and resolves cloud secrets from SSM parameter paths. Note: When using Lambda, no CLI arguments are passed. Configure user config values such as `goback_days` and `goforward_days` in DynamoDB.
 
 ### IAM Permissions Required for Lambda Role
 
@@ -204,6 +204,19 @@ Cloud Lambda does not use local-mode variables such as `NOTION_TOKEN`, `GOOGLE_C
   ]
 }
 ```
+
+```json
+{
+  "Effect": "Allow",
+  "Action": ["ssm:GetParameter"],
+  "Resource": [
+    "arn:aws:ssm:ap-southeast-2:217248978496:parameter/dev/notica/google_calendar_client_secret",
+    "arn:aws:ssm:ap-southeast-2:217248978496:parameter/dev/notica/token_encryption_key"
+  ]
+}
+```
+
+If those SecureString parameters use a customer-managed KMS key, add `kms:Decrypt` permission for that key.
 
 ### Deploying to Lambda
 
@@ -355,7 +368,7 @@ Local mode uses:
 - `.env.local` for `NOTION_TOKEN` and Google OAuth env vars.
 - `config/local.notion-setting.json` for Notion database, calendar, date range, and page property mapping.
 
-Cloud mode uses DynamoDB by UUID for config and tokens. Plaintext and `enc:v1:` encrypted tokens are supported; encrypted tokens require the matching `TOKEN_ENCRYPTION_KEY`. The `token/` directory is deprecated, gitignored, and must not be reintroduced as a runtime path.
+Cloud mode uses DynamoDB by UUID for config and tokens. Plaintext and `enc:v1:` encrypted token payloads are supported in DynamoDB, and cloud token decryption keys are resolved through `TOKEN_ENCRYPTION_KEY_SSM_PATH`. The `token/` directory is deprecated, gitignored, and must not be reintroduced as a runtime path.
 
 ## Tips for First-Time Users
 
