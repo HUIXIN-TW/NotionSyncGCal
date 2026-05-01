@@ -13,9 +13,7 @@ sys.path.insert(0, str(SRC_ROOT))
 
 def _env_without_aws_region():
     return {
-        key: value
-        for key, value in os.environ.items()
-        if key not in {"APP_REGION", "AWS_REGION", "AWS_DEFAULT_REGION"}
+        key: value for key, value in os.environ.items() if key not in {"APP_REGION", "AWS_REGION", "AWS_DEFAULT_REGION"}
     }
 
 

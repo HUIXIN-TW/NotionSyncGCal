@@ -536,10 +536,7 @@ class TestGetGcalEventLimit(unittest.TestCase):
     """Verify the per-calendar event cap: exactly MAX events succeeds, MAX+1 raises."""
 
     def _make_n_events(self, n):
-        return [
-            {**SINGLE_TIMED_EVENT, "id": f"evt{i:04d}"}
-            for i in range(n)
-        ]
+        return [{**SINGLE_TIMED_EVENT, "id": f"evt{i:04d}"} for i in range(n)]
 
     def _make_service_with_items(self, items):
         mock_service = MagicMock()

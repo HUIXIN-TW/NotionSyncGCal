@@ -106,10 +106,7 @@ class MainCliOverrideTests(unittest.TestCase):
     def test_google_force_flag_uses_in_memory_setting_dict(self):
         result, setting, mock_sync = self._run_main_with_args(
             ["-g", "4", "10"],
-            (
-                "sync.sync."
-                "force_update_notion_tasks_by_google_event_and_ignore_time"
-            ),
+            ("sync.sync." "force_update_notion_tasks_by_google_event_and_ignore_time"),
         )
 
         self.assertEqual(result, {"statusCode": 200})
@@ -120,10 +117,7 @@ class MainCliOverrideTests(unittest.TestCase):
     def test_notion_force_flag_uses_in_memory_setting_dict(self):
         result, setting, mock_sync = self._run_main_with_args(
             ["-n", "6", "12"],
-            (
-                "sync.sync."
-                "force_update_google_event_by_notion_task_and_ignore_time"
-            ),
+            ("sync.sync." "force_update_google_event_by_notion_task_and_ignore_time"),
         )
 
         self.assertEqual(result, {"statusCode": 200})

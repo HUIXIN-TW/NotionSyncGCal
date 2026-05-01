@@ -376,9 +376,7 @@ class TestGoogleTokenCloudMode(unittest.TestCase):
             with patch("utils.dynamodb_utils.get_google_token_by_uuid", return_value=expired_response):
                 with patch("utils.dynamodb_utils.update_google_token_by_uuid") as mock_updater:
                     with patch("google.oauth2.credentials.Credentials.refresh", new=refresh_credentials):
-                        with patch(
-                            "gcal.gcal_token.get_ssm_parameter", return_value="gcal-client-secret"
-                        ):
+                        with patch("gcal.gcal_token.get_ssm_parameter", return_value="gcal-client-secret"):
                             with patch("utils.token_crypto.get_ssm_parameter", return_value=_TOKEN_ENCRYPTION_KEY):
                                 gt = GoogleToken(self._cloud_config(), _make_logger())
 

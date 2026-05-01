@@ -21,18 +21,12 @@ def apply_date_range(setting, goback_days, goforward_days):
     today = date.today()
     setting["goback_days"] = goback_days
     setting["goforward_days"] = goforward_days
-    setting["after_date"] = (today + timedelta(days=-int(goback_days))).strftime(
-        "%Y-%m-%d"
-    )
-    setting["before_date"] = (today + timedelta(days=int(goforward_days))).strftime(
-        "%Y-%m-%d"
-    )
+    setting["after_date"] = (today + timedelta(days=-int(goback_days))).strftime("%Y-%m-%d")
+    setting["before_date"] = (today + timedelta(days=int(goforward_days))).strftime("%Y-%m-%d")
     setting["google_timemin"] = (today + timedelta(days=-int(goback_days))).strftime(
         f"%Y-%m-%dT%H:%M:%S{setting['timecode']}"
     )
-    setting["google_timemax"] = (
-        today + timedelta(days=int(goforward_days))
-    ).strftime(
+    setting["google_timemax"] = (today + timedelta(days=int(goforward_days))).strftime(
         f"%Y-%m-%dT%H:%M:%S{setting['timecode']}"
     )
     return setting

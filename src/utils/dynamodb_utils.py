@@ -33,9 +33,7 @@ def _get_logs_tables():
 def _get_google_tables():
     google_oauth_token_table = os.getenv("DYNAMODB_GOOGLE_OAUTH_TOKEN_TABLE")
     if not google_oauth_token_table:
-        raise ValueError(
-            "DYNAMODB_GOOGLE_OAUTH_TOKEN_TABLE env var is not set"
-        )
+        raise ValueError("DYNAMODB_GOOGLE_OAUTH_TOKEN_TABLE env var is not set")
     google_oauth_token_tbl = _get_dynamodb().Table(google_oauth_token_table)
     return google_oauth_token_tbl
 
@@ -43,9 +41,7 @@ def _get_google_tables():
 def _get_notion_tables():
     notion_oauth_token_table = os.getenv("DYNAMODB_NOTION_OAUTH_TOKEN_TABLE")
     if not notion_oauth_token_table:
-        raise ValueError(
-            "DYNAMODB_NOTION_OAUTH_TOKEN_TABLE env var is not set"
-        )
+        raise ValueError("DYNAMODB_NOTION_OAUTH_TOKEN_TABLE env var is not set")
     notion_oauth_token_tbl = _get_dynamodb().Table(notion_oauth_token_table)
     return notion_oauth_token_tbl
 

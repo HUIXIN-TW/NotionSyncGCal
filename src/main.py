@@ -59,8 +59,7 @@ def _apply_date_range_override(
 ) -> None:
     apply_date_range(user_setting, goback_days, goforward_days)
     logger.debug(
-        "Applied in-memory CLI date range override: "
-        f"goback_days={goback_days}, goforward_days={goforward_days}"
+        "Applied in-memory CLI date range override: " f"goback_days={goback_days}, goforward_days={goforward_days}"
     )
 
 
