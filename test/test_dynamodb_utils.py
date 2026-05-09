@@ -21,7 +21,9 @@ class DynamoDbGoogleTokenTests(unittest.TestCase):
             }
         }
         with patch("utils.dynamodb_utils._get_google_tables", return_value=table):
-            with patch("utils.dynamodb_utils.decrypt_token_if_encrypted", side_effect=["plain-access", "plain-refresh"]):
+            with patch(
+                "utils.dynamodb_utils.decrypt_token_if_encrypted", side_effect=["plain-access", "plain-refresh"]
+            ):
                 item = get_google_token_by_uuid("u-1")
         self.assertEqual(item["accessToken"], "plain-access")
         self.assertEqual(item["refreshToken"], "plain-refresh")
