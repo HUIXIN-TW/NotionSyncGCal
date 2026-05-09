@@ -91,6 +91,17 @@ def decrypt_token_if_encrypted(value: str) -> str:
     return value
 
 
+def encrypt_token_if_plaintext(value: str) -> str:
+    if not isinstance(value, str) or not value:
+        return value
+    if value.startswith(TOKEN_ENCRYPTION_PREFIX):
+        # Validate prefixed payloads so malformed enc:v1 values are never
+        # treated as plaintext and re-encrypted.
+        decrypt_token(value)
+        return value
+    return encrypt_token(value)
+
+
 def encrypt_token(value: str) -> str:
     if not isinstance(value, str) or not value:
         return value

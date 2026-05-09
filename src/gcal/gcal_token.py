@@ -4,7 +4,7 @@ from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 from google.auth.exceptions import RefreshError
 from utils.ssm_secrets import SSMSecretError, get_ssm_parameter
-from utils.token_crypto import TokenCryptoError, decrypt_token_if_encrypted, encrypt_token
+from utils.token_crypto import TOKEN_ENCRYPTION_PREFIX, TokenCryptoError, decrypt_token_if_encrypted
 
 _DEFAULT_TOKEN_URI = "https://oauth2.googleapis.com/token"
 _DEFAULT_SCOPES = [
@@ -55,6 +55,10 @@ class GoogleToken:
                     refresh_token = decrypt_token_if_encrypted(data.get("refreshToken"))
                 except TokenCryptoError as e:
                     raise SettingError(f"Failed to decrypt encrypted Google OAuth token: {e}") from e
+
+                self._assert_plaintext_runtime_token("accessToken", access_token)
+                self._assert_plaintext_runtime_token("refreshToken", refresh_token)
+
                 client_secret_ssm_path = os.environ.get("GOOGLE_CALENDAR_CLIENT_SECRET_SSM_PATH", "").strip()
                 if not client_secret_ssm_path:
                     raise SettingError(
@@ -104,6 +108,7 @@ class GoogleToken:
             refresh_token = decrypt_token_if_encrypted(refresh_token)
         except TokenCryptoError as e:
             raise SettingError(f"Failed to decrypt encrypted Google OAuth token: {e}") from e
+        self._assert_plaintext_runtime_token("refreshToken", refresh_token)
 
         token_uri = os.environ.get("GOOGLE_TOKEN_URI", "").strip() or _DEFAULT_TOKEN_URI
 
@@ -126,7 +131,10 @@ class GoogleToken:
 
     def _refresh_tokens(self, credentials):
         try:
+            existing_refresh_token = credentials.refresh_token
             credentials.refresh(Request())
+            if not credentials.refresh_token:
+                credentials._refresh_token = existing_refresh_token
             self._save_credentials(credentials)
             self.logger.info("Successfully refreshed tokens.")
             return credentials
@@ -144,13 +152,11 @@ class GoogleToken:
                 from utils.dynamodb_utils import update_google_token_by_uuid
 
                 expiry_str = self._convert_notica_expiry_date_format(credentials.expiry)
-                updated_str = expiry_str
-                encrypted_access_token = encrypt_token(credentials.token)
-                encrypted_refresh_token = encrypt_token(credentials.refresh_token)
+                updated_str = str(int(datetime.now(timezone.utc).timestamp() * 1000))
                 update_google_token_by_uuid(
                     self.config.get("uuid"),
-                    encrypted_access_token,
-                    encrypted_refresh_token,
+                    credentials.token,
+                    credentials.refresh_token,
                     expiry_str,
                     updated_str,
                 )
@@ -186,6 +192,10 @@ class GoogleToken:
             raise SettingError("Scopes are missing.")
         if not credentials.token_uri:
             raise SettingError("Token URI is missing.")
+
+    def _assert_plaintext_runtime_token(self, token_name, value):
+        if isinstance(value, str) and value.startswith(TOKEN_ENCRYPTION_PREFIX):
+            raise SettingError(f"Internal token handling error: {token_name} remained encrypted at runtime.")
 
 
 if __name__ == "__main__":
