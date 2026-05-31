@@ -103,7 +103,9 @@ def get_google_token_by_uuid(uuid: str) -> str:
 
 
 # update item in google oauth token tables by uuid
-def update_google_token_by_uuid(uuid: str, access_token: str, refresh_token: str, expiry_date: str, updated_at: str):
+def update_google_token_by_uuid(
+    uuid: str, access_token: str, refresh_token: str, expiry_date: str, updated_at: str
+):
     google_tbl = _get_google_tables()
     encrypted_access_token = encrypt_token_if_plaintext(access_token)
     encrypted_refresh_token = encrypt_token_if_plaintext(refresh_token)

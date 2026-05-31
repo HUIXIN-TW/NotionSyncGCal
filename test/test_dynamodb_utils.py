@@ -6,7 +6,10 @@ from unittest.mock import MagicMock, patch
 SRC_ROOT = Path(__file__).resolve().parents[1] / "src"
 sys.path.insert(0, str(SRC_ROOT))
 
-from utils.dynamodb_utils import get_google_token_by_uuid, update_google_token_by_uuid  # noqa: E402
+from utils.dynamodb_utils import (
+    get_google_token_by_uuid,
+    update_google_token_by_uuid,
+)  # noqa: E402
 from utils.token_crypto import TokenCryptoError  # noqa: E402
 
 
@@ -46,7 +49,9 @@ class DynamoDbGoogleTokenTests(unittest.TestCase):
                 "utils.dynamodb_utils.encrypt_token_if_plaintext",
                 side_effect=["enc:v1:access", "enc:v1:refresh"],
             ) as mock_encrypt:
-                update_google_token_by_uuid("u-1", "plain-access", "plain-refresh", "111", "222")
+                update_google_token_by_uuid(
+                    "u-1", "plain-access", "plain-refresh", "111", "222"
+                )
 
         self.assertEqual(mock_encrypt.call_args_list[0].args[0], "plain-access")
         self.assertEqual(mock_encrypt.call_args_list[1].args[0], "plain-refresh")
@@ -63,7 +68,10 @@ class DynamoDbGoogleTokenTests(unittest.TestCase):
         access = "enc:v1:access"
         refresh = "enc:v1:refresh"
         with patch("utils.dynamodb_utils._get_google_tables", return_value=table):
-            with patch("utils.dynamodb_utils.encrypt_token_if_plaintext", side_effect=[access, refresh]):
+            with patch(
+                "utils.dynamodb_utils.encrypt_token_if_plaintext",
+                side_effect=[access, refresh],
+            ):
                 update_google_token_by_uuid("u-1", access, refresh, "111", "222")
 
         values = table.update_item.call_args.kwargs["ExpressionAttributeValues"]
@@ -78,7 +86,9 @@ class DynamoDbGoogleTokenTests(unittest.TestCase):
                 side_effect=TokenCryptoError("Malformed encrypted token payload."),
             ):
                 with self.assertRaises(TokenCryptoError):
-                    update_google_token_by_uuid("u-1", "enc:v1:broken", "plain-refresh", "111", "222")
+                    update_google_token_by_uuid(
+                        "u-1", "enc:v1:broken", "plain-refresh", "111", "222"
+                    )
         table.update_item.assert_not_called()
 
 
