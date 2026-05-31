@@ -37,9 +37,7 @@ class GoogleService:
             self.logger.debug("Google Calendar connection test passed.")
             return True
         except HttpError as e:
-            self.logger.error(
-                f"Google API error: {e}. Please click 'view settings' and re-authorize"
-            )
+            self.logger.error(f"Google API error: {e}. Please click 'view settings' and re-authorize")
             return False
         except Exception as e:
             self.logger.error(f"Google Calendar Connection test failed: {e}")
@@ -68,9 +66,7 @@ class GoogleService:
 
                     if page_token:
                         if page_token in seen_page_tokens:
-                            raise RuntimeError(
-                                f"Repeated Google Calendar page token detected for calendar ID {cal_id}"
-                            )
+                            raise RuntimeError(f"Repeated Google Calendar page token detected for calendar ID {cal_id}")
                         seen_page_tokens.add(page_token)
 
                     params = {
@@ -131,9 +127,7 @@ class GoogleService:
             self.logger.exception("Error retrieving Google Calendar events")
             raise
 
-    def update_gcal_event(
-        self, notion_task, existing_gcal_cal_id, existing_gcal_event_id
-    ):
+    def update_gcal_event(self, notion_task, existing_gcal_cal_id, existing_gcal_event_id):
         event = self.make_event_body(notion_task)
         self.service.events().patch(
             calendarId=existing_gcal_cal_id, eventId=existing_gcal_event_id, body=event
@@ -143,11 +137,7 @@ class GoogleService:
         if new_gcal_calendar_id is None:
             new_gcal_calendar_id = self.notion_setting["gcal_default_id"]
         event = self.make_event_body(notion_task)
-        gcal_event = (
-            self.service.events()
-            .insert(calendarId=new_gcal_calendar_id, body=event)
-            .execute()
-        )
+        gcal_event = self.service.events().insert(calendarId=new_gcal_calendar_id, body=event).execute()
         # get the event id and update the notion task by query page id
         event_id = gcal_event.get("id")
         return event_id
@@ -164,20 +154,14 @@ class GoogleService:
             eventId=existing_gcal_event_id,
             destination=new_gcal_calendar_id,
         ).execute()
-        self.update_gcal_event(
-            notion_task, new_gcal_calendar_id, existing_gcal_event_id
-        )
+        self.update_gcal_event(notion_task, new_gcal_calendar_id, existing_gcal_event_id)
 
     def delete_gcal_event(self, gcal_calendar_id, gcal_event_id):
         try:
-            self.service.events().delete(
-                calendarId=gcal_calendar_id, eventId=gcal_event_id
-            ).execute()
+            self.service.events().delete(calendarId=gcal_calendar_id, eventId=gcal_event_id).execute()
             self.logger.info(f"Successfully deleted event with ID: {gcal_event_id}")
         except Exception as e:
-            self.logger.error(
-                f"An error occurred while deleting event with ID: {gcal_event_id}: {e}"
-            )
+            self.logger.error(f"An error occurred while deleting event with ID: {gcal_event_id}: {e}")
 
     def make_event_body(self, notion_task):
         # set icone and task name
@@ -218,9 +202,7 @@ class GoogleService:
             .get("end", "")
         )
         # Adjust and convert dates to UTC
-        event_start_date, event_end_date = self.adjust_notion_dates(
-            notion_task_start_date, notion_task_end_date
-        )
+        event_start_date, event_end_date = self.adjust_notion_dates(notion_task_start_date, notion_task_end_date)
 
         # set location
         try:
@@ -295,12 +277,8 @@ class GoogleService:
             end_date = start_date
 
         if "T" in start_date_str and end_date == start_date:  # datetime format
-            end_date = start_date + timedelta(
-                minutes=int(self.notion_setting["default_event_length"])
-            )
-        elif (
-            "T" not in start_date_str
-        ):  # date format: Google Calendar end date is exclusive, always add 1 day
+            end_date = start_date + timedelta(minutes=int(self.notion_setting["default_event_length"]))
+        elif "T" not in start_date_str:  # date format: Google Calendar end date is exclusive, always add 1 day
             end_date = end_date + timedelta(days=1)
 
         if "T" in start_date_str:

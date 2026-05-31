@@ -20,17 +20,11 @@ class NotionService:
         self.token = token
         self.setting = user_setting
         self.page_property = self.setting["page_property"]
-        self.notion_api_version = self.setting.get(
-            "notion_api_version", NOTION_API_VERSION_2022
-        )
+        self.notion_api_version = self.setting.get("notion_api_version", NOTION_API_VERSION_2022)
 
         try:
-            self.client = Client(
-                auth=self.token, notion_version=self.notion_api_version
-            )
-            self.logger.debug(
-                f"Notion client initialized successfully with API version {self.notion_api_version}."
-            )
+            self.client = Client(auth=self.token, notion_version=self.notion_api_version)
+            self.logger.debug(f"Notion client initialized successfully with API version {self.notion_api_version}.")
         except Exception as e:
             self.logger.error(f"Failed to initialize Notion client: {e}")
             raise SettingError(f"Failed to initialize Notion client: {e}")
@@ -41,14 +35,10 @@ class NotionService:
             self.logger.info("Notion connection passed.")
             return True
         except APIResponseError as e:
-            self.logger.error(
-                f"Notion API error: {e}. Please click 'view settings' and re-authorize the integration."
-            )
+            self.logger.error(f"Notion API error: {e}. Please click 'view settings' and re-authorize the integration.")
             return False
         except Exception as e:
-            self.logger.error(
-                f"Notion Connection failed: {e}. Please check your network connection."
-            )
+            self.logger.error(f"Notion Connection failed: {e}. Please check your network connection.")
             return False
 
     def _query_database_with_pagination(self, **query_kwargs):
@@ -56,9 +46,7 @@ class NotionService:
         next_cursor = None
         page_number = 0
         database_id = query_kwargs["database_id"]
-        request_body = {
-            key: value for key, value in query_kwargs.items() if key != "database_id"
-        }
+        request_body = {key: value for key, value in query_kwargs.items() if key != "database_id"}
 
         while True:
             page_number += 1
@@ -90,12 +78,8 @@ class NotionService:
     def get_notion_task(self):
 
         # TODO: Notion has no filter for start date and end date so add extra column: GCAL_END_DATE_NOTION_NAME
-        before_date_with_time_zone = (
-            self.setting["before_date"] + "T00:00:00.000" + self.setting["timecode"]
-        )
-        after_date_with_time_zone = (
-            self.setting["after_date"] + "T00:00:00.000" + self.setting["timecode"]
-        )
+        before_date_with_time_zone = self.setting["before_date"] + "T00:00:00.000" + self.setting["timecode"]
+        after_date_with_time_zone = self.setting["after_date"] + "T00:00:00.000" + self.setting["timecode"]
         date_range = f"from {self.setting['after_date']} (inclusive) to {self.setting['before_date']} (exclusive)"
         notion_summary = {
             "action": "get_notion_task",
@@ -118,12 +102,8 @@ class NotionService:
                                 "date": {"before": before_date_with_time_zone},
                             },
                             {
-                                "property": self.page_property[
-                                    "GCal_End_Date_Notion_Name"
-                                ],
-                                "formula": {
-                                    "date": {"on_or_after": after_date_with_time_zone}
-                                },
+                                "property": self.page_property["GCal_End_Date_Notion_Name"],
+                                "formula": {"date": {"on_or_after": after_date_with_time_zone}},
                             },
                         ]
                     },
@@ -136,9 +116,7 @@ class NotionService:
 
     def get_notion_task_by_gcal_event_id(self, gcal_event_id):
         try:
-            self.logger.info(
-                f"Reading Notion database by Google event ID: {gcal_event_id}"
-            )
+            self.logger.info(f"Reading Notion database by Google event ID: {gcal_event_id}")
             return self._query_database_with_pagination(
                 database_id=self.setting["database_id"],
                 filter={
@@ -150,9 +128,7 @@ class NotionService:
             self.logger.error(f"Error reading Notion table: {e}")
             return None
 
-    def update_notion_task(
-        self, page_id, gcal_event, gcal_cal_name, new_gcal_sync_time
-    ):
+    def update_notion_task(self, page_id, gcal_event, gcal_cal_name, new_gcal_sync_time):
         """
         Update a Notion task with Google Calendar event details.
 
@@ -177,9 +153,7 @@ class NotionService:
             properties={
                 self.page_property["Task_Notion_Name"]: {
                     "type": "title",
-                    "title": [
-                        {"type": "text", "text": {"content": summary_without_emojis}}
-                    ],
+                    "title": [{"type": "text", "text": {"content": summary_without_emojis}}],
                 },
                 self.page_property["Date_Notion_Name"]: {
                     "type": "date",
@@ -190,9 +164,7 @@ class NotionService:
                 },
                 self.page_property["ExtraInfo_Notion_Name"]: {
                     "type": "rich_text",
-                    "rich_text": [
-                        {"text": {"content": gcal_event.get("description", "")}}
-                    ],
+                    "rich_text": [{"text": {"content": gcal_event.get("description", "")}}],
                 },
                 self.page_property["Location_Notion_Name"]: {
                     "type": "place",
@@ -282,9 +254,7 @@ class NotionService:
                 },
                 self.page_property["ExtraInfo_Notion_Name"]: {
                     "type": "rich_text",
-                    "rich_text": [
-                        {"text": {"content": gcal_event.get("description", "")}}
-                    ],
+                    "rich_text": [{"text": {"content": gcal_event.get("description", "")}}],
                 },
                 self.page_property["Location_Notion_Name"]: {
                     "type": "place",
@@ -303,9 +273,7 @@ class NotionService:
                 },
             },
         )
-        self.logger.info(
-            "Created Notion task for Google Calendar event_id=%s", gcal_event.get("id")
-        )
+        self.logger.info("Created Notion task for Google Calendar event_id=%s", gcal_event.get("id"))
 
     def delete_notion_task(self, page_id):
         self.client.pages.update(
@@ -327,9 +295,7 @@ class NotionService:
     def parse_date_in_notion_format(self, date_obj):
         """Helper function to notion format dates."""
         try:
-            formatted_date = date_obj.strftime(
-                f"%Y-%m-%dT%H:%M:%S{self.setting['timecode']}"
-            )
+            formatted_date = date_obj.strftime(f"%Y-%m-%dT%H:%M:%S{self.setting['timecode']}")
         except Exception as e:
             self.logger.error(f"Error formatting date: {e}")
             formatted_date = None
@@ -396,9 +362,7 @@ if __name__ == "__main__":
 
     with log_path.open("w") as output:
         notion_summary, notion_tasks = ns.get_notion_task()
-        json.dump(
-            {"summary": notion_summary, "results": notion_tasks}, output, indent=4
-        )
+        json.dump({"summary": notion_summary, "results": notion_tasks}, output, indent=4)
     logging.info(
         f"Notion Task Count. {len(notion_tasks)}, from {ns.page_property['GCal_End_Date_Notion_Name']}: {ns.setting['after_date']} "  # noqa: E501
         f"to {ns.page_property['Date_Notion_Name']}: {ns.setting['before_date']} (exclusive)"

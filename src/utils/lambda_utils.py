@@ -4,9 +4,7 @@ from typing import Any, Dict, Optional, TypedDict
 
 MAX_SYNC_LOG_ERRORS = 3
 SYNC_LOG_CONTRACT_VERSION = "2026-05-31.sync-log.v2"
-SAFE_SYNC_FAILURE_MESSAGE = (
-    "Sync failed. See Lambda logs with aws_request_id for details."
-)
+SAFE_SYNC_FAILURE_MESSAGE = "Sync failed. See Lambda logs with aws_request_id for details."
 
 # Sentinel used as the uuid field on SQS batch-aggregate summaries.
 # It is never a real user UUID and must never be written to DynamoDB.
@@ -64,11 +62,7 @@ def sanitize_sync_log_payload(payload: Dict[str, Any]) -> Dict[str, Any]:
     status_code = payload.get("statusCode")
     if isinstance(message, str):
         # Keep user-facing sync failures generic when upstream returned plaintext.
-        if (
-            status == "sync_error"
-            and isinstance(status_code, int)
-            and status_code >= 500
-        ):
+        if status == "sync_error" and isinstance(status_code, int) and status_code >= 500:
             sanitized_payload["message"] = {
                 "error_code": "sync_runtime_error",
                 "error_message": SAFE_SYNC_FAILURE_MESSAGE,
@@ -84,14 +78,10 @@ def sanitize_sync_log_payload(payload: Dict[str, Any]) -> Dict[str, Any]:
 
     original_error_count = len(errors)
     sanitized_message = dict(message)
-    sanitized_message["errors"] = [
-        sanitize_sync_error(err) for err in errors[:MAX_SYNC_LOG_ERRORS]
-    ]
+    sanitized_message["errors"] = [sanitize_sync_error(err) for err in errors[:MAX_SYNC_LOG_ERRORS]]
     sanitized_message["error_count"] = original_error_count
     sanitized_message["errors_truncated"] = original_error_count > MAX_SYNC_LOG_ERRORS
-    sanitized_message["omitted_error_count"] = max(
-        original_error_count - MAX_SYNC_LOG_ERRORS, 0
-    )
+    sanitized_message["omitted_error_count"] = max(original_error_count - MAX_SYNC_LOG_ERRORS, 0)
     sanitized_payload["message"] = sanitized_message
     return sanitized_payload
 
@@ -124,9 +114,7 @@ def process_and_log_sync_result(
             "lambda_name": getattr(context, "function_name", "unknown"),
             "aws_request_id": getattr(context, "aws_request_id", "unknown"),
             "log_level": logger_obj.level,
-            "duration_ms": int(
-                (datetime.now(timezone.utc) - lambda_start_time).total_seconds() * 1000
-            ),
+            "duration_ms": int((datetime.now(timezone.utc) - lambda_start_time).total_seconds() * 1000),
         }
         if extra:
             payload.update(extra)
@@ -142,9 +130,7 @@ def process_and_log_sync_result(
             "lambda_name": getattr(context, "function_name", "unknown"),
             "aws_request_id": getattr(context, "aws_request_id", "unknown"),
             "log_level": logger_obj.level,
-            "duration_ms": int(
-                (datetime.now(timezone.utc) - lambda_start_time).total_seconds() * 1000
-            ),
+            "duration_ms": int((datetime.now(timezone.utc) - lambda_start_time).total_seconds() * 1000),
         }
     # Persist summary to DynamoDB; don't fail the handler on logging errors
     try:
@@ -169,9 +155,7 @@ def process_sqs_records(
     """
     sqs_batch_results = []
     batch_item_failures = []
-    logger_obj.debug(
-        f"Processing SQS event with {len(event.get('Records', []))} records"
-    )
+    logger_obj.debug(f"Processing SQS event with {len(event.get('Records', []))} records")
 
     # Process each SQS record
     for record in event["Records"]:
@@ -192,10 +176,7 @@ def process_sqs_records(
                 extra={"job_id": job_id},
             )
             sqs_batch_results.append(processed_result)
-            if (
-                isinstance(processed_result.get("statusCode"), int)
-                and processed_result.get("statusCode", 500) >= 500
-            ):
+            if isinstance(processed_result.get("statusCode"), int) and processed_result.get("statusCode", 500) >= 500:
                 batch_item_failures.append({"itemIdentifier": job_id})
         except Exception:
             logger_obj.exception("Error processing SQS record")
@@ -211,9 +192,7 @@ def process_sqs_records(
 
     # Summarize results for batch logging
     success_count = sum(
-        1
-        for s in sqs_batch_results
-        if isinstance(s.get("statusCode"), int) and s.get("statusCode", 500) < 400
+        1 for s in sqs_batch_results if isinstance(s.get("statusCode"), int) and s.get("statusCode", 500) < 400
     )
     failure_count = len(sqs_batch_results) - success_count
 
@@ -224,17 +203,14 @@ def process_sqs_records(
         for s in sqs_batch_results
         if isinstance(s.get("statusCode"), int) and s.get("statusCode", 500) < 400
     ]
-    failure_uuids = [
-        s.get("uuid") for s in sqs_batch_results if s.get("uuid") not in success_uuids
-    ]
+    failure_uuids = [s.get("uuid") for s in sqs_batch_results if s.get("uuid") not in success_uuids]
     batch_sync_result = {
         # Provide an explicit statusCode for downstream handler uniformity
         "statusCode": 200,
         "body": {
             "status": "batch_processed",
             "message": (
-                f"Processed {len(sqs_batch_results)} records: "
-                f"{success_count} succeeded, {failure_count} failed."
+                f"Processed {len(sqs_batch_results)} records: " f"{success_count} succeeded, {failure_count} failed."
             ),
         },
     }
@@ -252,9 +228,7 @@ def process_sqs_records(
             "record_summaries": sqs_batch_results,  # concise per-record summary list
             "success_uuids": success_uuids,
             "failure_uuids": failure_uuids,
-            "record_uuids": [
-                u for u in success_uuids + failure_uuids if u
-            ],  # all uuids in order
+            "record_uuids": [u for u in success_uuids + failure_uuids if u],  # all uuids in order
         },
     )
     batch_summary["batchItemFailures"] = batch_item_failures

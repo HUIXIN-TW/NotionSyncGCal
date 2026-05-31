@@ -38,22 +38,16 @@ class NotionToken:
             except SettingError:
                 raise
             except Exception as e:
-                raise SettingError(
-                    f"Error loading Notion token from DynamoDB: {e}"
-                ) from e
+                raise SettingError(f"Error loading Notion token from DynamoDB: {e}") from e
         if self.mode == "local":
             token = os.environ.get("NOTION_TOKEN", "").strip()
             if not token:
-                raise SettingError(
-                    "NOTION_TOKEN environment variable is required in local mode but is not set."
-                )
+                raise SettingError("NOTION_TOKEN environment variable is required in local mode but is not set.")
             try:
                 return decrypt_token_if_encrypted(token)
             except TokenCryptoError as e:
                 raise SettingError(f"Failed to decrypt Notion token: {e}") from e
-        raise SettingError(
-            f"Unknown config mode '{self.mode}'. Expected 'cloud' or 'local'."
-        )
+        raise SettingError(f"Unknown config mode '{self.mode}'. Expected 'cloud' or 'local'.")
 
     def get(self):
         return self.token
