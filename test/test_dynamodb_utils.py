@@ -11,7 +11,7 @@ from utils.token_crypto import TokenCryptoError  # noqa: E402
 
 
 class DynamoDbGoogleTokenTests(unittest.TestCase):
-    def test_get_google_token_decrypts_encrypted_fields(self):
+    def test_get_google_token_returns_raw_stored_fields(self):
         table = MagicMock()
         table.get_item.return_value = {
             "Item": {
@@ -21,14 +21,11 @@ class DynamoDbGoogleTokenTests(unittest.TestCase):
             }
         }
         with patch("utils.dynamodb_utils._get_google_tables", return_value=table):
-            with patch(
-                "utils.dynamodb_utils.decrypt_token_if_encrypted", side_effect=["plain-access", "plain-refresh"]
-            ):
-                item = get_google_token_by_uuid("u-1")
-        self.assertEqual(item["accessToken"], "plain-access")
-        self.assertEqual(item["refreshToken"], "plain-refresh")
+            item = get_google_token_by_uuid("u-1")
+        self.assertEqual(item["accessToken"], "enc:v1:encrypted-access")
+        self.assertEqual(item["refreshToken"], "enc:v1:encrypted-refresh")
 
-    def test_get_google_token_keeps_legacy_plaintext_fields(self):
+    def test_get_google_token_returns_plaintext_fields_unchanged(self):
         table = MagicMock()
         table.get_item.return_value = {
             "Item": {
