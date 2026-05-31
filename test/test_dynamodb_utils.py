@@ -6,10 +6,10 @@ from unittest.mock import MagicMock, patch
 SRC_ROOT = Path(__file__).resolve().parents[1] / "src"
 sys.path.insert(0, str(SRC_ROOT))
 
-from utils.dynamodb_utils import (
+from utils.dynamodb_utils import (  # noqa: E402
     get_google_token_by_uuid,
     update_google_token_by_uuid,
-)  # noqa: E402
+)
 from utils.token_crypto import TokenCryptoError  # noqa: E402
 
 

@@ -8,12 +8,12 @@ from unittest.mock import MagicMock, patch
 SRC_ROOT = Path(__file__).resolve().parents[1] / "src"
 sys.path.insert(0, str(SRC_ROOT))
 
-from gcal.gcal_token import (
+from gcal.gcal_token import (  # noqa: E402
     GoogleToken,
     SettingError,
     _DEFAULT_SCOPES,
     _DEFAULT_TOKEN_URI,
-)  # noqa: E402
+)
 from google.oauth2.credentials import Credentials  # noqa: E402
 from utils.token_crypto import TokenCryptoError, encrypt_token  # noqa: E402
 
@@ -236,6 +236,11 @@ class TestGoogleTokenCloudMode(unittest.TestCase):
         if value == "enc:v1:encrypted-cloud-refresh-token":
             return "plain-cloud-refresh-token"
         raise AssertionError(f"Unexpected token payload: {value}")
+
+    _PLAINTEXT_CLOUD_TOKEN_ERROR = (
+        "Token is not encrypted (expected 'enc:v1:' prefix). "
+        "All tokens in the database must be encrypted."
+    )
 
     def test_cloud_loads_token_from_dynamodb(self):
         with patch(
@@ -563,9 +568,7 @@ class TestGoogleTokenCloudMode(unittest.TestCase):
         ):
             with patch(
                 "gcal.gcal_token.decrypt_token",
-                side_effect=TokenCryptoError(
-                    "Token is not encrypted (expected 'enc:v1:' prefix). All tokens in the database must be encrypted."
-                ),
+                side_effect=TokenCryptoError(self._PLAINTEXT_CLOUD_TOKEN_ERROR),
             ):
                 with patch(
                     "gcal.gcal_token.get_ssm_parameter",
@@ -588,9 +591,7 @@ class TestGoogleTokenCloudMode(unittest.TestCase):
                 "gcal.gcal_token.decrypt_token",
                 side_effect=[
                     "plain-cloud-access-token",
-                    TokenCryptoError(
-                        "Token is not encrypted (expected 'enc:v1:' prefix). All tokens in the database must be encrypted."
-                    ),
+                    TokenCryptoError(self._PLAINTEXT_CLOUD_TOKEN_ERROR),
                 ],
             ):
                 with patch(
