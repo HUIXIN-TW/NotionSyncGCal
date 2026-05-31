@@ -79,6 +79,86 @@ class TestProcessAndLogSyncResult(unittest.TestCase):
             self._call(None)
         mock_save.assert_not_called()
 
+    def test_normalizes_sync_errors_before_persist_only(self):
+        sync_result = {
+            "statusCode": 200,
+            "body": {
+                "status": "sync_success",
+                "message": {
+                    "summary": {},
+                    "errors": [
+                        {
+                            "action": "create_notion",
+                            "error_code": "provider_write_failed",
+                            "error": "raw provider payload with private content",
+                            "debug_detail": "RuntimeError: raw provider payload with private content",
+                            "gcal_event_title": "Private calendar event",
+                            "notion_task_name": "Private task",
+                            "gcal_event_start": "2026-05-23T10:00:00Z",
+                            "gcal_event_id": "evt-123",
+                            "notion_task_id": "page-456",
+                            "retriable": True,
+                        }
+                    ],
+                },
+            },
+        }
+        with patch.object(lambda_utils, "_save_sync_logs") as mock_save:
+            result = lambda_utils.process_and_log_sync_result(
+                logger_obj=self.logger,
+                sync_result=sync_result,
+                context=self.ctx,
+                uuid="real-uuid",
+                lambda_start_time=self.start,
+                trigger_name="test",
+            )
+
+        saved_payload = mock_save.call_args[0][1]
+        saved_error = saved_payload["message"]["errors"][0]
+        returned_error = result["message"]["errors"][0]
+
+        self.assertEqual(saved_error["error_code"], "provider_write_failed")
+        self.assertEqual(saved_error["error_message"], lambda_utils.SAFE_SYNC_FAILURE_MESSAGE)
+        self.assertIsNone(saved_error["error"])
+        self.assertEqual(saved_error["gcal_event_id"], "evt-123")
+        self.assertEqual(saved_error["notion_task_id"], "page-456")
+        self.assertEqual(saved_error["gcal_event_title"], "Private calendar event")
+        self.assertEqual(saved_error["notion_task_name"], "Private task")
+        self.assertEqual(saved_error["gcal_event_start"], "2026-05-23T10:00:00Z")
+        self.assertNotIn("debug_detail", saved_error)
+        self.assertEqual(returned_error["error"], "raw provider payload with private content")
+        self.assertEqual(returned_error["debug_detail"], "RuntimeError: raw provider payload with private content")
+        self.assertEqual(returned_error["gcal_event_title"], "Private calendar event")
+        self.assertEqual(returned_error["notion_task_name"], "Private task")
+
+    def test_normalizes_plaintext_5xx_failure_message_for_persisted_payload(self):
+        sync_result = {
+            "statusCode": 500,
+            "body": {
+                "status": "sync_error",
+                "message": "provider failure with user content",
+            },
+        }
+        with patch.object(lambda_utils, "_save_sync_logs") as mock_save:
+            result = lambda_utils.process_and_log_sync_result(
+                logger_obj=self.logger,
+                sync_result=sync_result,
+                context=self.ctx,
+                uuid="real-uuid",
+                lambda_start_time=self.start,
+                trigger_name="test",
+            )
+
+        saved_payload = mock_save.call_args[0][1]
+        self.assertEqual(result["message"], "provider failure with user content")
+        self.assertEqual(
+            saved_payload["message"],
+            {
+                "error_code": "sync_runtime_error",
+                "error_message": lambda_utils.SAFE_SYNC_FAILURE_MESSAGE,
+            },
+        )
+
 
 class TestProcessSqsRecords(unittest.TestCase):
     def setUp(self):
