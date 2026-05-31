@@ -1,58 +1,88 @@
 import json
 from datetime import datetime, timezone
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, TypedDict
 
 MAX_SYNC_LOG_ERRORS = 3
-MAX_SYNC_LOG_ERROR_TEXT_LENGTH = 500
-MAX_SYNC_LOG_TITLE_LENGTH = 160
+SYNC_LOG_CONTRACT_VERSION = "2026-05-23.sync-log.v1"
+SAFE_SYNC_FAILURE_MESSAGE = "Sync failed. See Lambda logs with aws_request_id for details."
 
 # Sentinel used as the uuid field on SQS batch-aggregate summaries.
 # It is never a real user UUID and must never be written to DynamoDB.
 _BATCH_SUMMARY_UUID = "batch"
 
 
-def truncate_text(value: Any, max_length: int) -> Any:
-    if not isinstance(value, str):
-        return value
-    if len(value) <= max_length:
-        return value
-    return value[: max_length - 1] + "…"
+class SyncErrorPayload(TypedDict):
+    action: str | None
+    error_code: str
+    error_message: str | None
+    error: str | None
+    gcal_event_title: str | None
+    notion_task_name: str | None
+    gcal_event_start: str | None
+    gcal_event_id: str | None
+    notion_task_id: str | None
+    retriable: bool | None
 
 
-def sanitize_sync_error(error: Any) -> Dict[str, Any]:
+def sanitize_sync_error(error: Any) -> SyncErrorPayload:
     if not isinstance(error, dict):
         return {
             "action": None,
-            "error": truncate_text(str(error), MAX_SYNC_LOG_ERROR_TEXT_LENGTH),
+            "error_code": "unstructured_sync_error",
+            "error_message": str(error),
+            "error": str(error),
             "gcal_event_title": None,
             "notion_task_name": None,
             "gcal_event_start": None,
             "gcal_event_id": None,
             "notion_task_id": None,
+            "retriable": None,
         }
+
+    retriable = error.get("retriable")
+    raw_error = error.get("error")
+    error_message = error.get("error_message") or raw_error
+    if retriable is True:
+        # For provider/runtime failures we only expose machine-readable code + safe message.
+        raw_error = None
+        error_message = SAFE_SYNC_FAILURE_MESSAGE
 
     return {
         "action": error.get("action"),
-        "error": truncate_text(error.get("error"), MAX_SYNC_LOG_ERROR_TEXT_LENGTH),
-        "gcal_event_title": truncate_text(error.get("gcal_event_title"), MAX_SYNC_LOG_TITLE_LENGTH),
-        "notion_task_name": truncate_text(error.get("notion_task_name"), MAX_SYNC_LOG_TITLE_LENGTH),
+        "error_code": error.get("error_code") or "unknown_sync_error",
+        "error_message": error_message,
+        "error": raw_error,
+        "gcal_event_title": error.get("gcal_event_title"),
+        "notion_task_name": error.get("notion_task_name"),
         "gcal_event_start": error.get("gcal_event_start"),
         "gcal_event_id": error.get("gcal_event_id"),
         "notion_task_id": error.get("notion_task_id"),
+        "retriable": retriable,
     }
 
 
 def sanitize_sync_log_payload(payload: Dict[str, Any]) -> Dict[str, Any]:
+    sanitized_payload = dict(payload)
     message = payload.get("message")
+    status = payload.get("status")
+    status_code = payload.get("statusCode")
+    if isinstance(message, str):
+        # Keep user-facing sync failures generic when upstream returned plaintext.
+        if status == "sync_error" and isinstance(status_code, int) and status_code >= 500:
+            sanitized_payload["message"] = {
+                "error_code": "sync_runtime_error",
+                "error_message": SAFE_SYNC_FAILURE_MESSAGE,
+            }
+        return sanitized_payload
+
     if not isinstance(message, dict):
-        return payload
+        return sanitized_payload
 
     errors = message.get("errors")
     if not isinstance(errors, list):
-        return payload
+        return sanitized_payload
 
     original_error_count = len(errors)
-    sanitized_payload = dict(payload)
     sanitized_message = dict(message)
     sanitized_message["errors"] = [sanitize_sync_error(err) for err in errors[:MAX_SYNC_LOG_ERRORS]]
     sanitized_message["error_count"] = original_error_count
@@ -81,6 +111,7 @@ def process_and_log_sync_result(
         status_code = int((sync_result or {}).get("statusCode", 500))
         body_obj = (sync_result or {}).get("body") or {}
         payload: Dict[str, Any] = {
+            "contract_version": SYNC_LOG_CONTRACT_VERSION,
             "trigger_by": trigger_name,
             "uuid": uuid,
             "statusCode": status_code,
@@ -96,6 +127,7 @@ def process_and_log_sync_result(
     except Exception:
         logger_obj.exception("Error processing sync result")
         payload = {
+            "contract_version": SYNC_LOG_CONTRACT_VERSION,
             "trigger_by": trigger_name,
             "uuid": uuid,
             "statusCode": 500,

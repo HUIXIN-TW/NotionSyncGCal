@@ -20,6 +20,7 @@ dev = [
   "black==24.4.2",
   "coverage==7.6.1",
   "flake8==7.3.0",
+  "isort>=8.0.1",
   "python-semantic-release==10.5.3",
 ]
 

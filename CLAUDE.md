@@ -25,6 +25,9 @@ make lint
 black src/ lambda_function.py --line-length 120
 flake8 src/ lambda_function.py --max-line-length 120
 prettier --write .
+
+# Public push safety (recommended before pushing public branches)
+./scripts/check_public_push_safety.sh
 ```
 
 ## Architecture
