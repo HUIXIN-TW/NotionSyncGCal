@@ -3,8 +3,10 @@ from datetime import datetime, timezone
 from typing import Any, Dict, Optional, TypedDict
 
 MAX_SYNC_LOG_ERRORS = 3
-SYNC_LOG_CONTRACT_VERSION = "2026-05-23.sync-log.v1"
-SAFE_SYNC_FAILURE_MESSAGE = "Sync failed. See Lambda logs with aws_request_id for details."
+SYNC_LOG_CONTRACT_VERSION = "2026-05-31.sync-log.v2"
+SAFE_SYNC_FAILURE_MESSAGE = (
+    "Sync failed. See Lambda logs with aws_request_id for details."
+)
 
 # Sentinel used as the uuid field on SQS batch-aggregate summaries.
 # It is never a real user UUID and must never be written to DynamoDB.
@@ -16,8 +18,6 @@ class SyncErrorPayload(TypedDict):
     error_code: str
     error_message: str | None
     error: str | None
-    gcal_event_title: str | None
-    notion_task_name: str | None
     gcal_event_start: str | None
     gcal_event_id: str | None
     notion_task_id: str | None
@@ -31,8 +31,6 @@ def sanitize_sync_error(error: Any) -> SyncErrorPayload:
             "error_code": "unstructured_sync_error",
             "error_message": str(error),
             "error": str(error),
-            "gcal_event_title": None,
-            "notion_task_name": None,
             "gcal_event_start": None,
             "gcal_event_id": None,
             "notion_task_id": None,
@@ -52,8 +50,6 @@ def sanitize_sync_error(error: Any) -> SyncErrorPayload:
         "error_code": error.get("error_code") or "unknown_sync_error",
         "error_message": error_message,
         "error": raw_error,
-        "gcal_event_title": error.get("gcal_event_title"),
-        "notion_task_name": error.get("notion_task_name"),
         "gcal_event_start": error.get("gcal_event_start"),
         "gcal_event_id": error.get("gcal_event_id"),
         "notion_task_id": error.get("notion_task_id"),
@@ -68,7 +64,11 @@ def sanitize_sync_log_payload(payload: Dict[str, Any]) -> Dict[str, Any]:
     status_code = payload.get("statusCode")
     if isinstance(message, str):
         # Keep user-facing sync failures generic when upstream returned plaintext.
-        if status == "sync_error" and isinstance(status_code, int) and status_code >= 500:
+        if (
+            status == "sync_error"
+            and isinstance(status_code, int)
+            and status_code >= 500
+        ):
             sanitized_payload["message"] = {
                 "error_code": "sync_runtime_error",
                 "error_message": SAFE_SYNC_FAILURE_MESSAGE,
@@ -84,10 +84,14 @@ def sanitize_sync_log_payload(payload: Dict[str, Any]) -> Dict[str, Any]:
 
     original_error_count = len(errors)
     sanitized_message = dict(message)
-    sanitized_message["errors"] = [sanitize_sync_error(err) for err in errors[:MAX_SYNC_LOG_ERRORS]]
+    sanitized_message["errors"] = [
+        sanitize_sync_error(err) for err in errors[:MAX_SYNC_LOG_ERRORS]
+    ]
     sanitized_message["error_count"] = original_error_count
     sanitized_message["errors_truncated"] = original_error_count > MAX_SYNC_LOG_ERRORS
-    sanitized_message["omitted_error_count"] = max(original_error_count - MAX_SYNC_LOG_ERRORS, 0)
+    sanitized_message["omitted_error_count"] = max(
+        original_error_count - MAX_SYNC_LOG_ERRORS, 0
+    )
     sanitized_payload["message"] = sanitized_message
     return sanitized_payload
 
@@ -120,7 +124,9 @@ def process_and_log_sync_result(
             "lambda_name": getattr(context, "function_name", "unknown"),
             "aws_request_id": getattr(context, "aws_request_id", "unknown"),
             "log_level": logger_obj.level,
-            "duration_ms": int((datetime.now(timezone.utc) - lambda_start_time).total_seconds() * 1000),
+            "duration_ms": int(
+                (datetime.now(timezone.utc) - lambda_start_time).total_seconds() * 1000
+            ),
         }
         if extra:
             payload.update(extra)
@@ -136,7 +142,9 @@ def process_and_log_sync_result(
             "lambda_name": getattr(context, "function_name", "unknown"),
             "aws_request_id": getattr(context, "aws_request_id", "unknown"),
             "log_level": logger_obj.level,
-            "duration_ms": int((datetime.now(timezone.utc) - lambda_start_time).total_seconds() * 1000),
+            "duration_ms": int(
+                (datetime.now(timezone.utc) - lambda_start_time).total_seconds() * 1000
+            ),
         }
     # Persist summary to DynamoDB; don't fail the handler on logging errors
     try:
@@ -150,13 +158,20 @@ def process_and_log_sync_result(
 
 
 def process_sqs_records(
-    logger_obj, event: Dict[str, Any], context: Any, run_sync, lambda_start_time: datetime
+    logger_obj,
+    event: Dict[str, Any],
+    context: Any,
+    run_sync,
+    lambda_start_time: datetime,
 ) -> Dict[str, Any]:
     """
     SQS batch processing: handle each record, summarize, and log
     """
     sqs_batch_results = []
-    logger_obj.debug(f"Processing SQS event with {len(event.get('Records', []))} records")
+    batch_item_failures = []
+    logger_obj.debug(
+        f"Processing SQS event with {len(event.get('Records', []))} records"
+    )
 
     # Process each SQS record
     for record in event["Records"]:
@@ -167,17 +182,21 @@ def process_sqs_records(
             body = json.loads(record.get("body", "{}"))
             provided_uuid = body.get("uuid")
             sync_result = run_sync(provided_uuid)
-            sqs_batch_results.append(
-                process_and_log_sync_result(
-                    logger_obj=logger_obj,
-                    sync_result=sync_result,
-                    context=context,
-                    uuid=provided_uuid,
-                    lambda_start_time=lambda_start_time,
-                    trigger_name="sqs",
-                    extra={"job_id": job_id},
-                )
+            processed_result = process_and_log_sync_result(
+                logger_obj=logger_obj,
+                sync_result=sync_result,
+                context=context,
+                uuid=provided_uuid,
+                lambda_start_time=lambda_start_time,
+                trigger_name="sqs",
+                extra={"job_id": job_id},
             )
+            sqs_batch_results.append(processed_result)
+            if (
+                isinstance(processed_result.get("statusCode"), int)
+                and processed_result.get("statusCode", 500) >= 500
+            ):
+                batch_item_failures.append({"itemIdentifier": job_id})
         except Exception:
             logger_obj.exception("Error processing SQS record")
             sqs_batch_results.append(
@@ -188,10 +207,13 @@ def process_sqs_records(
                     "error": "record processing failed",
                 }
             )
+            batch_item_failures.append({"itemIdentifier": job_id})
 
     # Summarize results for batch logging
     success_count = sum(
-        1 for s in sqs_batch_results if isinstance(s.get("statusCode"), int) and s.get("statusCode", 500) < 400
+        1
+        for s in sqs_batch_results
+        if isinstance(s.get("statusCode"), int) and s.get("statusCode", 500) < 400
     )
     failure_count = len(sqs_batch_results) - success_count
 
@@ -202,18 +224,21 @@ def process_sqs_records(
         for s in sqs_batch_results
         if isinstance(s.get("statusCode"), int) and s.get("statusCode", 500) < 400
     ]
-    failure_uuids = [s.get("uuid") for s in sqs_batch_results if s.get("uuid") not in success_uuids]
+    failure_uuids = [
+        s.get("uuid") for s in sqs_batch_results if s.get("uuid") not in success_uuids
+    ]
     batch_sync_result = {
         # Provide an explicit statusCode for downstream handler uniformity
         "statusCode": 200,
         "body": {
             "status": "batch_processed",
             "message": (
-                f"Processed {len(sqs_batch_results)} records: " f"{success_count} succeeded, {failure_count} failed."
+                f"Processed {len(sqs_batch_results)} records: "
+                f"{success_count} succeeded, {failure_count} failed."
             ),
         },
     }
-    return process_and_log_sync_result(
+    batch_summary = process_and_log_sync_result(
         logger_obj=logger_obj,
         sync_result=batch_sync_result,
         context=context,
@@ -227,13 +252,21 @@ def process_sqs_records(
             "record_summaries": sqs_batch_results,  # concise per-record summary list
             "success_uuids": success_uuids,
             "failure_uuids": failure_uuids,
-            "record_uuids": [u for u in success_uuids + failure_uuids if u],  # all uuids in order
+            "record_uuids": [
+                u for u in success_uuids + failure_uuids if u
+            ],  # all uuids in order
         },
     )
+    batch_summary["batchItemFailures"] = batch_item_failures
+    return batch_summary
 
 
 def process_eventbridge_event(
-    logger_obj, event: Dict[str, Any], context: Any, run_sync, lambda_start_time: datetime
+    logger_obj,
+    event: Dict[str, Any],
+    context: Any,
+    run_sync,
+    lambda_start_time: datetime,
 ) -> Dict[str, Any]:
     """
     Process EventBridge event.
@@ -254,7 +287,12 @@ def process_eventbridge_event(
             uuid=provided_uuid,
             lambda_start_time=lambda_start_time,
             trigger_name="eventbridge",
-            extra={"event_id": event_id, "detail_type": detail_type, "source": event_source, "event_time": event_time},
+            extra={
+                "event_id": event_id,
+                "detail_type": detail_type,
+                "source": event_source,
+                "event_time": event_time,
+            },
         )
         return result
     except Exception:
