@@ -77,8 +77,6 @@ class SyncContractTests(unittest.TestCase):
                             "action": "update_notion",
                             "error_code": "runtime_error",
                             "error": "provider failure",
-                            "gcal_event_title": "title",
-                            "notion_task_name": "task",
                             "gcal_event_start": "2026-05-23T09:00:00+08:00",
                             "gcal_event_id": "evt-1",
                             "notion_task_id": "page-1",
@@ -114,7 +112,9 @@ class SyncContractTests(unittest.TestCase):
             "duration_ms",
         }
         self.assertTrue(required_top_level_keys.issubset(payload.keys()))
-        self.assertEqual(payload["contract_version"], lambda_utils.SYNC_LOG_CONTRACT_VERSION)
+        self.assertEqual(
+            payload["contract_version"], lambda_utils.SYNC_LOG_CONTRACT_VERSION
+        )
 
         persisted_errors = payload["message"]["errors"]
         self.assertEqual(len(persisted_errors), 1)
@@ -124,8 +124,6 @@ class SyncContractTests(unittest.TestCase):
             "error_code",
             "error_message",
             "error",
-            "gcal_event_title",
-            "notion_task_name",
             "gcal_event_start",
             "gcal_event_id",
             "notion_task_id",

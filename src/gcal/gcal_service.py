@@ -94,8 +94,8 @@ class GoogleService:
 
                         if not item.get("start"):
                             self.logger.warning(
-                                f"Skipping event with missing start field: id={item.get('id')} "
-                                f"summary={item.get('summary', '')!r}"
+                                "Skipping event with missing start field: id=%s",
+                                item.get("id"),
                             )
                             cal_skipped += 1
                             continue
@@ -143,7 +143,11 @@ class GoogleService:
         return event_id
 
     def move_and_update_gcal_event(
-        self, notion_task, existing_gcal_event_id, new_gcal_calendar_id, existing_gcal_cal_id
+        self,
+        notion_task,
+        existing_gcal_event_id,
+        new_gcal_calendar_id,
+        existing_gcal_cal_id,
     ):
         self.service.events().move(
             calendarId=existing_gcal_cal_id,

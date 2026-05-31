@@ -74,9 +74,7 @@ def _build_sync_error(
     error_message: str | None = None,
     error: str | None = None,
     notion_task_id: str | None = None,
-    notion_task_name: str | None = None,
     gcal_event_id: str | None = None,
-    gcal_event_title: str | None = None,
     gcal_event_start: str | None = None,
     retriable: bool | None = None,
     debug_detail: str | None = None,
@@ -88,9 +86,7 @@ def _build_sync_error(
         "error_message": message,
         "error": error,
         "notion_task_id": notion_task_id,
-        "notion_task_name": notion_task_name,
         "gcal_event_id": gcal_event_id,
-        "gcal_event_title": gcal_event_title,
         "gcal_event_start": gcal_event_start,
         "retriable": retriable,
     }
@@ -325,9 +321,7 @@ def synchronize_notion_and_google_calendar(
                                             "Syncing this event would corrupt data integrity."
                                         ),
                                         notion_task_id=notion_task_page_id,
-                                        notion_task_name=notion_task_name,
                                         gcal_event_id=gcal_event_id,
-                                        gcal_event_title=gcal_event_summary,
                                         gcal_event_start=gcal_event.get("start", {}).get("dateTime")
                                         or gcal_event.get("start", {}).get("date"),
                                         retriable=False,
@@ -368,9 +362,7 @@ def synchronize_notion_and_google_calendar(
                         error=None,
                         debug_detail=build_debug_exception_detail(e),
                         notion_task_id=notion_task_page_id,
-                        notion_task_name=notion_task_name,
                         gcal_event_id=notion_gcal_event_id,
-                        gcal_event_title=(gcal_event_summary if "gcal_event_summary" in locals() else None),
                         gcal_event_start=(
                             (gcal_event.get("start", {}).get("dateTime") or gcal_event.get("start", {}).get("date"))
                             if "gcal_event" in locals()
@@ -391,7 +383,8 @@ def synchronize_notion_and_google_calendar(
             for gcal_event in gcal_event_list:
                 gcal_event_id = gcal_event.get("id")
                 logger.debug(
-                    f"Google Calendar: Creating a new task in Notion for event '{gcal_event.get('summary', '')}'"
+                    "Google Calendar: Creating a new task in Notion for event_id=%s",
+                    gcal_event_id,
                 )
                 try:
                     organizer_email = (gcal_event.get("organizer") or {}).get("email")
@@ -406,7 +399,6 @@ def synchronize_notion_and_google_calendar(
                                     "so it was not synced."
                                 ),
                                 gcal_event_id=gcal_event_id,
-                                gcal_event_title=gcal_event.get("summary", ""),
                                 gcal_event_start=gcal_event.get("start", {}).get("dateTime")
                                 or gcal_event.get("start", {}).get("date"),
                                 retriable=False,
@@ -429,7 +421,6 @@ def synchronize_notion_and_google_calendar(
                                     "Syncing this event would corrupt data integrity."
                                 ),
                                 gcal_event_id=gcal_event_id,
-                                gcal_event_title=gcal_event.get("summary", ""),
                                 gcal_event_start=gcal_event.get("start", {}).get("dateTime")
                                 or gcal_event.get("start", {}).get("date"),
                                 retriable=False,
@@ -450,7 +441,6 @@ def synchronize_notion_and_google_calendar(
                             error=None,
                             debug_detail=build_debug_exception_detail(e),
                             gcal_event_id=gcal_event_id,
-                            gcal_event_title=gcal_event.get("summary", ""),
                             gcal_event_start=gcal_event.get("start", {}).get("dateTime")
                             or gcal_event.get("start", {}).get("date"),
                             retriable=True,

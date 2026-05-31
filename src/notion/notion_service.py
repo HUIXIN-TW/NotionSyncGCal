@@ -168,7 +168,11 @@ class NotionService:
                 },
                 self.page_property["Location_Notion_Name"]: {
                     "type": "place",
-                    "place": {"lat": 0, "lon": 0, "address": gcal_event.get("location", "")},
+                    "place": {
+                        "lat": 0,
+                        "lon": 0,
+                        "address": gcal_event.get("location", ""),
+                    },
                 },
                 self.page_property["GCal_Sync_Time_Notion_Name"]: {
                     "type": "rich_text",
@@ -254,7 +258,11 @@ class NotionService:
                 },
                 self.page_property["Location_Notion_Name"]: {
                     "type": "place",
-                    "place": {"lat": 0, "lon": 0, "address": gcal_event.get("location", "")},
+                    "place": {
+                        "lat": 0,
+                        "lon": 0,
+                        "address": gcal_event.get("location", ""),
+                    },
                 },
                 self.page_property["GCal_EventId_Notion_Name"]: {
                     "type": "rich_text",
@@ -265,7 +273,7 @@ class NotionService:
                 },
             },
         )
-        self.logger.info(f"Event {gcal_event.get('summary', '')} created in Notion successfully.")
+        self.logger.info("Created Notion task for Google Calendar event_id=%s", gcal_event.get("id"))
 
     def delete_notion_task(self, page_id):
         self.client.pages.update(

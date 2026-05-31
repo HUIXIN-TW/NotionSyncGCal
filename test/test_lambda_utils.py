@@ -92,8 +92,6 @@ class TestProcessAndLogSyncResult(unittest.TestCase):
                             "error_code": "provider_write_failed",
                             "error": "raw provider payload with private content",
                             "debug_detail": "RuntimeError: raw provider payload with private content",
-                            "gcal_event_title": "Private calendar event",
-                            "notion_task_name": "Private task",
                             "gcal_event_start": "2026-05-23T10:00:00Z",
                             "gcal_event_id": "evt-123",
                             "notion_task_id": "page-456",
@@ -118,18 +116,23 @@ class TestProcessAndLogSyncResult(unittest.TestCase):
         returned_error = result["message"]["errors"][0]
 
         self.assertEqual(saved_error["error_code"], "provider_write_failed")
-        self.assertEqual(saved_error["error_message"], lambda_utils.SAFE_SYNC_FAILURE_MESSAGE)
+        self.assertEqual(
+            saved_error["error_message"], lambda_utils.SAFE_SYNC_FAILURE_MESSAGE
+        )
         self.assertIsNone(saved_error["error"])
         self.assertEqual(saved_error["gcal_event_id"], "evt-123")
         self.assertEqual(saved_error["notion_task_id"], "page-456")
-        self.assertEqual(saved_error["gcal_event_title"], "Private calendar event")
-        self.assertEqual(saved_error["notion_task_name"], "Private task")
         self.assertEqual(saved_error["gcal_event_start"], "2026-05-23T10:00:00Z")
+        self.assertNotIn("gcal_event_title", saved_error)
+        self.assertNotIn("notion_task_name", saved_error)
         self.assertNotIn("debug_detail", saved_error)
-        self.assertEqual(returned_error["error"], "raw provider payload with private content")
-        self.assertEqual(returned_error["debug_detail"], "RuntimeError: raw provider payload with private content")
-        self.assertEqual(returned_error["gcal_event_title"], "Private calendar event")
-        self.assertEqual(returned_error["notion_task_name"], "Private task")
+        self.assertEqual(
+            returned_error["error"], "raw provider payload with private content"
+        )
+        self.assertEqual(
+            returned_error["debug_detail"],
+            "RuntimeError: raw provider payload with private content",
+        )
 
     def test_normalizes_plaintext_5xx_failure_message_for_persisted_payload(self):
         sync_result = {
@@ -206,6 +209,80 @@ class TestProcessSqsRecords(unittest.TestCase):
         self.assertEqual(result["failure_count"], 0)
         self.assertCountEqual(result["success_uuids"], uuids)
         self.assertEqual(result["failure_uuids"], [])
+        self.assertEqual(result["batchItemFailures"], [])
+
+    def test_record_exception_returns_partial_batch_failure(self):
+        event = _make_sqs_event(["uuid-ok", "uuid-boom"])
+
+        def run_sync(uuid):
+            if uuid == "uuid-boom":
+                raise RuntimeError("sync exploded")
+            return _ok_sync_result()
+
+        with patch.object(lambda_utils, "_save_sync_logs"):
+            result = lambda_utils.process_sqs_records(
+                logger_obj=self.logger,
+                event=event,
+                context=self.ctx,
+                run_sync=run_sync,
+                lambda_start_time=self.start,
+            )
+
+        self.assertEqual(result["success_count"], 1)
+        self.assertEqual(result["failure_count"], 1)
+        self.assertEqual(result["batchItemFailures"], [{"itemIdentifier": "msg-1"}])
+
+    def test_retryable_500_result_returns_partial_batch_failure(self):
+        event = _make_sqs_event(["uuid-fail"])
+
+        def run_sync(uuid):  # noqa: ARG001
+            return {
+                "statusCode": 500,
+                "body": {
+                    "status": "sync_error",
+                    "message": {"error_code": "sync_runtime_error"},
+                },
+            }
+
+        with patch.object(lambda_utils, "_save_sync_logs"):
+            result = lambda_utils.process_sqs_records(
+                logger_obj=self.logger,
+                event=event,
+                context=self.ctx,
+                run_sync=run_sync,
+                lambda_start_time=self.start,
+            )
+
+        self.assertEqual(result["success_count"], 0)
+        self.assertEqual(result["failure_count"], 1)
+        self.assertEqual(result["batchItemFailures"], [{"itemIdentifier": "msg-0"}])
+
+    def test_mixed_batch_only_retries_failed_records(self):
+        event = _make_sqs_event(["uuid-ok", "uuid-fail", "uuid-ok-2"])
+
+        def run_sync(uuid):
+            if uuid == "uuid-fail":
+                return {
+                    "statusCode": 500,
+                    "body": {
+                        "status": "sync_error",
+                        "message": {"error_code": "sync_runtime_error"},
+                    },
+                }
+            return _ok_sync_result()
+
+        with patch.object(lambda_utils, "_save_sync_logs"):
+            result = lambda_utils.process_sqs_records(
+                logger_obj=self.logger,
+                event=event,
+                context=self.ctx,
+                run_sync=run_sync,
+                lambda_start_time=self.start,
+            )
+
+        self.assertEqual(result["success_count"], 2)
+        self.assertEqual(result["failure_count"], 1)
+        self.assertEqual(result["batchItemFailures"], [{"itemIdentifier": "msg-1"}])
 
 
 if __name__ == "__main__":

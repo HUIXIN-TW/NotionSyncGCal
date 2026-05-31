@@ -45,7 +45,10 @@ class SyncSanitizationTests(unittest.TestCase):
     def test_sync_errors_expose_safe_message_for_retriable_failures(self):
         notion_service = MagicMock()
         google_service = MagicMock()
-        notion_service.get_notion_task.return_value = ({}, [_make_notion_task("evt-123")])
+        notion_service.get_notion_task.return_value = (
+            {},
+            [_make_notion_task("evt-123")],
+        )
         notion_service.update_notion_task.side_effect = RuntimeError(
             "private provider payload: secret summary and customer data"
         )
@@ -73,20 +76,26 @@ class SyncSanitizationTests(unittest.TestCase):
         error = result["body"]["message"]["errors"][0]
         self.assertEqual(error["action"], "update_notion")
         self.assertEqual(error["error_code"], "runtime_error")
-        self.assertEqual(error["error_message"], "Sync failed. See Lambda logs with aws_request_id for details.")
+        self.assertEqual(
+            error["error_message"],
+            "Sync failed. See Lambda logs with aws_request_id for details.",
+        )
         self.assertIsNone(error["error"])
         self.assertEqual(error["notion_task_id"], "page-123")
-        self.assertEqual(error["notion_task_name"], "Highly sensitive task title")
         self.assertEqual(error["gcal_event_id"], "evt-123")
-        self.assertEqual(error["gcal_event_title"], "Private calendar summary")
         self.assertEqual(error["gcal_event_start"], "2026-05-23T09:00:00+08:00")
         self.assertTrue(error["retriable"])
+        self.assertNotIn("notion_task_name", error)
+        self.assertNotIn("gcal_event_title", error)
         self.assertNotIn("debug_detail", error)
 
     def test_sync_errors_include_debug_detail_only_with_explicit_non_prod_flag(self):
         notion_service = MagicMock()
         google_service = MagicMock()
-        notion_service.get_notion_task.return_value = ({}, [_make_notion_task("evt-123")])
+        notion_service.get_notion_task.return_value = (
+            {},
+            [_make_notion_task("evt-123")],
+        )
         notion_service.update_notion_task.side_effect = RuntimeError(
             "private provider payload: secret summary and customer data"
         )
@@ -117,7 +126,10 @@ class SyncSanitizationTests(unittest.TestCase):
 
         self.assertEqual(result["statusCode"], 200)
         error = result["body"]["message"]["errors"][0]
-        self.assertEqual(error["error_message"], "Sync failed. See Lambda logs with aws_request_id for details.")
+        self.assertEqual(
+            error["error_message"],
+            "Sync failed. See Lambda logs with aws_request_id for details.",
+        )
         self.assertIsNone(error["error"])
         self.assertIn("debug_detail", error)
         self.assertIn("RuntimeError", error["debug_detail"])

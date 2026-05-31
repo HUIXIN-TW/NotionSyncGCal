@@ -1,5 +1,9 @@
 import os
-from utils.token_crypto import TokenCryptoError, decrypt_token_if_encrypted
+from utils.token_crypto import (
+    TokenCryptoError,
+    decrypt_token,
+    decrypt_token_if_encrypted,
+)
 
 
 class SettingError(Exception):
@@ -28,7 +32,7 @@ class NotionToken:
 
                 response = get_notion_token_by_uuid(uuid)
                 try:
-                    return decrypt_token_if_encrypted(response.get("accessToken"))
+                    return decrypt_token(response.get("accessToken"))
                 except TokenCryptoError as e:
                     raise SettingError(f"Failed to decrypt Notion token: {e}") from e
             except SettingError:

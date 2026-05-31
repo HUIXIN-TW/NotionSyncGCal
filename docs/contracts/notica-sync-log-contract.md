@@ -1,6 +1,6 @@
 # Notica Sync Log Contract (Lambda -> notica-app)
 
-Version: `2026-05-23.sync-log.v1`
+Version: `2026-05-31.sync-log.v2`
 
 This document defines the payload persisted as `lastSyncLog` in the Users table and emitted by `process_and_log_sync_result`.
 
@@ -39,8 +39,6 @@ Required keys for each error item:
 - `error_code: string`
 - `error_message: string | null`
 - `error: string | null`
-- `gcal_event_title: string | null`
-- `notion_task_name: string | null`
 - `gcal_event_start: string | null`
 - `gcal_event_id: string | null`
 - `notion_task_id: string | null`

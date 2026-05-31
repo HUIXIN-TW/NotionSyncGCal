@@ -4,7 +4,12 @@ from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 from google.auth.exceptions import RefreshError
 from utils.ssm_secrets import SSMSecretError, get_ssm_parameter
-from utils.token_crypto import TOKEN_ENCRYPTION_PREFIX, TokenCryptoError, decrypt_token_if_encrypted
+from utils.token_crypto import (
+    TOKEN_ENCRYPTION_PREFIX,
+    TokenCryptoError,
+    decrypt_token,
+    decrypt_token_if_encrypted,
+)
 
 _DEFAULT_TOKEN_URI = "https://oauth2.googleapis.com/token"
 _DEFAULT_SCOPES = [
@@ -51,8 +56,8 @@ class GoogleToken:
                 self.logger.debug("Loading credentials from DynamoDB")
                 data = get_google_token_by_uuid(self.config.get("uuid"))
                 try:
-                    access_token = decrypt_token_if_encrypted(data.get("accessToken"))
-                    refresh_token = decrypt_token_if_encrypted(data.get("refreshToken"))
+                    access_token = decrypt_token(data.get("accessToken"))
+                    refresh_token = decrypt_token(data.get("refreshToken"))
                 except TokenCryptoError as e:
                     raise SettingError(f"Failed to decrypt encrypted Google OAuth token: {e}") from e
 
