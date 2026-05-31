@@ -4,7 +4,12 @@ from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 from google.auth.exceptions import RefreshError
 from utils.ssm_secrets import SSMSecretError, get_ssm_parameter
-from utils.token_crypto import TOKEN_ENCRYPTION_PREFIX, TokenCryptoError, decrypt_token_if_encrypted
+from utils.token_crypto import (
+    TOKEN_ENCRYPTION_PREFIX,
+    TokenCryptoError,
+    decrypt_token,
+    decrypt_token_if_encrypted,
+)
 
 _DEFAULT_TOKEN_URI = "https://oauth2.googleapis.com/token"
 _DEFAULT_SCOPES = [
@@ -51,15 +56,19 @@ class GoogleToken:
                 self.logger.debug("Loading credentials from DynamoDB")
                 data = get_google_token_by_uuid(self.config.get("uuid"))
                 try:
-                    access_token = decrypt_token_if_encrypted(data.get("accessToken"))
-                    refresh_token = decrypt_token_if_encrypted(data.get("refreshToken"))
+                    access_token = decrypt_token(data.get("accessToken"))
+                    refresh_token = decrypt_token(data.get("refreshToken"))
                 except TokenCryptoError as e:
-                    raise SettingError(f"Failed to decrypt encrypted Google OAuth token: {e}") from e
+                    raise SettingError(
+                        f"Failed to decrypt encrypted Google OAuth token: {e}"
+                    ) from e
 
                 self._assert_plaintext_runtime_token("accessToken", access_token)
                 self._assert_plaintext_runtime_token("refreshToken", refresh_token)
 
-                client_secret_ssm_path = os.environ.get("GOOGLE_CALENDAR_CLIENT_SECRET_SSM_PATH", "").strip()
+                client_secret_ssm_path = os.environ.get(
+                    "GOOGLE_CALENDAR_CLIENT_SECRET_SSM_PATH", ""
+                ).strip()
                 if not client_secret_ssm_path:
                     raise SettingError(
                         "GOOGLE_CALENDAR_CLIENT_SECRET_SSM_PATH env var is required but not set in APP_MODE=cloud."
@@ -67,13 +76,17 @@ class GoogleToken:
                 try:
                     client_secret = get_ssm_parameter(client_secret_ssm_path)
                 except SSMSecretError as e:
-                    raise SettingError(f"Failed to resolve Google client secret from SSM: {e}") from e
+                    raise SettingError(
+                        f"Failed to resolve Google client secret from SSM: {e}"
+                    ) from e
                 credentials_data = {
                     "token": access_token,
                     "refresh_token": refresh_token,
                     "token_uri": _DEFAULT_TOKEN_URI,
                     "scopes": list(_DEFAULT_SCOPES),
-                    "expiry": self._convert_google_expiry_date_format(data.get("expiryDate")),
+                    "expiry": self._convert_google_expiry_date_format(
+                        data.get("expiryDate")
+                    ),
                     "client_id": os.environ.get("GOOGLE_CALENDAR_CLIENT_ID"),
                     "client_secret": client_secret,
                 }
@@ -83,10 +96,14 @@ class GoogleToken:
             except SettingError:
                 raise
             except Exception as e:
-                raise SettingError(f"Error loading Google credentials from DynamoDB: {e}") from e
+                raise SettingError(
+                    f"Error loading Google credentials from DynamoDB: {e}"
+                ) from e
         if self.mode == "local":
             return self._load_local_credentials()
-        raise SettingError(f"Unknown config mode '{self.mode}'. Expected 'cloud' or 'local'.")
+        raise SettingError(
+            f"Unknown config mode '{self.mode}'. Expected 'cloud' or 'local'."
+        )
 
     def _load_local_credentials(self):
         client_id = os.environ.get("GOOGLE_CLIENT_ID", "").strip()
@@ -103,11 +120,15 @@ class GoogleToken:
             if not val
         ]
         if missing:
-            raise SettingError(f"Required environment variables for local Google auth are missing or empty: {missing}")
+            raise SettingError(
+                f"Required environment variables for local Google auth are missing or empty: {missing}"
+            )
         try:
             refresh_token = decrypt_token_if_encrypted(refresh_token)
         except TokenCryptoError as e:
-            raise SettingError(f"Failed to decrypt encrypted Google OAuth token: {e}") from e
+            raise SettingError(
+                f"Failed to decrypt encrypted Google OAuth token: {e}"
+            ) from e
         self._assert_plaintext_runtime_token("refreshToken", refresh_token)
 
         token_uri = os.environ.get("GOOGLE_TOKEN_URI", "").strip() or _DEFAULT_TOKEN_URI
@@ -116,7 +137,9 @@ class GoogleToken:
         if scopes_raw:
             scopes = [s.strip() for s in scopes_raw.split(",") if s.strip()]
             if not scopes:
-                raise SettingError("GOOGLE_SCOPES is set but resulted in an empty scope list after parsing.")
+                raise SettingError(
+                    "GOOGLE_SCOPES is set but resulted in an empty scope list after parsing."
+                )
         else:
             scopes = list(_DEFAULT_SCOPES)
 
@@ -144,7 +167,9 @@ class GoogleToken:
                     "Failed to refresh Google credentials in local mode. "
                     "GOOGLE_REFRESH_TOKEN is likely invalid/expired; renew it outside runtime and update .env.local."
                 ) from e
-            raise RefreshError("Failed to refresh Google credentials. Refresh token is likely invalid/expired.") from e
+            raise RefreshError(
+                "Failed to refresh Google credentials. Refresh token is likely invalid/expired."
+            ) from e
 
     def _save_credentials(self, credentials):
         try:
@@ -195,7 +220,9 @@ class GoogleToken:
 
     def _assert_plaintext_runtime_token(self, token_name, value):
         if isinstance(value, str) and value.startswith(TOKEN_ENCRYPTION_PREFIX):
-            raise SettingError(f"Internal token handling error: {token_name} remained encrypted at runtime.")
+            raise SettingError(
+                f"Internal token handling error: {token_name} remained encrypted at runtime."
+            )
 
 
 if __name__ == "__main__":

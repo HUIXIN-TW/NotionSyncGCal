@@ -2,7 +2,7 @@ import os
 import time
 from datetime import datetime, timezone
 import boto3
-from utils.token_crypto import decrypt_token_if_encrypted, encrypt_token_if_plaintext
+from utils.token_crypto import encrypt_token_if_plaintext
 
 
 def _get_dynamodb():
@@ -89,8 +89,6 @@ def get_notion_token_by_uuid(uuid: str) -> str:
     item = response.get("Item")
     if not item:
         raise ValueError(f"No Notion token found for uuid: {uuid}")
-    if "accessToken" in item:
-        item["accessToken"] = decrypt_token_if_encrypted(item.get("accessToken"))
     return item
 
 
@@ -101,15 +99,13 @@ def get_google_token_by_uuid(uuid: str) -> str:
     item = response.get("Item")
     if not item:
         raise ValueError(f"No Google token found for uuid: {uuid}")
-    if "accessToken" in item:
-        item["accessToken"] = decrypt_token_if_encrypted(item.get("accessToken"))
-    if "refreshToken" in item:
-        item["refreshToken"] = decrypt_token_if_encrypted(item.get("refreshToken"))
     return item
 
 
 # update item in google oauth token tables by uuid
-def update_google_token_by_uuid(uuid: str, access_token: str, refresh_token: str, expiry_date: str, updated_at: str):
+def update_google_token_by_uuid(
+    uuid: str, access_token: str, refresh_token: str, expiry_date: str, updated_at: str
+):
     google_tbl = _get_google_tables()
     encrypted_access_token = encrypt_token_if_plaintext(access_token)
     encrypted_refresh_token = encrypt_token_if_plaintext(refresh_token)
