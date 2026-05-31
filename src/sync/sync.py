@@ -11,7 +11,9 @@ logger = get_logger(__name__)
 
 # Cap sync volume to avoid unbounded processing for large datasets.
 SYNC_TASK_LIMIT = 250
-SAFE_SYNC_FAILURE_MESSAGE = "Sync failed. See Lambda logs with aws_request_id for details."
+SAFE_SYNC_FAILURE_MESSAGE = (
+    "Sync failed. See Lambda logs with aws_request_id for details."
+)
 
 
 class SyncAbortError(Exception):
@@ -27,9 +29,13 @@ def compare_timezones(notion_time_str, google_time_str):
 
     notion_timezone = notion_time.tzinfo
     google_timezone = google_time.tzinfo
-    logger.debug(f"Notion Timezone: {notion_timezone}, Google Calendar Timezone: {google_timezone}")
+    logger.debug(
+        f"Notion Timezone: {notion_timezone}, Google Calendar Timezone: {google_timezone}"
+    )
     if notion_timezone != google_timezone:
-        raise SyncAbortError(f"Timezones are different: Notion {notion_timezone} and Google Calendar {google_timezone}")
+        raise SyncAbortError(
+            f"Timezones are different: Notion {notion_timezone} and Google Calendar {google_timezone}"
+        )
 
 
 def get_current_time_in_iso_format():
@@ -57,7 +63,9 @@ def get_gcal_event_from_list(gcal_event_list, gcal_event_id):
         if gcal_event.get("id") == gcal_event_id:
             return gcal_event
 
-    logger.debug(f"Google Calendar event '{gcal_event_id}' not found in the provided list")
+    logger.debug(
+        f"Google Calendar event '{gcal_event_id}' not found in the provided list"
+    )
     return None
 
 
@@ -145,7 +153,9 @@ def synchronize_notion_and_google_calendar(
                 }
             # No Notion tasks found and no Google Calendar events found
             if task_count == 0 and event_count == 0:
-                logger.debug("No Notion tasks found and no Google Calendar events found.")
+                logger.debug(
+                    "No Notion tasks found and no Google Calendar events found."
+                )
                 return {
                     "statusCode": 200,
                     "body": {
@@ -159,7 +169,10 @@ def synchronize_notion_and_google_calendar(
                 "statusCode": 500,
                 "body": {
                     "status": "sync_error",
-                    "message": {"error_code": "sync_input_load_failed", "error_message": SAFE_SYNC_FAILURE_MESSAGE},
+                    "message": {
+                        "error_code": "sync_input_load_failed",
+                        "error_message": SAFE_SYNC_FAILURE_MESSAGE,
+                    },
                 },
             }
 
@@ -171,15 +184,24 @@ def synchronize_notion_and_google_calendar(
             action = None
             try:
                 notion_gcal_cal_name = get_select(
-                    notion_task["properties"], notion_page_property["GCal_Name_Notion_Name"]
+                    notion_task["properties"],
+                    notion_page_property["GCal_Name_Notion_Name"],
                 )
                 if not notion_gcal_cal_name:
                     notion_gcal_cal_name = user_setting["gcal_default_name"]
                     notion_gcal_cal_id = user_setting["gcal_default_id"]
-                    logger.warning(f"Calendar name not found. Use the default calendar: {notion_gcal_cal_name}")
-                    logger.debug(f"Calendar id not found. Use the default calendar id: {notion_gcal_cal_id}")
-                    logger.info("Update Notion Task for default calendar id and calendar name")
-                    notion_service.update_notion_task_for_default_calendar(notion_task_page_id, notion_gcal_cal_name)
+                    logger.warning(
+                        f"Calendar name not found. Use the default calendar: {notion_gcal_cal_name}"
+                    )
+                    logger.debug(
+                        f"Calendar id not found. Use the default calendar id: {notion_gcal_cal_id}"
+                    )
+                    logger.info(
+                        "Update Notion Task for default calendar id and calendar name"
+                    )
+                    notion_service.update_notion_task_for_default_calendar(
+                        notion_task_page_id, notion_gcal_cal_name
+                    )
                 else:
                     notion_gcal_cal_id = gcal_name_dict.get(notion_gcal_cal_name)
                     if not notion_gcal_cal_id:
@@ -190,43 +212,76 @@ def synchronize_notion_and_google_calendar(
                         continue
 
                 notion_gcal_event_id = get_rich_text(
-                    notion_task["properties"], notion_page_property["GCal_EventId_Notion_Name"]
+                    notion_task["properties"],
+                    notion_page_property["GCal_EventId_Notion_Name"],
                 )
-                notion_deletion = get_checkbox(notion_task["properties"], notion_page_property["Delete_Notion_Name"])
-                notion_task_name = get_title(notion_task["properties"], notion_page_property["Task_Notion_Name"]) or ""
+                notion_deletion = get_checkbox(
+                    notion_task["properties"],
+                    notion_page_property["Delete_Notion_Name"],
+                )
+                notion_task_name = (
+                    get_title(
+                        notion_task["properties"],
+                        notion_page_property["Task_Notion_Name"],
+                    )
+                    or ""
+                )
                 notion_gcal_sync_time = get_rich_text(
-                    notion_task["properties"], notion_page_property["GCal_Sync_Time_Notion_Name"]
+                    notion_task["properties"],
+                    notion_page_property["GCal_Sync_Time_Notion_Name"],
                 )
                 notion_task_last_edited_time = notion_task.get("last_edited_time")
 
                 # Notion Task without Google Calendar Event ID - Create a new event in Google Calendar
                 if not notion_gcal_event_id and should_update_google_events:
                     if notion_deletion:
-                        logger.debug("Skipping Google Calendar create for task marked deleted.")
+                        logger.debug(
+                            "Skipping Google Calendar create for task marked deleted."
+                        )
                         continue
                     action = "create_gcal"
-                    logger.debug("Creating a new event in Google Calendar for a Notion task.")
-                    new_gcal_event_id = google_service.create_gcal_event(notion_task, notion_gcal_cal_id)
-                    notion_service.update_notion_task_for_new_gcal_event_id(notion_task_page_id, new_gcal_event_id)
+                    logger.debug(
+                        "Creating a new event in Google Calendar for a Notion task."
+                    )
+                    new_gcal_event_id = google_service.create_gcal_event(
+                        notion_task, notion_gcal_cal_id
+                    )
+                    notion_service.update_notion_task_for_new_gcal_event_id(
+                        notion_task_page_id, new_gcal_event_id
+                    )
                     continue
 
                 # Notion Task with deletion flag - Delete the event in Google Calendar
                 if notion_deletion and notion_gcal_event_id is not None:
                     action = "delete_gcal"
                     logger.debug("Deleting a Google Calendar event for a Notion task.")
-                    google_service.delete_gcal_event(notion_gcal_cal_id, notion_gcal_event_id)
+                    google_service.delete_gcal_event(
+                        notion_gcal_cal_id, notion_gcal_event_id
+                    )
                     notion_service.delete_notion_task(notion_task_page_id)
 
-                    duplicate_notion_task_list = notion_service.get_notion_task_by_gcal_event_id(notion_gcal_event_id)
+                    duplicate_notion_task_list = (
+                        notion_service.get_notion_task_by_gcal_event_id(
+                            notion_gcal_event_id
+                        )
+                    )
                     if duplicate_notion_task_list is not None:
                         for duplicate_notion_task in duplicate_notion_task_list:
                             duplicate_notion_task_page_id = duplicate_notion_task["id"]
-                            logger.debug(f"Duplicate Notion Task Page ID: {duplicate_notion_task_page_id}")
-                            notion_service.delete_notion_task(duplicate_notion_task_page_id)
+                            logger.debug(
+                                f"Duplicate Notion Task Page ID: {duplicate_notion_task_page_id}"
+                            )
+                            notion_service.delete_notion_task(
+                                duplicate_notion_task_page_id
+                            )
 
-                    deleted_gcal_event = get_gcal_event_from_list(gcal_event_list, notion_gcal_event_id)
+                    deleted_gcal_event = get_gcal_event_from_list(
+                        gcal_event_list, notion_gcal_event_id
+                    )
                     if deleted_gcal_event is not None:
-                        remove_gcal_event_from_list(gcal_event_list, deleted_gcal_event, notion_gcal_event_id)
+                        remove_gcal_event_from_list(
+                            gcal_event_list, deleted_gcal_event, notion_gcal_event_id
+                        )
                     continue
 
                 # Notion Task with Google Calendar Event ID - Check if the event is in Google Calendar
@@ -239,7 +294,10 @@ def synchronize_notion_and_google_calendar(
 
                     if notion_gcal_event_id == gcal_event_id:
                         if compare_time:
-                            if not notion_task_last_edited_time or not gcal_event_updated_time:
+                            if (
+                                not notion_task_last_edited_time
+                                or not gcal_event_updated_time
+                            ):
                                 logger.warning(
                                     "Missing last edited or updated time. Skipping sync for task_id=%s event_id=%s",
                                     notion_task_page_id,
@@ -247,7 +305,9 @@ def synchronize_notion_and_google_calendar(
                                 )
                                 continue
 
-                            compare_timezones(notion_task_last_edited_time, gcal_event_updated_time)
+                            compare_timezones(
+                                notion_task_last_edited_time, gcal_event_updated_time
+                            )
 
                             if (
                                 notion_gcal_sync_time
@@ -259,12 +319,15 @@ def synchronize_notion_and_google_calendar(
                                     notion_task_page_id,
                                     gcal_event_id,
                                 )
-                                remove_gcal_event_from_list(gcal_event_list, gcal_event, gcal_event_summary)
+                                remove_gcal_event_from_list(
+                                    gcal_event_list, gcal_event, gcal_event_summary
+                                )
                                 break
 
                         # Update Google Calendar if Notion is newer or force update
                         if should_update_google_events and (
-                            not compare_time or (notion_task_last_edited_time > gcal_event_updated_time)
+                            not compare_time
+                            or (notion_task_last_edited_time > gcal_event_updated_time)
                         ):
                             action = "update_gcal"
                             logger.debug(
@@ -272,9 +335,15 @@ def synchronize_notion_and_google_calendar(
                                 notion_task_page_id,
                                 gcal_event_id,
                             )
-                            logger.debug("Updating the Google Calendar event from Notion.")
+                            logger.debug(
+                                "Updating the Google Calendar event from Notion."
+                            )
                             if notion_gcal_cal_id == gcal_cal_id:
-                                google_service.update_gcal_event(notion_task, notion_gcal_cal_id, notion_gcal_event_id)
+                                google_service.update_gcal_event(
+                                    notion_task,
+                                    notion_gcal_cal_id,
+                                    notion_gcal_event_id,
+                                )
                             else:
                                 logger.debug(
                                     "Moving Google Calendar event_id=%s to the configured calendar.",
@@ -291,7 +360,8 @@ def synchronize_notion_and_google_calendar(
                             )
                         # Update Notion if Google Calendar is newer or force update
                         elif should_update_notion_tasks and (
-                            not compare_time or (notion_task_last_edited_time < gcal_event_updated_time)
+                            not compare_time
+                            or (notion_task_last_edited_time < gcal_event_updated_time)
                         ):
                             action = "update_notion"
                             description = gcal_event.get("description") or ""
@@ -309,7 +379,9 @@ def synchronize_notion_and_google_calendar(
                                         notion_task_name=notion_task_name,
                                         gcal_event_id=gcal_event_id,
                                         gcal_event_title=gcal_event_summary,
-                                        gcal_event_start=gcal_event.get("start", {}).get("dateTime")
+                                        gcal_event_start=gcal_event.get(
+                                            "start", {}
+                                        ).get("dateTime")
                                         or gcal_event.get("start", {}).get("date"),
                                         retriable=False,
                                     )
@@ -325,7 +397,9 @@ def synchronize_notion_and_google_calendar(
                                     notion_task_page_id,
                                     gcal_event_id,
                                 )
-                                logger.debug("Updating the Notion task from Google Calendar.")
+                                logger.debug(
+                                    "Updating the Notion task from Google Calendar."
+                                )
                                 notion_service.update_notion_task(
                                     notion_task_page_id,
                                     gcal_event,
@@ -333,9 +407,13 @@ def synchronize_notion_and_google_calendar(
                                     current_gcal_sync_time,
                                 )
                         else:
-                            logger.debug("Notion task and Google event are already in sync.")
+                            logger.debug(
+                                "Notion task and Google event are already in sync."
+                            )
 
-                        remove_gcal_event_from_list(gcal_event_list, gcal_event, gcal_event_summary)
+                        remove_gcal_event_from_list(
+                            gcal_event_list, gcal_event, gcal_event_summary
+                        )
                         break
 
             except SyncAbortError:
@@ -351,20 +429,33 @@ def synchronize_notion_and_google_calendar(
                         notion_task_id=notion_task_page_id,
                         notion_task_name=notion_task_name,
                         gcal_event_id=notion_gcal_event_id,
-                        gcal_event_title=gcal_event_summary if "gcal_event_summary" in locals() else None,
+                        gcal_event_title=(
+                            gcal_event_summary
+                            if "gcal_event_summary" in locals()
+                            else None
+                        ),
                         gcal_event_start=(
-                            gcal_event.get("start", {}).get("dateTime") or gcal_event.get("start", {}).get("date")
-                        )
-                        if "gcal_event" in locals()
-                        else None,
+                            (
+                                gcal_event.get("start", {}).get("dateTime")
+                                or gcal_event.get("start", {}).get("date")
+                            )
+                            if "gcal_event" in locals()
+                            else None
+                        ),
                         retriable=True,
                     )
                 )
-                logger.exception("Error during sync action=%s notion_task_id=%s", action, notion_task_page_id)
+                logger.exception(
+                    "Error during sync action=%s notion_task_id=%s",
+                    action,
+                    notion_task_page_id,
+                )
 
         # Create new tasks in Notion for the remaining Google Calendar events
         if len(gcal_event_list) > 0 and should_update_notion_tasks:
-            logger.debug(f"🟢Google Calendar: Creating new tasks in Notion for {len(gcal_event_list)} events")
+            logger.debug(
+                f"🟢Google Calendar: Creating new tasks in Notion for {len(gcal_event_list)} events"
+            )
             for gcal_event in gcal_event_list:
                 gcal_event_id = gcal_event.get("id")
                 logger.debug(
@@ -384,7 +475,9 @@ def synchronize_notion_and_google_calendar(
                                 ),
                                 gcal_event_id=gcal_event_id,
                                 gcal_event_title=gcal_event.get("summary", ""),
-                                gcal_event_start=gcal_event.get("start", {}).get("dateTime")
+                                gcal_event_start=gcal_event.get("start", {}).get(
+                                    "dateTime"
+                                )
                                 or gcal_event.get("start", {}).get("date"),
                                 retriable=False,
                             )
@@ -407,7 +500,9 @@ def synchronize_notion_and_google_calendar(
                                 ),
                                 gcal_event_id=gcal_event_id,
                                 gcal_event_title=gcal_event.get("summary", ""),
-                                gcal_event_start=gcal_event.get("start", {}).get("dateTime")
+                                gcal_event_start=gcal_event.get("start", {}).get(
+                                    "dateTime"
+                                )
                                 or gcal_event.get("start", {}).get("date"),
                                 retriable=False,
                             )
@@ -433,7 +528,9 @@ def synchronize_notion_and_google_calendar(
                             retriable=True,
                         )
                     )
-                    logger.exception("Error during create_notion for event_id=%s", gcal_event_id)
+                    logger.exception(
+                        "Error during create_notion for event_id=%s", gcal_event_id
+                    )
 
     except Exception as e:
         logger.exception("Error during synchronization")
@@ -456,7 +553,9 @@ def synchronize_notion_and_google_calendar(
     return {"statusCode": 200, "body": {"status": "sync_success", "message": message}}
 
 
-def force_update_notion_tasks_by_google_event_and_ignore_time(user_setting, notion_service, google_service):
+def force_update_notion_tasks_by_google_event_and_ignore_time(
+    user_setting, notion_service, google_service
+):
     # -ga
     # Only update notion tasks
     # Do not update google events (Keep the google events as it is)
@@ -471,7 +570,9 @@ def force_update_notion_tasks_by_google_event_and_ignore_time(user_setting, noti
     return result
 
 
-def force_update_google_event_by_notion_task_and_ignore_time(user_setting, notion_service, google_service):
+def force_update_google_event_by_notion_task_and_ignore_time(
+    user_setting, notion_service, google_service
+):
     # -na
     # Only update google events
     # Do not update notion tasks (Keep the notion tasks as it is)
