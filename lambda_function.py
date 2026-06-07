@@ -20,22 +20,49 @@ from src.utils.lambda_utils import detect_event_source, process_sqs_records, pro
 logger_obj = get_logger(__name__)
 
 
+SAFE_SYNC_FAILURE_MESSAGE = "Sync failed. See Lambda logs with aws_request_id for details."
+
+
+def _all_sqs_batch_failures(event: Dict[str, Any]) -> list[Dict[str, str]]:
+    failures = []
+    for record in event.get("Records", []):
+        if record.get("eventSource") == "aws:sqs":
+            failures.append({"itemIdentifier": record.get("messageId", "unknown")})
+    return failures
+
+
+def _safe_error_payload(context: Any, error_code: str, status_code: int = 500) -> Dict[str, Any]:
+    return {
+        "statusCode": status_code,
+        "body": {
+            "status": "sync_error",
+            "message": {
+                "error_code": error_code,
+                "error_message": SAFE_SYNC_FAILURE_MESSAGE,
+                "aws_request_id": getattr(context, "aws_request_id", "unknown"),
+            },
+        },
+    }
+
+
 # Main Lambda handler: dispatch to SQS or API event processing
 def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     """AWS Lambda handler: dispatches to SQS or API helpers and centralises error handling."""
     lambda_start_time = datetime.now(timezone.utc)
 
-    # Import here to preserve original lazy import behaviour used in the project
-    from src.main import main as run_sync_notion_and_google  # noqa: E402
-
     try:
         event_type = detect_event_source(logger_obj, event)
         if event_type == "api":
-            pass  # API event processing can be added here (e.g. test connection)
+            logger_obj.warning("API event processing is not implemented for this Lambda.")
+            return _safe_error_payload(context, "unsupported_event_source", status_code=501)
         elif event_type == "sqs":
+            from src.main import main as run_sync_notion_and_google  # noqa: E402
+
             message = process_sqs_records(logger_obj, event, context, run_sync_notion_and_google, lambda_start_time)
             return message
         elif event_type == "eventbridge":
+            from src.main import main as run_sync_notion_and_google  # noqa: E402
+
             message = process_eventbridge_event(
                 logger_obj, event, context, run_sync_notion_and_google, lambda_start_time
             )
@@ -46,8 +73,20 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
 
     except RefreshError as e:
         logger_obj.exception(f"Google token refresh failed {e}")
+        if _all_sqs_batch_failures(event):
+            return {
+                "batchItemFailures": _all_sqs_batch_failures(event),
+                **_safe_error_payload(context, "google_refresh_error"),
+            }
+        return _safe_error_payload(context, "google_refresh_error")
     except Exception as e:
         logger_obj.exception(f"Unhandled lambda error {e}")
+        if _all_sqs_batch_failures(event):
+            return {
+                "batchItemFailures": _all_sqs_batch_failures(event),
+                **_safe_error_payload(context, "lambda_unhandled_error"),
+            }
+        return _safe_error_payload(context, "lambda_unhandled_error")
 
 
 # --- Local test entrypoint ---
