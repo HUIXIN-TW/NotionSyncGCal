@@ -1,5 +1,6 @@
 import os
 import sys
+import types
 import unittest
 from datetime import datetime, timezone
 from pathlib import Path
@@ -8,6 +9,86 @@ from unittest.mock import MagicMock, patch
 SRC_ROOT = Path(__file__).resolve().parents[1] / "src"
 sys.path.insert(0, str(SRC_ROOT))
 
+
+class _FakeRequest:
+    pass
+
+
+class _FakeRefreshError(Exception):
+    pass
+
+
+class _FakeCredentials:
+    def __init__(
+        self,
+        token=None,
+        refresh_token=None,
+        token_uri=None,
+        client_id=None,
+        client_secret=None,
+        scopes=None,
+        expiry=None,
+    ):
+        self.token = token
+        self.refresh_token = refresh_token
+        self._refresh_token = refresh_token
+        self.token_uri = token_uri
+        self.client_id = client_id
+        self.client_secret = client_secret
+        self.scopes = scopes
+        self.expiry = expiry
+
+    @property
+    def expired(self):
+        if self.expiry is None:
+            return False
+        expiry = self.expiry
+        if expiry.tzinfo is None:
+            expiry = expiry.replace(tzinfo=timezone.utc)
+        return expiry <= datetime.now(timezone.utc)
+
+    @property
+    def refresh_token(self):
+        return self._refresh_token
+
+    @refresh_token.setter
+    def refresh_token(self, value):
+        self._refresh_token = value
+
+    def refresh(self, request):  # noqa: ARG002
+        raise NotImplementedError("Patched in tests")
+
+
+google_module = types.ModuleType("google")
+google_auth_module = types.ModuleType("google.auth")
+google_auth_transport_module = types.ModuleType("google.auth.transport")
+google_auth_transport_requests_module = types.ModuleType("google.auth.transport.requests")
+google_auth_exceptions_module = types.ModuleType("google.auth.exceptions")
+google_oauth2_module = types.ModuleType("google.oauth2")
+google_oauth2_credentials_module = types.ModuleType("google.oauth2.credentials")
+
+google_auth_transport_requests_module.Request = _FakeRequest
+google_auth_transport_module.requests = google_auth_transport_requests_module
+google_auth_exceptions_module.RefreshError = _FakeRefreshError
+google_oauth2_credentials_module.Credentials = _FakeCredentials
+google_oauth2_module.credentials = google_oauth2_credentials_module
+google_auth_module.transport = google_auth_transport_module
+google_auth_module.exceptions = google_auth_exceptions_module
+google_module.auth = google_auth_module
+google_module.oauth2 = google_oauth2_module
+
+sys.modules.setdefault("google", google_module)
+sys.modules.setdefault("google.auth", google_auth_module)
+sys.modules.setdefault("google.auth.transport", google_auth_transport_module)
+sys.modules.setdefault("google.auth.transport.requests", google_auth_transport_requests_module)
+sys.modules.setdefault("google.auth.exceptions", google_auth_exceptions_module)
+sys.modules.setdefault("google.oauth2", google_oauth2_module)
+sys.modules.setdefault("google.oauth2.credentials", google_oauth2_credentials_module)
+
+boto3_module = types.ModuleType("boto3")
+boto3_module.resource = MagicMock()
+sys.modules.setdefault("boto3", boto3_module)
+
 from gcal.gcal_token import (  # noqa: E402
     GoogleToken,
     SettingError,
@@ -15,7 +96,8 @@ from gcal.gcal_token import (  # noqa: E402
     _DEFAULT_TOKEN_URI,
 )
 from google.oauth2.credentials import Credentials  # noqa: E402
-from utils.token_crypto import TokenCryptoError, encrypt_token  # noqa: E402
+from utils.token_crypto import TokenCryptoError  # noqa: E402
+import utils.dynamodb_utils  # noqa: E402,F401
 
 # A far-future expiry in ms — prevents credentials.expired from being True in cloud tests
 _FUTURE_EXPIRY_MS = str(
@@ -26,6 +108,7 @@ _CLOUD_DYNAMO_RESPONSE = {
     "accessToken": "enc:v1:encrypted-cloud-access-token",
     "refreshToken": "enc:v1:encrypted-cloud-refresh-token",
     "expiryDate": _FUTURE_EXPIRY_MS,
+    "updatedAt": "1710000000000",
 }
 _CLOUD_ENV = {
     "GOOGLE_CALENDAR_CLIENT_ID": "gcal-client-id",
@@ -390,6 +473,7 @@ class TestGoogleTokenCloudMode(unittest.TestCase):
                 ):
                     gt._save_credentials(mock_creds)
             mock_updater.assert_called_once()
+        self.assertEqual(mock_updater.call_args[0][5], _CLOUD_DYNAMO_RESPONSE["updatedAt"])
 
     def test_cloud_save_credentials_writes_encrypted_tokens(self):
         with patch(
@@ -427,9 +511,10 @@ class TestGoogleTokenCloudMode(unittest.TestCase):
                 ):
                     gt._save_credentials(mock_creds)
 
-        _, saved_access_token, saved_refresh_token, _, _ = mock_updater.call_args[0]
+        _, saved_access_token, saved_refresh_token, _, _, expected_updated_at = mock_updater.call_args[0]
         self.assertEqual(saved_access_token, "new-access-token")
         self.assertEqual(saved_refresh_token, "new-refresh-token")
+        self.assertEqual(expected_updated_at, _CLOUD_DYNAMO_RESPONSE["updatedAt"])
 
     def test_cloud_save_credentials_does_not_encrypt_in_gcal_token_layer(self):
         with patch(
@@ -457,11 +542,12 @@ class TestGoogleTokenCloudMode(unittest.TestCase):
 
     def test_encrypted_cloud_load_refresh_save_keeps_dynamodb_tokens_encrypted(self):
         expired_response = {
-            "accessToken": None,
-            "refreshToken": None,
+            "accessToken": "enc:v1:expired-access-token",
+            "refreshToken": "enc:v1:expired-refresh-token",
             "expiryDate": str(
                 int(datetime(2000, 1, 1, tzinfo=timezone.utc).timestamp() * 1000)
             ),
+            "updatedAt": _CLOUD_DYNAMO_RESPONSE["updatedAt"],
         }
 
         def refresh_credentials(credentials, request):  # noqa: ARG001
@@ -470,21 +556,12 @@ class TestGoogleTokenCloudMode(unittest.TestCase):
             credentials.expiry = datetime(2030, 1, 1, tzinfo=timezone.utc)
 
         with patch.dict(
-            os.environ, {"TOKEN_ENCRYPTION_KEY": _TOKEN_ENCRYPTION_KEY}, clear=True
-        ):
-            expired_response["accessToken"] = encrypt_token("old-access-token")
-            expired_response["refreshToken"] = encrypt_token("old-refresh-token")
-
-        with patch.dict(
             os.environ,
             {
                 **_CLOUD_ENV,
-                "APP_MODE": "cloud",
-                "TOKEN_ENCRYPTION_KEY_SSM_PATH": "/dev/notica/token_encryption_key",
             },
             clear=True,
         ):
-
             with patch(
                 "utils.dynamodb_utils.get_google_token_by_uuid",
                 return_value=expired_response,
@@ -497,20 +574,21 @@ class TestGoogleTokenCloudMode(unittest.TestCase):
                         new=refresh_credentials,
                     ):
                         with patch(
-                            "gcal.gcal_token.get_ssm_parameter",
-                            return_value="gcal-client-secret",
+                            "gcal.gcal_token.decrypt_token",
+                            side_effect=["old-access-token", "old-refresh-token"],
                         ):
                             with patch(
-                                "utils.token_crypto.get_ssm_parameter",
-                                return_value=_TOKEN_ENCRYPTION_KEY,
+                                "gcal.gcal_token.get_ssm_parameter",
+                                return_value="gcal-client-secret",
                             ):
                                 gt = GoogleToken(self._cloud_config(), _make_logger())
 
         self.assertEqual(gt.credentials.token, "refreshed-access-token")
         self.assertEqual(gt.credentials.refresh_token, "refreshed-refresh-token")
-        _, saved_access_token, saved_refresh_token, _, _ = mock_updater.call_args[0]
+        _, saved_access_token, saved_refresh_token, _, _, expected_updated_at = mock_updater.call_args[0]
         self.assertEqual(saved_access_token, "refreshed-access-token")
         self.assertEqual(saved_refresh_token, "refreshed-refresh-token")
+        self.assertEqual(expected_updated_at, _CLOUD_DYNAMO_RESPONSE["updatedAt"])
 
     def test_cloud_credentials_constructed_with_plaintext_tokens(self):
         response = {
@@ -634,8 +712,9 @@ class TestGoogleTokenCloudMode(unittest.TestCase):
             ) as mock_updater:
                 gt._refresh_tokens(gt.credentials)
 
-        _, _, saved_refresh_token, _, _ = mock_updater.call_args[0]
+        _, _, saved_refresh_token, _, _, expected_updated_at = mock_updater.call_args[0]
         self.assertEqual(saved_refresh_token, original_refresh)
+        self.assertEqual(expected_updated_at, _CLOUD_DYNAMO_RESPONSE["updatedAt"])
 
     def test_cloud_save_credentials_sets_updated_at_to_now_not_expiry(self):
         with patch(
@@ -664,7 +743,7 @@ class TestGoogleTokenCloudMode(unittest.TestCase):
                 )
                 gt._save_credentials(mock_creds)
 
-        _, _, _, expiry_date, updated_at = mock_updater.call_args[0]
+        _, _, _, expiry_date, updated_at, expected_updated_at = mock_updater.call_args[0]
         self.assertEqual(
             expiry_date,
             str(int(datetime(2030, 1, 1, tzinfo=timezone.utc).timestamp() * 1000)),
@@ -674,6 +753,39 @@ class TestGoogleTokenCloudMode(unittest.TestCase):
             str(int(datetime(2026, 1, 2, tzinfo=timezone.utc).timestamp() * 1000)),
         )
         self.assertNotEqual(updated_at, expiry_date)
+        self.assertEqual(expected_updated_at, _CLOUD_DYNAMO_RESPONSE["updatedAt"])
+
+    def test_cloud_refresh_updates_loaded_updated_at_after_successful_save(self):
+        with patch(
+            "utils.dynamodb_utils.get_google_token_by_uuid",
+            return_value=_CLOUD_DYNAMO_RESPONSE,
+        ):
+            with patch(
+                "gcal.gcal_token.decrypt_token", side_effect=self._mock_cloud_decrypt
+            ):
+                with patch(
+                    "gcal.gcal_token.get_ssm_parameter",
+                    return_value="gcal-client-secret",
+                ):
+                    with patch.dict(os.environ, _CLOUD_ENV, clear=True):
+                        gt = GoogleToken(self._cloud_config("my-uuid"), _make_logger())
+
+        mock_creds = MagicMock()
+        mock_creds.token = "new-access-token"
+        mock_creds.refresh_token = "new-refresh-token"
+        mock_creds.expiry = datetime(2030, 1, 1, tzinfo=timezone.utc)
+
+        with patch("utils.dynamodb_utils.update_google_token_by_uuid"):
+            with patch("gcal.gcal_token.datetime") as mock_datetime:
+                mock_datetime.now.return_value = datetime(
+                    2026, 1, 2, tzinfo=timezone.utc
+                )
+                gt._save_credentials(mock_creds)
+
+        self.assertEqual(
+            gt._loaded_updated_at,
+            str(int(datetime(2026, 1, 2, tzinfo=timezone.utc).timestamp() * 1000)),
+        )
 
     def test_cloud_dynamodb_error_raises_setting_error(self):
         with patch(

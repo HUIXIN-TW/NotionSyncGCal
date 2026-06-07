@@ -1,10 +1,15 @@
 import sys
+import types
 import unittest
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 SRC_ROOT = Path(__file__).resolve().parents[1] / "src"
 sys.path.insert(0, str(SRC_ROOT))
+
+boto3_module = types.ModuleType("boto3")
+boto3_module.resource = MagicMock()
+sys.modules.setdefault("boto3", boto3_module)
 
 from utils.dynamodb_utils import (  # noqa: E402
     get_google_token_by_uuid,
@@ -50,7 +55,7 @@ class DynamoDbGoogleTokenTests(unittest.TestCase):
                 side_effect=["enc:v1:access", "enc:v1:refresh"],
             ) as mock_encrypt:
                 update_google_token_by_uuid(
-                    "u-1", "plain-access", "plain-refresh", "111", "222"
+                    "u-1", "plain-access", "plain-refresh", "111", "222", "123"
                 )
 
         self.assertEqual(mock_encrypt.call_args_list[0].args[0], "plain-access")
@@ -62,6 +67,11 @@ class DynamoDbGoogleTokenTests(unittest.TestCase):
         self.assertEqual(kwargs["ExpressionAttributeValues"][":rt"], "enc:v1:refresh")
         self.assertEqual(kwargs["ExpressionAttributeValues"][":expiry"], "111")
         self.assertEqual(kwargs["ExpressionAttributeValues"][":updated"], "222")
+        self.assertEqual(kwargs["ExpressionAttributeValues"][":expected_updated"], "123")
+        self.assertEqual(
+            kwargs["ConditionExpression"],
+            "attribute_not_exists(updatedAt) OR updatedAt = :expected_updated",
+        )
 
     def test_update_google_token_does_not_double_encrypt_prefixed_values(self):
         table = MagicMock()
@@ -72,7 +82,7 @@ class DynamoDbGoogleTokenTests(unittest.TestCase):
                 "utils.dynamodb_utils.encrypt_token_if_plaintext",
                 side_effect=[access, refresh],
             ):
-                update_google_token_by_uuid("u-1", access, refresh, "111", "222")
+                update_google_token_by_uuid("u-1", access, refresh, "111", "222", "123")
 
         values = table.update_item.call_args.kwargs["ExpressionAttributeValues"]
         self.assertEqual(values[":at"], access)
@@ -87,9 +97,22 @@ class DynamoDbGoogleTokenTests(unittest.TestCase):
             ):
                 with self.assertRaises(TokenCryptoError):
                     update_google_token_by_uuid(
-                        "u-1", "enc:v1:broken", "plain-refresh", "111", "222"
+                        "u-1", "enc:v1:broken", "plain-refresh", "111", "222", "123"
                     )
         table.update_item.assert_not_called()
+
+    def test_update_google_token_uses_attribute_not_exists_guard_when_row_has_no_updated_at(self):
+        table = MagicMock()
+        with patch("utils.dynamodb_utils._get_google_tables", return_value=table):
+            with patch(
+                "utils.dynamodb_utils.encrypt_token_if_plaintext",
+                side_effect=["enc:v1:access", "enc:v1:refresh"],
+            ):
+                update_google_token_by_uuid("u-1", "plain-access", "plain-refresh", "111", "222")
+
+        kwargs = table.update_item.call_args.kwargs
+        self.assertEqual(kwargs["ConditionExpression"], "attribute_not_exists(updatedAt)")
+        self.assertNotIn(":expected_updated", kwargs["ExpressionAttributeValues"])
 
 
 if __name__ == "__main__":

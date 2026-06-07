@@ -34,6 +34,7 @@ class GoogleToken:
         self.config = config
         self.mode = config.get("mode")
         self.logger = logger
+        self._loaded_updated_at = None
         self.activate_token()
 
     def activate_token(self):
@@ -55,6 +56,7 @@ class GoogleToken:
 
                 self.logger.debug("Loading credentials from DynamoDB")
                 data = get_google_token_by_uuid(self.config.get("uuid"))
+                self._loaded_updated_at = data.get("updatedAt")
                 try:
                     access_token = decrypt_token(data.get("accessToken"))
                     refresh_token = decrypt_token(data.get("refreshToken"))
@@ -164,7 +166,9 @@ class GoogleToken:
                     credentials.refresh_token,
                     expiry_str,
                     updated_str,
+                    self._loaded_updated_at,
                 )
+                self._loaded_updated_at = updated_str
                 self.logger.info("Saved credentials to DynamoDB.")
             elif self.mode == "local":
                 self.logger.debug("Local mode: skipping credential persistence.")
