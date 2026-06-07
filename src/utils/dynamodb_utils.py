@@ -103,10 +103,28 @@ def get_google_token_by_uuid(uuid: str) -> str:
 
 
 # update item in google oauth token tables by uuid
-def update_google_token_by_uuid(uuid: str, access_token: str, refresh_token: str, expiry_date: str, updated_at: str):
+def update_google_token_by_uuid(
+    uuid: str,
+    access_token: str,
+    refresh_token: str,
+    expiry_date: str,
+    updated_at: str,
+    expected_updated_at: str | None = None,
+):
     google_tbl = _get_google_tables()
     encrypted_access_token = encrypt_token_if_plaintext(access_token)
     encrypted_refresh_token = encrypt_token_if_plaintext(refresh_token)
+    expression_attribute_values = {
+        ":at": encrypted_access_token,
+        ":rt": encrypted_refresh_token,
+        ":expiry": expiry_date,
+        ":updated": updated_at,
+    }
+    if expected_updated_at is None:
+        condition_expression = "attribute_not_exists(updatedAt)"
+    else:
+        condition_expression = "attribute_not_exists(updatedAt) OR updatedAt = :expected_updated"
+        expression_attribute_values[":expected_updated"] = expected_updated_at
     google_tbl.update_item(
         Key={"uuid": uuid},
         UpdateExpression="""
@@ -115,12 +133,8 @@ def update_google_token_by_uuid(uuid: str, access_token: str, refresh_token: str
                 expiryDate = :expiry,
                 updatedAt = :updated
         """,
-        ExpressionAttributeValues={
-            ":at": encrypted_access_token,
-            ":rt": encrypted_refresh_token,
-            ":expiry": expiry_date,
-            ":updated": updated_at,
-        },
+        ConditionExpression=condition_expression,
+        ExpressionAttributeValues=expression_attribute_values,
     )
 
 
