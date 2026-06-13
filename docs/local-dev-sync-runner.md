@@ -106,12 +106,12 @@ Do not commit `.env.local` or any generated env snippet. Refresh-token generatio
 
 ## Encrypted Tokens
 
-Local and cloud token values may be plaintext or `enc:v1:` encrypted:
+Local tokens may be plaintext or `enc:v1:` encrypted. Cloud DynamoDB token rows must already be `enc:v1:` encrypted:
 
 - Plaintext `NOTION_TOKEN` and `GOOGLE_REFRESH_TOKEN` work without `TOKEN_ENCRYPTION_KEY`.
 - Encrypted local tokens in `.env.local` require `TOKEN_ENCRYPTION_KEY` to match the key used to encrypt them.
-- Cloud tokens loaded from DynamoDB can also be plaintext or `enc:v1:` encrypted.
-- A decrypt failure means the key is missing, the key does not match, or the encrypted payload is malformed.
+- Cloud tokens loaded from DynamoDB must be `enc:v1:` payloads. Plaintext cloud token rows fail closed at runtime.
+- A decrypt failure means the key is missing, the key does not match, the encrypted payload is malformed, or the cloud token row was stored in plaintext.
 
 Do not print plaintext or encrypted token values in logs, docs, or shell output.
 
