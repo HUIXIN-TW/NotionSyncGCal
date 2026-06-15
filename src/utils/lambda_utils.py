@@ -220,11 +220,7 @@ def process_sqs_records(
 
     # Emit a final batch summary log
     # Build enhanced batch summary avoiding duplicate 'results' key collisions
-    success_uuids = [
-        s.get("uuid")
-        for s in sqs_batch_results
-        if not sync_result_requires_retry(s)
-    ]
+    success_uuids = [s.get("uuid") for s in sqs_batch_results if not sync_result_requires_retry(s)]
     failure_uuids = [s.get("uuid") for s in sqs_batch_results if s.get("uuid") not in success_uuids]
     batch_sync_result = {
         # Provide an explicit statusCode for downstream handler uniformity
@@ -291,9 +287,7 @@ def process_eventbridge_event(
             },
         )
         if sync_result_requires_retry(result):
-            raise RetryableSyncFailure(
-                "EventBridge sync produced retriable failure(s)."
-            )
+            raise RetryableSyncFailure("EventBridge sync produced retriable failure(s).")
         return result
     except Exception:
         logger_obj.exception("Error processing EventBridge event")

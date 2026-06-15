@@ -59,9 +59,7 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     try:
         event_type = detect_event_source(logger_obj, event)
         if event_type == "api":
-            logger_obj.warning(
-                "API event processing is not implemented for this Lambda."
-            )
+            logger_obj.warning("API event processing is not implemented for this Lambda.")
             return _safe_error_payload(
                 context,
                 "unsupported_event_source",
@@ -117,11 +115,7 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
 
 if __name__ == "__main__":
     UUID = ""
-    mock_event = {
-        "Records": [
-            {"body": json.dumps({"uuid": UUID}), "eventSource": "aws:sqs"}
-        ]
-    }
+    mock_event = {"Records": [{"body": json.dumps({"uuid": UUID}), "eventSource": "aws:sqs"}]}
     fake_ctx = type(
         "FakeContext",
         (),
