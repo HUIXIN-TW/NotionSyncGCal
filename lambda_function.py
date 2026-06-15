@@ -99,6 +99,8 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                 "batchItemFailures": sqs_failures,
                 **_safe_error_payload(context, "google_refresh_error"),
             }
+        if event_type != "eventbridge":
+            return _safe_error_payload(context, "google_refresh_error")
         raise
     except Exception as e:
         logger_obj.exception(f"Unhandled lambda error {e}")
@@ -108,6 +110,8 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                 "batchItemFailures": sqs_failures,
                 **_safe_error_payload(context, "lambda_unhandled_error"),
             }
+        if event_type != "eventbridge":
+            return _safe_error_payload(context, "lambda_unhandled_error")
         raise
 
 

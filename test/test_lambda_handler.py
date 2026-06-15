@@ -153,13 +153,14 @@ class LambdaHandlerTests(unittest.TestCase):
             "detect_event_source",
             return_value="eventbridge",
         ):
-            with patch.object(
-                lambda_function,
-                "process_eventbridge_event",
-                side_effect=RetryableSyncFailure("retry this invocation"),
-            ):
-                with self.assertRaises(RetryableSyncFailure):
-                    lambda_function.lambda_handler(event, context)
+            with self._stub_src_main():
+                with patch.object(
+                    lambda_function,
+                    "process_eventbridge_event",
+                    side_effect=RetryableSyncFailure("retry this invocation"),
+                ):
+                    with self.assertRaises(RetryableSyncFailure):
+                        lambda_function.lambda_handler(event, context)
 
     def test_sqs_success_result_still_returns_payload(self):
         event = _make_sqs_event("uuid-1")
