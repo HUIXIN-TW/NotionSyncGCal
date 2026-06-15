@@ -26,6 +26,7 @@ sys.modules.setdefault("google.auth.exceptions", google_auth_exceptions_module)
 
 import lambda_function  # noqa: E402
 from google.auth.exceptions import RefreshError  # noqa: E402
+from src.utils.lambda_utils import RetryableSyncFailure  # noqa: E402
 
 
 def _make_context(function_name="test-lambda", aws_request_id="req-123"):
@@ -55,7 +56,10 @@ def _make_sqs_event(*uuids):
 class LambdaHandlerTests(unittest.TestCase):
     def _stub_src_main(self):
         module = types.ModuleType("src.main")
-        module.main = lambda uuid=None: {"statusCode": 200, "body": {"status": "sync_success", "message": uuid}}
+        module.main = lambda uuid=None: {
+            "statusCode": 200,
+            "body": {"status": "sync_success", "message": uuid},
+        }
         return patch.dict(sys.modules, {"src.main": module})
 
     def test_api_event_returns_explicit_501_payload(self):
@@ -67,7 +71,10 @@ class LambdaHandlerTests(unittest.TestCase):
 
         self.assertEqual(result["statusCode"], 501)
         self.assertEqual(result["body"]["status"], "sync_error")
-        self.assertEqual(result["body"]["message"]["error_code"], "unsupported_event_source")
+        self.assertEqual(
+            result["body"]["message"]["error_code"],
+            "unsupported_event_source",
+        )
         self.assertEqual(result["body"]["message"]["aws_request_id"], "req-123")
 
     def test_unhandled_sqs_failure_returns_all_batch_item_failures(self):
@@ -88,7 +95,10 @@ class LambdaHandlerTests(unittest.TestCase):
             result["batchItemFailures"],
             [{"itemIdentifier": "msg-0"}, {"itemIdentifier": "msg-1"}],
         )
-        self.assertEqual(result["body"]["message"]["error_code"], "lambda_unhandled_error")
+        self.assertEqual(
+            result["body"]["message"]["error_code"],
+            "lambda_unhandled_error",
+        )
 
     def test_refresh_error_returns_sqs_batch_item_failures(self):
         event = _make_sqs_event("uuid-1")
@@ -105,7 +115,10 @@ class LambdaHandlerTests(unittest.TestCase):
 
         self.assertEqual(result["statusCode"], 500)
         self.assertEqual(result["batchItemFailures"], [{"itemIdentifier": "msg-0"}])
-        self.assertEqual(result["body"]["message"]["error_code"], "google_refresh_error")
+        self.assertEqual(
+            result["body"]["message"]["error_code"],
+            "google_refresh_error",
+        )
 
     def test_detect_event_source_failure_returns_safe_500_payload(self):
         event = {"detail-type": "scheduled", "source": "aws.events"}
@@ -120,7 +133,50 @@ class LambdaHandlerTests(unittest.TestCase):
 
         self.assertEqual(result["statusCode"], 500)
         self.assertEqual(result["body"]["status"], "sync_error")
-        self.assertEqual(result["body"]["message"]["error_code"], "lambda_unhandled_error")
+        self.assertEqual(
+            result["body"]["message"]["error_code"],
+            "lambda_unhandled_error",
+        )
+
+    def test_eventbridge_retryable_failure_is_re_raised(self):
+        event = {
+            "id": "evt-bridge-1",
+            "detail-type": "sync",
+            "source": "notica.sync",
+            "time": "2026-05-23T00:00:00Z",
+            "detail": {"uuid": "uuid-1"},
+        }
+        context = _make_context(aws_request_id="req-1")
+
+        with patch.object(
+            lambda_function,
+            "detect_event_source",
+            return_value="eventbridge",
+        ):
+            with self._stub_src_main():
+                with patch.object(
+                    lambda_function,
+                    "process_eventbridge_event",
+                    side_effect=RetryableSyncFailure("retry this invocation"),
+                ):
+                    with self.assertRaises(RetryableSyncFailure):
+                        lambda_function.lambda_handler(event, context)
+
+    def test_sqs_success_result_still_returns_payload(self):
+        event = _make_sqs_event("uuid-1")
+        context = _make_context(aws_request_id="req-1")
+        expected = {"statusCode": 200, "batchItemFailures": []}
+
+        with self._stub_src_main():
+            with patch.object(lambda_function, "detect_event_source", return_value="sqs"):
+                with patch.object(
+                    lambda_function,
+                    "process_sqs_records",
+                    return_value=expected,
+                ):
+                    result = lambda_function.lambda_handler(event, context)
+
+        self.assertEqual(result, expected)
 
 
 if __name__ == "__main__":

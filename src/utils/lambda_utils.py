@@ -22,6 +22,10 @@ class SyncErrorPayload(TypedDict):
     retriable: bool | None
 
 
+class RetryableSyncFailure(RuntimeError):
+    """Raised when a trigger should fail for upstream retry or DLQ handling."""
+
+
 def sanitize_sync_error(error: Any) -> SyncErrorPayload:
     if not isinstance(error, dict):
         return {
@@ -84,6 +88,26 @@ def sanitize_sync_log_payload(payload: Dict[str, Any]) -> Dict[str, Any]:
     sanitized_message["omitted_error_count"] = max(original_error_count - MAX_SYNC_LOG_ERRORS, 0)
     sanitized_payload["message"] = sanitized_message
     return sanitized_payload
+
+
+def _iter_sync_errors(payload: Dict[str, Any]) -> list[Dict[str, Any]]:
+    message = payload.get("message")
+    if not isinstance(message, dict):
+        return []
+
+    errors = message.get("errors")
+    if not isinstance(errors, list):
+        return []
+
+    return [error for error in errors if isinstance(error, dict)]
+
+
+def sync_result_requires_retry(payload: Dict[str, Any]) -> bool:
+    status_code = payload.get("statusCode")
+    if isinstance(status_code, int) and status_code >= 500:
+        return True
+
+    return any(error.get("retriable") is True for error in _iter_sync_errors(payload))
 
 
 def _save_sync_logs(uuid: str, payload: Dict[str, Any]) -> None:
@@ -176,7 +200,7 @@ def process_sqs_records(
                 extra={"job_id": job_id},
             )
             sqs_batch_results.append(processed_result)
-            if isinstance(processed_result.get("statusCode"), int) and processed_result.get("statusCode", 500) >= 500:
+            if sync_result_requires_retry(processed_result):
                 batch_item_failures.append({"itemIdentifier": job_id})
         except Exception:
             logger_obj.exception("Error processing SQS record")
@@ -191,9 +215,7 @@ def process_sqs_records(
             batch_item_failures.append({"itemIdentifier": job_id})
 
     # Summarize results for batch logging
-    success_count = sum(
-        1 for s in sqs_batch_results if isinstance(s.get("statusCode"), int) and s.get("statusCode", 500) < 400
-    )
+    success_count = sum(1 for s in sqs_batch_results if not sync_result_requires_retry(s))
     failure_count = len(sqs_batch_results) - success_count
 
     # Emit a final batch summary log
@@ -201,7 +223,7 @@ def process_sqs_records(
     success_uuids = [
         s.get("uuid")
         for s in sqs_batch_results
-        if isinstance(s.get("statusCode"), int) and s.get("statusCode", 500) < 400
+        if not sync_result_requires_retry(s)
     ]
     failure_uuids = [s.get("uuid") for s in sqs_batch_results if s.get("uuid") not in success_uuids]
     batch_sync_result = {
@@ -268,10 +290,14 @@ def process_eventbridge_event(
                 "event_time": event_time,
             },
         )
+        if sync_result_requires_retry(result):
+            raise RetryableSyncFailure(
+                "EventBridge sync produced retriable failure(s)."
+            )
         return result
     except Exception:
         logger_obj.exception("Error processing EventBridge event")
-        return {"statusCode": 500, "body": {"error": "Event processing failed"}}
+        raise
 
 
 def detect_event_source(logger_obj, event: dict) -> str:
@@ -306,4 +332,11 @@ def detect_event_source(logger_obj, event: dict) -> str:
     return "unknown"
 
 
-__all__ = ["process_and_log_sync_result", "process_sqs_records", "detect_event_source"]
+__all__ = [
+    "process_and_log_sync_result",
+    "process_sqs_records",
+    "process_eventbridge_event",
+    "detect_event_source",
+    "sync_result_requires_retry",
+    "RetryableSyncFailure",
+]
