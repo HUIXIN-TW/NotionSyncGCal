@@ -257,6 +257,47 @@ class TestProcessSqsRecords(unittest.TestCase):
         self.assertEqual(result["failure_count"], 1)
         self.assertEqual(result["batchItemFailures"], [{"itemIdentifier": "msg-0"}])
 
+    def test_retriable_sync_error_in_200_result_returns_partial_batch_failure(self):
+        event = _make_sqs_event(["uuid-retry"])
+
+        def run_sync(uuid):  # noqa: ARG001
+            return {
+                "statusCode": 200,
+                "body": {
+                    "status": "sync_success",
+                    "message": {
+                        "summary": {},
+                        "errors": [
+                            {
+                                "action": "update_notion",
+                                "error_code": "provider_write_failed",
+                                "error_message": lambda_utils.SAFE_SYNC_FAILURE_MESSAGE,
+                                "error": None,
+                                "gcal_event_start": "2026-05-23T10:00:00Z",
+                                "gcal_event_id": "evt-123",
+                                "notion_task_id": "page-456",
+                                "retriable": True,
+                            }
+                        ],
+                    },
+                },
+            }
+
+        with patch.object(lambda_utils, "_save_sync_logs"):
+            result = lambda_utils.process_sqs_records(
+                logger_obj=self.logger,
+                event=event,
+                context=self.ctx,
+                run_sync=run_sync,
+                lambda_start_time=self.start,
+            )
+
+        self.assertEqual(result["success_count"], 0)
+        self.assertEqual(result["failure_count"], 1)
+        self.assertEqual(result["success_uuids"], [])
+        self.assertEqual(result["failure_uuids"], ["uuid-retry"])
+        self.assertEqual(result["batchItemFailures"], [{"itemIdentifier": "msg-0"}])
+
     def test_mixed_batch_only_retries_failed_records(self):
         event = _make_sqs_event(["uuid-ok", "uuid-fail", "uuid-ok-2"])
 
@@ -283,6 +324,65 @@ class TestProcessSqsRecords(unittest.TestCase):
         self.assertEqual(result["success_count"], 2)
         self.assertEqual(result["failure_count"], 1)
         self.assertEqual(result["batchItemFailures"], [{"itemIdentifier": "msg-1"}])
+
+
+class TestProcessEventBridgeEvent(unittest.TestCase):
+    def setUp(self):
+        self.ctx = _make_context()
+        self.logger = _make_logger()
+        self.start = datetime.now(timezone.utc)
+        self.event = {
+            "id": "evt-bridge-1",
+            "detail-type": "sync",
+            "source": "notica.sync",
+            "time": "2026-05-23T00:00:00Z",
+            "detail": {"uuid": "uuid-1"},
+        }
+
+    def test_retriable_sync_error_in_200_result_raises_for_retry(self):
+        sync_result = {
+            "statusCode": 200,
+            "body": {
+                "status": "sync_success",
+                "message": {
+                    "summary": {},
+                    "errors": [
+                        {
+                            "action": "update_notion",
+                            "error_code": "provider_write_failed",
+                            "error_message": lambda_utils.SAFE_SYNC_FAILURE_MESSAGE,
+                            "error": None,
+                            "gcal_event_start": "2026-05-23T10:00:00Z",
+                            "gcal_event_id": "evt-123",
+                            "notion_task_id": "page-456",
+                            "retriable": True,
+                        }
+                    ],
+                },
+            },
+        }
+
+        with patch.object(lambda_utils, "_save_sync_logs"):
+            with self.assertRaises(lambda_utils.RetryableSyncFailure):
+                lambda_utils.process_eventbridge_event(
+                    logger_obj=self.logger,
+                    event=self.event,
+                    context=self.ctx,
+                    run_sync=lambda uuid: sync_result,  # noqa: ARG005
+                    lambda_start_time=self.start,
+                )
+
+    def test_non_retriable_result_returns_normally(self):
+        with patch.object(lambda_utils, "_save_sync_logs"):
+            result = lambda_utils.process_eventbridge_event(
+                logger_obj=self.logger,
+                event=self.event,
+                context=self.ctx,
+                run_sync=lambda uuid: _ok_sync_result(),  # noqa: ARG005
+                lambda_start_time=self.start,
+            )
+
+        self.assertEqual(result["statusCode"], 200)
 
 
 if __name__ == "__main__":

@@ -226,6 +226,7 @@ def synchronize_notion_and_google_calendar(
                     action = "delete_gcal"
                     logger.debug("Deleting a Google Calendar event for a Notion task.")
                     google_service.delete_gcal_event(notion_gcal_cal_id, notion_gcal_event_id)
+
                     notion_service.delete_notion_task(notion_task_page_id)
 
                     duplicate_notion_task_list = notion_service.get_notion_task_by_gcal_event_id(notion_gcal_event_id)

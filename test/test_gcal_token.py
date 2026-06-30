@@ -96,6 +96,7 @@ from gcal.gcal_token import (  # noqa: E402
     _DEFAULT_TOKEN_URI,
 )
 from google.oauth2.credentials import Credentials  # noqa: E402
+from utils.dynamodb_utils import GoogleTokenWriteConflictError  # noqa: E402
 from utils.token_crypto import TokenCryptoError  # noqa: E402
 import utils.dynamodb_utils  # noqa: E402,F401
 
@@ -339,7 +340,7 @@ class TestGoogleTokenCloudMode(unittest.TestCase):
                 ) as mock_ssm:
                     with patch.dict(os.environ, _CLOUD_ENV):
                         gt = GoogleToken(self._cloud_config("my-uuid"), _make_logger())
-                    mock_loader.assert_called_once_with("my-uuid")
+                    mock_loader.assert_called_once_with("my-uuid", consistent_read=False)
                     mock_ssm.assert_called_once_with(
                         "/dev/notica/google_calendar_client_secret"
                     )
@@ -787,6 +788,59 @@ class TestGoogleTokenCloudMode(unittest.TestCase):
             str(int(datetime(2026, 1, 2, tzinfo=timezone.utc).timestamp() * 1000)),
         )
 
+    def test_cloud_refresh_conflict_reloads_latest_token_row(self):
+        expired_response = {
+            "accessToken": "enc:v1:expired-access-token",
+            "refreshToken": "enc:v1:expired-refresh-token",
+            "expiryDate": str(
+                int(datetime(2000, 1, 1, tzinfo=timezone.utc).timestamp() * 1000)
+            ),
+            "updatedAt": _CLOUD_DYNAMO_RESPONSE["updatedAt"],
+        }
+        refreshed_response = {
+            "accessToken": "enc:v1:latest-access-token",
+            "refreshToken": "enc:v1:latest-refresh-token",
+            "expiryDate": _FUTURE_EXPIRY_MS,
+            "updatedAt": "1710000009999",
+        }
+
+        def refresh_credentials(credentials, request):  # noqa: ARG001
+            credentials.token = "refreshed-access-token"
+            credentials._refresh_token = "refreshed-refresh-token"
+            credentials.expiry = datetime(2030, 1, 1, tzinfo=timezone.utc)
+
+        with patch.dict(os.environ, _CLOUD_ENV, clear=True):
+            with patch(
+                "utils.dynamodb_utils.get_google_token_by_uuid",
+                side_effect=[expired_response, refreshed_response],
+            ):
+                with patch(
+                    "utils.dynamodb_utils.update_google_token_by_uuid",
+                    side_effect=GoogleTokenWriteConflictError("row updated"),
+                ):
+                    with patch(
+                        "google.oauth2.credentials.Credentials.refresh",
+                        new=refresh_credentials,
+                    ):
+                        with patch(
+                            "gcal.gcal_token.decrypt_token",
+                            side_effect=[
+                                "old-access-token",
+                                "old-refresh-token",
+                                "latest-access-token",
+                                "latest-refresh-token",
+                            ],
+                        ):
+                            with patch(
+                                "gcal.gcal_token.get_ssm_parameter",
+                                return_value="gcal-client-secret",
+                            ):
+                                gt = GoogleToken(self._cloud_config(), _make_logger())
+
+        self.assertEqual(gt.credentials.token, "latest-access-token")
+        self.assertEqual(gt.credentials.refresh_token, "latest-refresh-token")
+        self.assertEqual(gt._loaded_updated_at, refreshed_response["updatedAt"])
+
     def test_cloud_dynamodb_error_raises_setting_error(self):
         with patch(
             "utils.dynamodb_utils.get_google_token_by_uuid",
@@ -799,6 +853,61 @@ class TestGoogleTokenCloudMode(unittest.TestCase):
                     with self.assertRaises(SettingError) as ctx:
                         GoogleToken(self._cloud_config(), _make_logger())
                     self.assertIn("DDB down", str(ctx.exception))
+
+    def test_cloud_refresh_conflict_reloads_latest_token_row_with_consistent_read(self):
+        expired_response = {
+            "accessToken": "enc:v1:expired-access-token",
+            "refreshToken": "enc:v1:expired-refresh-token",
+            "expiryDate": str(
+                int(datetime(2000, 1, 1, tzinfo=timezone.utc).timestamp() * 1000)
+            ),
+            "updatedAt": _CLOUD_DYNAMO_RESPONSE["updatedAt"],
+        }
+        refreshed_response = {
+            "accessToken": "enc:v1:latest-access-token",
+            "refreshToken": "enc:v1:latest-refresh-token",
+            "expiryDate": _FUTURE_EXPIRY_MS,
+            "updatedAt": "1710000009999",
+        }
+
+        def refresh_credentials(credentials, request):  # noqa: ARG001
+            credentials.token = "refreshed-access-token"
+            credentials._refresh_token = "refreshed-refresh-token"
+            credentials.expiry = datetime(2030, 1, 1, tzinfo=timezone.utc)
+
+        with patch.dict(os.environ, _CLOUD_ENV, clear=True):
+            with patch(
+                "utils.dynamodb_utils.get_google_token_by_uuid",
+                side_effect=[expired_response, refreshed_response],
+            ) as mock_loader:
+                with patch(
+                    "utils.dynamodb_utils.update_google_token_by_uuid",
+                    side_effect=GoogleTokenWriteConflictError("row updated"),
+                ):
+                    with patch(
+                        "google.oauth2.credentials.Credentials.refresh",
+                        new=refresh_credentials,
+                    ):
+                        with patch(
+                            "gcal.gcal_token.decrypt_token",
+                            side_effect=[
+                                "old-access-token",
+                                "old-refresh-token",
+                                "latest-access-token",
+                                "latest-refresh-token",
+                            ],
+                        ):
+                            with patch(
+                                "gcal.gcal_token.get_ssm_parameter",
+                                return_value="gcal-client-secret",
+                            ):
+                                gt = GoogleToken(self._cloud_config(), _make_logger())
+
+        self.assertEqual(gt.credentials.token, "latest-access-token")
+        self.assertEqual(gt.credentials.refresh_token, "latest-refresh-token")
+        self.assertEqual(gt._loaded_updated_at, refreshed_response["updatedAt"])
+        self.assertEqual(mock_loader.call_args_list[0].kwargs["consistent_read"], False)
+        self.assertEqual(mock_loader.call_args_list[1].kwargs["consistent_read"], True)
 
 
 class TestGoogleTokenUnknownMode(unittest.TestCase):
