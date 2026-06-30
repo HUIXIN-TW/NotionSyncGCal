@@ -16,6 +16,7 @@ import sys
 import unittest
 from pathlib import Path
 from unittest.mock import MagicMock, patch
+from googleapiclient.errors import HttpError
 
 SRC_ROOT = Path(__file__).resolve().parents[1] / "src"
 sys.path.insert(0, str(SRC_ROOT))
@@ -569,6 +570,96 @@ class TestGetGcalEventLimit(unittest.TestCase):
         gs = self._make_service_with_items(self._make_n_events(MAX_GCAL_EVENTS_PER_CALENDAR + 1))
         with self.assertRaises(RuntimeError):
             gs.get_gcal_event()
+
+
+class TestDeleteHandling(unittest.TestCase):
+    def _make_delete_task(self):
+        notion_task = _make_notion_task("abc123_20260530T020000Z")
+        notion_task["properties"][MINIMAL_USER_SETTING["page_property"]["Delete_Notion_Name"]] = {"checkbox": True}
+        return notion_task
+
+    def test_delete_failure_preserves_notion_linkage_and_reports_error(self):
+        from sync.sync import synchronize_notion_and_google_calendar
+
+        notion_service = MagicMock()
+        google_service = MagicMock()
+        notion_task = self._make_delete_task()
+
+        notion_service.get_notion_task.return_value = ({}, [notion_task])
+        google_service.get_gcal_event.return_value = []
+        google_service.delete_gcal_event.side_effect = RuntimeError("google delete failed")
+
+        result = synchronize_notion_and_google_calendar(
+            user_setting={**MINIMAL_USER_SETTING},
+            notion_service=notion_service,
+            google_service=google_service,
+            compare_time=True,
+            should_update_notion_tasks=True,
+            should_update_google_events=True,
+        )
+
+        google_service.delete_gcal_event.assert_called_once_with(
+            "cal@group.calendar.google.com",
+            "abc123_20260530T020000Z",
+        )
+        notion_service.delete_notion_task.assert_not_called()
+        notion_service.get_notion_task_by_gcal_event_id.assert_not_called()
+        self.assertEqual(result["statusCode"], 200)
+        self.assertEqual(result["body"]["status"], "sync_success")
+        self.assertEqual(len(result["body"]["message"]["errors"]), 1)
+        error = result["body"]["message"]["errors"][0]
+        self.assertEqual(error["action"], "delete_gcal")
+        self.assertEqual(error["error_code"], "runtime_error")
+        self.assertEqual(
+            error["error_message"],
+            "Sync failed. See Lambda logs with aws_request_id for details.",
+        )
+        self.assertTrue(error["retriable"])
+        self.assertEqual(error["notion_task_id"], notion_task["id"])
+        self.assertEqual(error["gcal_event_id"], "abc123_20260530T020000Z")
+
+
+class TestDeleteGcalEventApiErrors(unittest.TestCase):
+    def _make_service(self):
+        mock_service = MagicMock()
+        logger = MagicMock()
+        with patch("gcal.gcal_service.build", return_value=mock_service):
+            gs = GoogleService(MINIMAL_USER_SETTING, MagicMock(), logger)
+        gs.service = mock_service
+        gs.logger = logger
+        return gs, mock_service, logger
+
+    def test_404_is_treated_as_delete_converged(self):
+        gs, mock_service, logger = self._make_service()
+
+        class _Resp:
+            status = 404
+            reason = "Not Found"
+
+        mock_service.events.return_value.delete.return_value.execute.side_effect = HttpError(
+            _Resp(),
+            b'{"error":{"message":"Not found"}}',
+        )
+
+        result = gs.delete_gcal_event("cal@group.calendar.google.com", "evt-404")
+
+        self.assertTrue(result)
+        logger.warning.assert_called_once()
+
+    def test_non_404_delete_error_is_raised(self):
+        gs, mock_service, logger = self._make_service()
+
+        class _Resp:
+            status = 403
+            reason = "Forbidden"
+
+        http_error = HttpError(_Resp(), b'{"error":{"message":"Forbidden"}}')
+        mock_service.events.return_value.delete.return_value.execute.side_effect = http_error
+
+        with self.assertRaises(HttpError):
+            gs.delete_gcal_event("cal@group.calendar.google.com", "evt-403")
+
+        logger.error.assert_called_once()
 
 
 if __name__ == "__main__":
