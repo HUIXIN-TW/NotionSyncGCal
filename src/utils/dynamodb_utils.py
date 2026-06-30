@@ -5,6 +5,10 @@ import boto3
 from utils.token_crypto import encrypt_token_if_plaintext
 
 
+class GoogleTokenWriteConflictError(RuntimeError):
+    """Raised when a Google token update loses a conditional-write race."""
+
+
 def _get_dynamodb():
     return boto3.resource("dynamodb", region_name=os.getenv("APP_REGION"))
 
@@ -125,17 +129,25 @@ def update_google_token_by_uuid(
     else:
         condition_expression = "attribute_not_exists(updatedAt) OR updatedAt = :expected_updated"
         expression_attribute_values[":expected_updated"] = expected_updated_at
-    google_tbl.update_item(
-        Key={"uuid": uuid},
-        UpdateExpression="""
-            SET accessToken = :at,
-                refreshToken = :rt,
-                expiryDate = :expiry,
-                updatedAt = :updated
-        """,
-        ConditionExpression=condition_expression,
-        ExpressionAttributeValues=expression_attribute_values,
-    )
+    try:
+        google_tbl.update_item(
+            Key={"uuid": uuid},
+            UpdateExpression="""
+                SET accessToken = :at,
+                    refreshToken = :rt,
+                    expiryDate = :expiry,
+                    updatedAt = :updated
+            """,
+            ConditionExpression=condition_expression,
+            ExpressionAttributeValues=expression_attribute_values,
+        )
+    except Exception as exc:
+        error_code = getattr(exc, "response", {}).get("Error", {}).get("Code")
+        if error_code == "ConditionalCheckFailedException":
+            raise GoogleTokenWriteConflictError(
+                f"Google token row for uuid '{uuid}' was updated by another writer."
+            ) from exc
+        raise
 
 
 # get notion config in user table by uuid
@@ -164,6 +176,7 @@ __all__ = [
     "save_sync_logs",
     "get_notion_token_by_uuid",
     "get_google_token_by_uuid",
+    "GoogleTokenWriteConflictError",
     "update_google_token_by_uuid",
     "get_notion_config_by_uuid",
     "update_notion_config_by_uuid",

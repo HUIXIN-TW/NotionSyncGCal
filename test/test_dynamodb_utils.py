@@ -12,6 +12,7 @@ boto3_module.resource = MagicMock()
 sys.modules.setdefault("boto3", boto3_module)
 
 from utils.dynamodb_utils import (  # noqa: E402
+    GoogleTokenWriteConflictError,
     get_google_token_by_uuid,
     update_google_token_by_uuid,
 )
@@ -113,6 +114,23 @@ class DynamoDbGoogleTokenTests(unittest.TestCase):
         kwargs = table.update_item.call_args.kwargs
         self.assertEqual(kwargs["ConditionExpression"], "attribute_not_exists(updatedAt)")
         self.assertNotIn(":expected_updated", kwargs["ExpressionAttributeValues"])
+
+    def test_update_google_token_maps_conditional_conflict(self):
+        table = MagicMock()
+
+        class _ConditionalFailure(Exception):
+            def __init__(self):
+                self.response = {"Error": {"Code": "ConditionalCheckFailedException"}}
+
+        table.update_item.side_effect = _ConditionalFailure()
+
+        with patch("utils.dynamodb_utils._get_google_tables", return_value=table):
+            with patch(
+                "utils.dynamodb_utils.encrypt_token_if_plaintext",
+                side_effect=["enc:v1:access", "enc:v1:refresh"],
+            ):
+                with self.assertRaises(GoogleTokenWriteConflictError):
+                    update_google_token_by_uuid("u-1", "plain-access", "plain-refresh", "111", "222", "123")
 
 
 if __name__ == "__main__":

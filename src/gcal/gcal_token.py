@@ -10,6 +10,7 @@ from utils.token_crypto import (
     decrypt_token,
     decrypt_token_if_encrypted,
 )
+from utils.dynamodb_utils import GoogleTokenWriteConflictError
 
 _DEFAULT_TOKEN_URI = "https://oauth2.googleapis.com/token"
 _DEFAULT_SCOPES = [
@@ -145,6 +146,15 @@ class GoogleToken:
             self._save_credentials(credentials)
             self.logger.info("Successfully refreshed tokens.")
             return credentials
+        except GoogleTokenWriteConflictError:
+            if self.mode == "cloud":
+                self.logger.warning(
+                    "Google credentials were refreshed by another worker first; reloading the latest token row."
+                )
+                latest_credentials = self._load_credentials()
+                self.credentials = latest_credentials
+                return latest_credentials
+            raise
         except Exception as e:
             if self.mode == "local":
                 raise RefreshError(
@@ -172,6 +182,8 @@ class GoogleToken:
                 self.logger.info("Saved credentials to DynamoDB.")
             elif self.mode == "local":
                 self.logger.debug("Local mode: skipping credential persistence.")
+        except GoogleTokenWriteConflictError:
+            raise
         except Exception as e:
             self.logger.error(f"Error saving credentials: {e}")
             raise SettingError(f"Error saving credentials: {e}")
