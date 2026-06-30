@@ -646,18 +646,35 @@ class TestDeleteGcalEventApiErrors(unittest.TestCase):
         self.assertTrue(result)
         logger.warning.assert_called_once()
 
-    def test_non_404_delete_error_is_raised(self):
+    def test_410_is_treated_as_delete_converged(self):
         gs, mock_service, logger = self._make_service()
 
         class _Resp:
-            status = 403
-            reason = "Forbidden"
+            status = 410
+            reason = "Gone"
 
-        http_error = HttpError(_Resp(), b'{"error":{"message":"Forbidden"}}')
+        mock_service.events.return_value.delete.return_value.execute.side_effect = HttpError(
+            _Resp(),
+            b'{"error":{"message":"Gone"}}',
+        )
+
+        result = gs.delete_gcal_event("cal@group.calendar.google.com", "evt-410")
+
+        self.assertTrue(result)
+        logger.warning.assert_called_once()
+
+    def test_500_delete_error_is_raised(self):
+        gs, mock_service, logger = self._make_service()
+
+        class _Resp:
+            status = 500
+            reason = "Internal Server Error"
+
+        http_error = HttpError(_Resp(), b'{"error":{"message":"Internal Server Error"}}')
         mock_service.events.return_value.delete.return_value.execute.side_effect = http_error
 
         with self.assertRaises(HttpError):
-            gs.delete_gcal_event("cal@group.calendar.google.com", "evt-403")
+            gs.delete_gcal_event("cal@group.calendar.google.com", "evt-500")
 
         logger.error.assert_called_once()
 
