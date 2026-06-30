@@ -48,7 +48,7 @@ class GoogleToken:
             credentials = self._refresh_tokens(credentials)
         self.credentials = credentials
 
-    def _load_credentials(self):
+    def _load_credentials(self, consistent_read: bool = False):
         if not self.config:
             raise SettingError("Configuration is required to load settings.")
         if self.mode == "cloud":
@@ -56,7 +56,7 @@ class GoogleToken:
                 from utils.dynamodb_utils import get_google_token_by_uuid
 
                 self.logger.debug("Loading credentials from DynamoDB")
-                data = get_google_token_by_uuid(self.config.get("uuid"))
+                data = get_google_token_by_uuid(self.config.get("uuid"), consistent_read=consistent_read)
                 self._loaded_updated_at = data.get("updatedAt")
                 try:
                     access_token = decrypt_token(data.get("accessToken"))
@@ -151,7 +151,7 @@ class GoogleToken:
                 self.logger.warning(
                     "Google credentials were refreshed by another worker first; reloading the latest token row."
                 )
-                latest_credentials = self._load_credentials()
+                latest_credentials = self._load_credentials(consistent_read=True)
                 self.credentials = latest_credentials
                 return latest_credentials
             raise

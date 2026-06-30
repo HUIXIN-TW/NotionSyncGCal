@@ -97,9 +97,9 @@ def get_notion_token_by_uuid(uuid: str) -> str:
 
 
 # get data from google oauth token tables by uuid
-def get_google_token_by_uuid(uuid: str) -> str:
+def get_google_token_by_uuid(uuid: str, consistent_read: bool = False) -> str:
     google_tbl = _get_google_tables()
-    response = google_tbl.get_item(Key={"uuid": uuid})
+    response = google_tbl.get_item(Key={"uuid": uuid}, ConsistentRead=consistent_read)
     item = response.get("Item")
     if not item:
         raise ValueError(f"No Google token found for uuid: {uuid}")

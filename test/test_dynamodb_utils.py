@@ -33,6 +33,7 @@ class DynamoDbGoogleTokenTests(unittest.TestCase):
             item = get_google_token_by_uuid("u-1")
         self.assertEqual(item["accessToken"], "enc:v1:encrypted-access")
         self.assertEqual(item["refreshToken"], "enc:v1:encrypted-refresh")
+        table.get_item.assert_called_once_with(Key={"uuid": "u-1"}, ConsistentRead=False)
 
     def test_get_google_token_returns_plaintext_fields_unchanged(self):
         table = MagicMock()
@@ -47,6 +48,21 @@ class DynamoDbGoogleTokenTests(unittest.TestCase):
             item = get_google_token_by_uuid("u-1")
         self.assertEqual(item["accessToken"], "plain-access")
         self.assertEqual(item["refreshToken"], "plain-refresh")
+
+    def test_get_google_token_supports_consistent_read(self):
+        table = MagicMock()
+        table.get_item.return_value = {
+            "Item": {
+                "uuid": "u-1",
+                "accessToken": "plain-access",
+                "refreshToken": "plain-refresh",
+            }
+        }
+        with patch("utils.dynamodb_utils._get_google_tables", return_value=table):
+            item = get_google_token_by_uuid("u-1", consistent_read=True)
+        self.assertEqual(item["accessToken"], "plain-access")
+        self.assertEqual(item["refreshToken"], "plain-refresh")
+        table.get_item.assert_called_once_with(Key={"uuid": "u-1"}, ConsistentRead=True)
 
     def test_update_google_token_encrypts_plaintext_fields(self):
         table = MagicMock()
