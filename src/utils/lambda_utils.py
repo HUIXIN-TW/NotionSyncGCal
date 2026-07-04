@@ -5,7 +5,6 @@ from typing import Any, Dict, Optional
 from sync.contracts import (
     SyncErrorPayload,
     is_retryable_result,
-    is_successful_result,
 )
 
 MAX_SYNC_LOG_ERRORS = 3
@@ -15,6 +14,10 @@ SAFE_SYNC_FAILURE_MESSAGE = "Sync failed. See Lambda logs with aws_request_id fo
 # Sentinel used as the uuid field on SQS batch-aggregate summaries.
 # It is never a real user UUID and must never be written to DynamoDB.
 _BATCH_SUMMARY_UUID = "batch"
+
+
+class RetryableSyncFailure(RuntimeError):
+    """Raised when a trigger should fail for upstream retry or DLQ handling."""
 
 
 def sanitize_sync_error(error: Any) -> SyncErrorPayload:
@@ -79,6 +82,10 @@ def sanitize_sync_log_payload(payload: Dict[str, Any]) -> Dict[str, Any]:
     sanitized_message["omitted_error_count"] = max(original_error_count - MAX_SYNC_LOG_ERRORS, 0)
     sanitized_payload["message"] = sanitized_message
     return sanitized_payload
+
+
+def sync_result_requires_retry(payload: Dict[str, Any]) -> bool:
+    return is_retryable_result(payload)
 
 
 def _save_sync_logs(uuid: str, payload: Dict[str, Any]) -> None:
@@ -171,7 +178,7 @@ def process_sqs_records(
                 extra={"job_id": job_id},
             )
             sqs_batch_results.append(processed_result)
-            if is_retryable_result(processed_result):
+            if sync_result_requires_retry(processed_result):
                 batch_item_failures.append({"itemIdentifier": job_id})
         except Exception:
             logger_obj.exception("Error processing SQS record")
@@ -186,15 +193,15 @@ def process_sqs_records(
             batch_item_failures.append({"itemIdentifier": job_id})
 
     # Summarize results for batch logging
-    success_count = sum(1 for s in sqs_batch_results if is_successful_result(s))
-    retryable_failure_count = sum(1 for s in sqs_batch_results if is_retryable_result(s))
+    success_count = sum(1 for s in sqs_batch_results if not sync_result_requires_retry(s))
+    retryable_failure_count = sum(1 for s in sqs_batch_results if sync_result_requires_retry(s))
     non_retriable_failure_count = len(sqs_batch_results) - success_count - retryable_failure_count
     failure_count = retryable_failure_count + non_retriable_failure_count
 
     # Emit a final batch summary log
     # Build enhanced batch summary avoiding duplicate 'results' key collisions
-    success_uuids = [s.get("uuid") for s in sqs_batch_results if is_successful_result(s)]
-    failure_uuids = [s.get("uuid") for s in sqs_batch_results if not is_successful_result(s)]
+    success_uuids = [s.get("uuid") for s in sqs_batch_results if not sync_result_requires_retry(s)]
+    failure_uuids = [s.get("uuid") for s in sqs_batch_results if s.get("uuid") not in success_uuids]
     batch_sync_result = {
         # Provide an explicit statusCode for downstream handler uniformity
         "statusCode": 200,
@@ -261,10 +268,12 @@ def process_eventbridge_event(
                 "event_time": event_time,
             },
         )
+        if sync_result_requires_retry(result):
+            raise RetryableSyncFailure("EventBridge sync produced retriable failure(s).")
         return result
     except Exception:
         logger_obj.exception("Error processing EventBridge event")
-        return {"statusCode": 500, "body": {"error": "Event processing failed"}}
+        raise
 
 
 def detect_event_source(logger_obj, event: dict) -> str:
@@ -299,4 +308,11 @@ def detect_event_source(logger_obj, event: dict) -> str:
     return "unknown"
 
 
-__all__ = ["process_and_log_sync_result", "process_sqs_records", "detect_event_source"]
+__all__ = [
+    "process_and_log_sync_result",
+    "process_sqs_records",
+    "process_eventbridge_event",
+    "detect_event_source",
+    "sync_result_requires_retry",
+    "RetryableSyncFailure",
+]

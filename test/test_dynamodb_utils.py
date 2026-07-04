@@ -12,6 +12,7 @@ boto3_module.resource = MagicMock()
 sys.modules.setdefault("boto3", boto3_module)
 
 from utils.dynamodb_utils import (  # noqa: E402
+    GoogleTokenWriteConflictError,
     get_google_token_by_uuid,
     update_google_token_by_uuid,
 )
@@ -32,6 +33,7 @@ class DynamoDbGoogleTokenTests(unittest.TestCase):
             item = get_google_token_by_uuid("u-1")
         self.assertEqual(item["accessToken"], "enc:v1:encrypted-access")
         self.assertEqual(item["refreshToken"], "enc:v1:encrypted-refresh")
+        table.get_item.assert_called_once_with(Key={"uuid": "u-1"}, ConsistentRead=False)
 
     def test_get_google_token_returns_plaintext_fields_unchanged(self):
         table = MagicMock()
@@ -46,6 +48,21 @@ class DynamoDbGoogleTokenTests(unittest.TestCase):
             item = get_google_token_by_uuid("u-1")
         self.assertEqual(item["accessToken"], "plain-access")
         self.assertEqual(item["refreshToken"], "plain-refresh")
+
+    def test_get_google_token_supports_consistent_read(self):
+        table = MagicMock()
+        table.get_item.return_value = {
+            "Item": {
+                "uuid": "u-1",
+                "accessToken": "plain-access",
+                "refreshToken": "plain-refresh",
+            }
+        }
+        with patch("utils.dynamodb_utils._get_google_tables", return_value=table):
+            item = get_google_token_by_uuid("u-1", consistent_read=True)
+        self.assertEqual(item["accessToken"], "plain-access")
+        self.assertEqual(item["refreshToken"], "plain-refresh")
+        table.get_item.assert_called_once_with(Key={"uuid": "u-1"}, ConsistentRead=True)
 
     def test_update_google_token_encrypts_plaintext_fields(self):
         table = MagicMock()
@@ -113,6 +130,23 @@ class DynamoDbGoogleTokenTests(unittest.TestCase):
         kwargs = table.update_item.call_args.kwargs
         self.assertEqual(kwargs["ConditionExpression"], "attribute_not_exists(updatedAt)")
         self.assertNotIn(":expected_updated", kwargs["ExpressionAttributeValues"])
+
+    def test_update_google_token_maps_conditional_conflict(self):
+        table = MagicMock()
+
+        class _ConditionalFailure(Exception):
+            def __init__(self):
+                self.response = {"Error": {"Code": "ConditionalCheckFailedException"}}
+
+        table.update_item.side_effect = _ConditionalFailure()
+
+        with patch("utils.dynamodb_utils._get_google_tables", return_value=table):
+            with patch(
+                "utils.dynamodb_utils.encrypt_token_if_plaintext",
+                side_effect=["enc:v1:access", "enc:v1:refresh"],
+            ):
+                with self.assertRaises(GoogleTokenWriteConflictError):
+                    update_google_token_by_uuid("u-1", "plain-access", "plain-refresh", "111", "222", "123")
 
 
 if __name__ == "__main__":

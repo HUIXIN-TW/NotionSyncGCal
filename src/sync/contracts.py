@@ -136,8 +136,15 @@ def is_retryable_result(sync_result: dict[str, Any] | None) -> bool:
         return True
 
     message = get_result_message(sync_result)
-    if isinstance(message, dict) and message.get("retriable") is True:
-        return True
+    if isinstance(message, dict):
+        if message.get("retriable") is True:
+            return True
+
+        errors = message.get("errors")
+        if isinstance(errors, list):
+            for error in errors:
+                if isinstance(error, dict) and error.get("retriable") is True:
+                    return True
     return False
 
 

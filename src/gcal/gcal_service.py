@@ -160,8 +160,21 @@ class GoogleService:
         try:
             self.service.events().delete(calendarId=gcal_calendar_id, eventId=gcal_event_id).execute()
             self.logger.info(f"Successfully deleted event with ID: {gcal_event_id}")
+            return True
+        except HttpError as e:
+            status_code = getattr(getattr(e, "resp", None), "status", None)
+            if status_code in (404, 410):
+                self.logger.warning(
+                    "Google Calendar event_id=%s was already absent (status=%s); treating delete as converged.",
+                    gcal_event_id,
+                    status_code,
+                )
+                return True
+            self.logger.error(f"An error occurred while deleting event with ID: {gcal_event_id}: {e}")
+            raise
         except Exception as e:
             self.logger.error(f"An error occurred while deleting event with ID: {gcal_event_id}: {e}")
+            raise
 
     def make_event_body(self, notion_task):
         # set icone and task name
