@@ -1,6 +1,11 @@
 import json
 from datetime import datetime, timezone
-from typing import Any, Dict, Optional, TypedDict
+from typing import Any, Dict, Optional
+
+from sync.contracts import (
+    SyncErrorPayload,
+    is_retryable_result,
+)
 
 MAX_SYNC_LOG_ERRORS = 3
 SYNC_LOG_CONTRACT_VERSION = "2026-05-31.sync-log.v2"
@@ -9,17 +14,6 @@ SAFE_SYNC_FAILURE_MESSAGE = "Sync failed. See Lambda logs with aws_request_id fo
 # Sentinel used as the uuid field on SQS batch-aggregate summaries.
 # It is never a real user UUID and must never be written to DynamoDB.
 _BATCH_SUMMARY_UUID = "batch"
-
-
-class SyncErrorPayload(TypedDict):
-    action: str | None
-    error_code: str
-    error_message: str | None
-    error: str | None
-    gcal_event_start: str | None
-    gcal_event_id: str | None
-    notion_task_id: str | None
-    retriable: bool | None
 
 
 class RetryableSyncFailure(RuntimeError):
@@ -90,24 +84,8 @@ def sanitize_sync_log_payload(payload: Dict[str, Any]) -> Dict[str, Any]:
     return sanitized_payload
 
 
-def _iter_sync_errors(payload: Dict[str, Any]) -> list[Dict[str, Any]]:
-    message = payload.get("message")
-    if not isinstance(message, dict):
-        return []
-
-    errors = message.get("errors")
-    if not isinstance(errors, list):
-        return []
-
-    return [error for error in errors if isinstance(error, dict)]
-
-
 def sync_result_requires_retry(payload: Dict[str, Any]) -> bool:
-    status_code = payload.get("statusCode")
-    if isinstance(status_code, int) and status_code >= 500:
-        return True
-
-    return any(error.get("retriable") is True for error in _iter_sync_errors(payload))
+    return is_retryable_result(payload)
 
 
 def _save_sync_logs(uuid: str, payload: Dict[str, Any]) -> None:
@@ -216,7 +194,9 @@ def process_sqs_records(
 
     # Summarize results for batch logging
     success_count = sum(1 for s in sqs_batch_results if not sync_result_requires_retry(s))
-    failure_count = len(sqs_batch_results) - success_count
+    retryable_failure_count = sum(1 for s in sqs_batch_results if sync_result_requires_retry(s))
+    non_retriable_failure_count = len(sqs_batch_results) - success_count - retryable_failure_count
+    failure_count = retryable_failure_count + non_retriable_failure_count
 
     # Emit a final batch summary log
     # Build enhanced batch summary avoiding duplicate 'results' key collisions
@@ -243,6 +223,8 @@ def process_sqs_records(
             "record_count": len(sqs_batch_results),
             "success_count": success_count,
             "failure_count": failure_count,
+            "retryable_failure_count": retryable_failure_count,
+            "non_retriable_failure_count": non_retriable_failure_count,
             "record_summaries": sqs_batch_results,  # concise per-record summary list
             "success_uuids": success_uuids,
             "failure_uuids": failure_uuids,

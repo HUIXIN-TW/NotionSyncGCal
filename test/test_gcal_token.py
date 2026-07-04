@@ -364,6 +364,35 @@ class TestGoogleTokenCloudMode(unittest.TestCase):
                         GoogleToken(self._cloud_config(), _make_logger())
         self.assertIn("GOOGLE_CALENDAR_CLIENT_SECRET_SSM_PATH", str(ctx.exception))
 
+    def test_cloud_mode_requires_google_calendar_client_id(self):
+        env = dict(_CLOUD_ENV)
+        env.pop("GOOGLE_CALENDAR_CLIENT_ID")
+        with patch(
+            "utils.dynamodb_utils.get_google_token_by_uuid",
+            return_value=_CLOUD_DYNAMO_RESPONSE,
+        ):
+            with patch(
+                "gcal.gcal_token.decrypt_token", side_effect=self._mock_cloud_decrypt
+            ):
+                with patch.dict(os.environ, env, clear=True):
+                    with self.assertRaises(SettingError) as ctx:
+                        GoogleToken(self._cloud_config(), _make_logger())
+        self.assertIn("GOOGLE_CALENDAR_CLIENT_ID", str(ctx.exception))
+
+    def test_cloud_mode_rejects_blank_google_calendar_client_id(self):
+        env = {**_CLOUD_ENV, "GOOGLE_CALENDAR_CLIENT_ID": "   "}
+        with patch(
+            "utils.dynamodb_utils.get_google_token_by_uuid",
+            return_value=_CLOUD_DYNAMO_RESPONSE,
+        ):
+            with patch(
+                "gcal.gcal_token.decrypt_token", side_effect=self._mock_cloud_decrypt
+            ):
+                with patch.dict(os.environ, env, clear=True):
+                    with self.assertRaises(SettingError) as ctx:
+                        GoogleToken(self._cloud_config(), _make_logger())
+        self.assertIn("GOOGLE_CALENDAR_CLIENT_ID", str(ctx.exception))
+
     def test_cloud_mode_fetches_client_secret_from_ssm(self):
         with patch(
             "utils.dynamodb_utils.get_google_token_by_uuid",
@@ -399,6 +428,23 @@ class TestGoogleTokenCloudMode(unittest.TestCase):
                     with patch.dict(os.environ, env, clear=True):
                         gt = GoogleToken(self._cloud_config("my-uuid"), _make_logger())
         self.assertEqual(gt.credentials.client_secret, "ssm-secret-value")
+
+    def test_cloud_mode_rejects_blank_client_secret_resolved_from_ssm(self):
+        with patch(
+            "utils.dynamodb_utils.get_google_token_by_uuid",
+            return_value=_CLOUD_DYNAMO_RESPONSE,
+        ):
+            with patch(
+                "gcal.gcal_token.decrypt_token", side_effect=self._mock_cloud_decrypt
+            ):
+                with patch(
+                    "gcal.gcal_token.get_ssm_parameter",
+                    return_value="   ",
+                ):
+                    with patch.dict(os.environ, _CLOUD_ENV, clear=True):
+                        with self.assertRaises(SettingError) as ctx:
+                            GoogleToken(self._cloud_config("my-uuid"), _make_logger())
+        self.assertIn("resolved from SSM is empty", str(ctx.exception))
 
     def test_encrypted_cloud_refresh_token_calls_decrypt_token(self):
         response = {
