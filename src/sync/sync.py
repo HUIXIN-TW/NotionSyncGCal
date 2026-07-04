@@ -4,7 +4,6 @@ from pathlib import Path
 from datetime import datetime, timezone
 from dateutil.parser import isoparse
 from sync.contracts import (
-    SYNC_CAPACITY_LIMIT_ERROR_CODE,
     build_capacity_limited_result,
     build_sync_error,
     build_sync_result,
@@ -18,6 +17,7 @@ logger = get_logger(__name__)
 # Cap sync volume to avoid unbounded processing for large datasets.
 SYNC_TASK_LIMIT = 250
 SAFE_SYNC_FAILURE_MESSAGE = "Sync failed. See Lambda logs with aws_request_id for details."
+
 
 class SyncAbortError(Exception):
     """Raised when a fatal condition requires the entire sync to stop immediately."""

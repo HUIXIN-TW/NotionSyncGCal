@@ -4,8 +4,6 @@ from typing import Any, Dict, Optional
 
 from sync.contracts import (
     SyncErrorPayload,
-    get_result_message,
-    get_result_status,
     is_retryable_result,
     is_successful_result,
 )
