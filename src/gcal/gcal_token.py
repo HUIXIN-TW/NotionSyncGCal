@@ -72,17 +72,22 @@ class GoogleToken:
                     raise SettingError(
                         "GOOGLE_CALENDAR_CLIENT_SECRET_SSM_PATH env var is required but not set in APP_MODE=cloud."
                     )
+                client_id = os.environ.get("GOOGLE_CALENDAR_CLIENT_ID", "").strip()
+                if not client_id:
+                    raise SettingError("GOOGLE_CALENDAR_CLIENT_ID env var is required but not set in APP_MODE=cloud.")
                 try:
-                    client_secret = get_ssm_parameter(client_secret_ssm_path)
+                    client_secret = get_ssm_parameter(client_secret_ssm_path).strip()
                 except SSMSecretError as e:
                     raise SettingError(f"Failed to resolve Google client secret from SSM: {e}") from e
+                if not client_secret:
+                    raise SettingError("Google client secret resolved from SSM is empty.")
                 credentials_data = {
                     "token": access_token,
                     "refresh_token": refresh_token,
                     "token_uri": _DEFAULT_TOKEN_URI,
                     "scopes": list(_DEFAULT_SCOPES),
                     "expiry": self._convert_google_expiry_date_format(data.get("expiryDate")),
-                    "client_id": os.environ.get("GOOGLE_CALENDAR_CLIENT_ID"),
+                    "client_id": client_id,
                     "client_secret": client_secret,
                 }
                 credentials = Credentials(**credentials_data)
@@ -213,6 +218,10 @@ class GoogleToken:
             raise SettingError("Scopes are missing.")
         if not credentials.token_uri:
             raise SettingError("Token URI is missing.")
+        if not credentials.client_id:
+            raise SettingError("Client ID is missing.")
+        if not credentials.client_secret:
+            raise SettingError("Client secret is missing.")
 
     def _assert_plaintext_runtime_token(self, token_name, value):
         if isinstance(value, str) and value.startswith(TOKEN_ENCRYPTION_PREFIX):
