@@ -8,7 +8,8 @@ from unittest.mock import MagicMock, patch
 SRC_ROOT = Path(__file__).resolve().parents[1] / "src"
 sys.path.insert(0, str(SRC_ROOT))
 
-from sync.sync import SYNC_CAPACITY_LIMIT_ERROR_CODE, synchronize_notion_and_google_calendar  # noqa: E402
+from sync import SYNC_CAPACITY_LIMIT_ERROR_CODE  # noqa: E402
+from sync.sync import synchronize_notion_and_google_calendar  # noqa: E402
 import utils.lambda_utils as lambda_utils  # noqa: E402
 
 USER_SETTING = {
