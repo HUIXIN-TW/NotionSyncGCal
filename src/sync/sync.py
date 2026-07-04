@@ -3,6 +3,12 @@ import re
 from pathlib import Path
 from datetime import datetime, timezone
 from dateutil.parser import isoparse
+from sync.contracts import (
+    SYNC_CAPACITY_LIMIT_ERROR_CODE,
+    build_capacity_limited_result,
+    build_sync_error,
+    build_sync_result,
+)
 from utils.logging_utils import build_debug_exception_detail, get_logger  # noqa: E402
 from notion.notion_properties import get_checkbox, get_rich_text, get_select, get_title
 
@@ -12,7 +18,6 @@ logger = get_logger(__name__)
 # Cap sync volume to avoid unbounded processing for large datasets.
 SYNC_TASK_LIMIT = 250
 SAFE_SYNC_FAILURE_MESSAGE = "Sync failed. See Lambda logs with aws_request_id for details."
-
 
 class SyncAbortError(Exception):
     """Raised when a fatal condition requires the entire sync to stop immediately."""
@@ -67,34 +72,6 @@ def _exception_error_code(exc: Exception) -> str:
     return code or "unexpected_sync_error"
 
 
-def _build_sync_error(
-    action: str | None,
-    error_code: str,
-    *,
-    error_message: str | None = None,
-    error: str | None = None,
-    notion_task_id: str | None = None,
-    gcal_event_id: str | None = None,
-    gcal_event_start: str | None = None,
-    retriable: bool | None = None,
-    debug_detail: str | None = None,
-):
-    message = error_message if error_message is not None else error
-    payload = {
-        "action": action,
-        "error_code": error_code,
-        "error_message": message,
-        "error": error,
-        "notion_task_id": notion_task_id,
-        "gcal_event_id": gcal_event_id,
-        "gcal_event_start": gcal_event_start,
-        "retriable": retriable,
-    }
-    if debug_detail is not None:
-        payload["debug_detail"] = debug_detail
-    return payload
-
-
 def synchronize_notion_and_google_calendar(
     user_setting: dict,
     notion_service,
@@ -130,37 +107,37 @@ def synchronize_notion_and_google_calendar(
             logger.debug(f"Sync Summary: {sync_summary}")
             # Stop early if either side exceeds the supported sync cap.
             if task_count > SYNC_TASK_LIMIT or event_count > SYNC_TASK_LIMIT:
-                warning_message = f"Task count exceeds {SYNC_TASK_LIMIT} when triggering sync at {trigger_sync_time}. Sync process stopped to avoid overloading the sync job."  # noqa: E501
-                logger.warning(warning_message)
-                return {
-                    "statusCode": 200,
-                    "body": {
-                        "status": "sync_error",
-                        "message": warning_message,
-                    },
-                }
+                logger.warning(
+                    "Sync input volume exceeds limit=%s; task_count=%s event_count=%s. "
+                    "Skipping run intentionally to avoid an oversized sync job.",
+                    SYNC_TASK_LIMIT,
+                    task_count,
+                    event_count,
+                )
+                return build_capacity_limited_result(
+                    sync_task_limit=SYNC_TASK_LIMIT,
+                    trigger_sync_time=trigger_sync_time,
+                    event_count=event_count,
+                    task_count=task_count,
+                )
             # No Notion tasks found and no Google Calendar events found
             if task_count == 0 and event_count == 0:
                 logger.debug("No Notion tasks found and no Google Calendar events found.")
-                return {
-                    "statusCode": 200,
-                    "body": {
-                        "status": "sync_success",
-                        "message": "No Notion tasks found and no Google Calendar events found.",
-                    },
-                }
+                return build_sync_result(
+                    200,
+                    "sync_success",
+                    "No Notion tasks found and no Google Calendar events found.",
+                )
         except Exception:
             logger.exception("Failed to load sync inputs")
-            return {
-                "statusCode": 500,
-                "body": {
-                    "status": "sync_error",
-                    "message": {
-                        "error_code": "sync_input_load_failed",
-                        "error_message": SAFE_SYNC_FAILURE_MESSAGE,
-                    },
+            return build_sync_result(
+                500,
+                "sync_error",
+                {
+                    "error_code": "sync_input_load_failed",
+                    "error_message": SAFE_SYNC_FAILURE_MESSAGE,
                 },
-            }
+            )
 
         # Check if Notion Task is in Google Calendar
         sync_errors = []
@@ -312,7 +289,7 @@ def synchronize_notion_and_google_calendar(
                             description = gcal_event.get("description") or ""
                             if len(description) > 2000:
                                 sync_errors.append(
-                                    _build_sync_error(
+                                    build_sync_error(
                                         action,
                                         "gcal_description_too_long",
                                         error=(
@@ -355,7 +332,7 @@ def synchronize_notion_and_google_calendar(
                 raise
             except Exception as e:
                 sync_errors.append(
-                    _build_sync_error(
+                    build_sync_error(
                         action,
                         _exception_error_code(e),
                         error_message=SAFE_SYNC_FAILURE_MESSAGE,
@@ -391,7 +368,7 @@ def synchronize_notion_and_google_calendar(
                     gcal_cal_name = gcal_id_dict.get(organizer_email)
                     if not gcal_cal_name:
                         sync_errors.append(
-                            _build_sync_error(
+                            build_sync_error(
                                 "create_notion",
                                 "gcal_event_not_owned",
                                 error=(
@@ -412,7 +389,7 @@ def synchronize_notion_and_google_calendar(
                     description = gcal_event.get("description") or ""
                     if len(description) > 2000:
                         sync_errors.append(
-                            _build_sync_error(
+                            build_sync_error(
                                 "create_notion",
                                 "gcal_description_too_long",
                                 error=(
@@ -434,7 +411,7 @@ def synchronize_notion_and_google_calendar(
                         notion_service.create_notion_task(gcal_event, gcal_cal_name)
                 except Exception as e:
                     sync_errors.append(
-                        _build_sync_error(
+                        build_sync_error(
                             "create_notion",
                             _exception_error_code(e),
                             error_message=SAFE_SYNC_FAILURE_MESSAGE,
@@ -450,23 +427,21 @@ def synchronize_notion_and_google_calendar(
 
     except Exception as e:
         logger.exception("Error during synchronization")
-        return {
-            "statusCode": 500,
-            "body": {
-                "status": "sync_error",
-                "message": {
-                    "error_code": _exception_error_code(e),
-                    "error_message": SAFE_SYNC_FAILURE_MESSAGE,
-                },
+        return build_sync_result(
+            500,
+            "sync_error",
+            {
+                "error_code": _exception_error_code(e),
+                "error_message": SAFE_SYNC_FAILURE_MESSAGE,
             },
-        }
+        )
 
     message = {
         "summary": sync_summary,
         "trigger_time": trigger_sync_time,
         "errors": sync_errors,
     }
-    return {"statusCode": 200, "body": {"status": "sync_success", "message": message}}
+    return build_sync_result(200, "sync_success", message)
 
 
 def force_update_notion_tasks_by_google_event_and_ignore_time(user_setting, notion_service, google_service):

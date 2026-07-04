@@ -257,6 +257,40 @@ class TestProcessSqsRecords(unittest.TestCase):
         self.assertEqual(result["failure_count"], 1)
         self.assertEqual(result["batchItemFailures"], [{"itemIdentifier": "msg-0"}])
 
+    def test_non_retriable_capacity_limit_result_is_acked_and_counted_as_success(self):
+        event = _make_sqs_event(["uuid-cap"])
+
+        def run_sync(uuid):  # noqa: ARG001
+            return {
+                "statusCode": 200,
+                "body": {
+                    "status": "sync_success",
+                    "message": {
+                        "error_code": "sync_capacity_limit_exceeded",
+                        "error_message": "volume limit exceeded",
+                        "limit": 250,
+                        "capacity_limited": True,
+                        "retriable": False,
+                        "errors": [],
+                    },
+                },
+            }
+
+        with patch.object(lambda_utils, "_save_sync_logs"):
+            result = lambda_utils.process_sqs_records(
+                logger_obj=self.logger,
+                event=event,
+                context=self.ctx,
+                run_sync=run_sync,
+                lambda_start_time=self.start,
+            )
+
+        self.assertEqual(result["success_count"], 1)
+        self.assertEqual(result["failure_count"], 0)
+        self.assertEqual(result["retryable_failure_count"], 0)
+        self.assertEqual(result["non_retriable_failure_count"], 0)
+        self.assertEqual(result["batchItemFailures"], [])
+
     def test_mixed_batch_only_retries_failed_records(self):
         event = _make_sqs_event(["uuid-ok", "uuid-fail", "uuid-ok-2"])
 

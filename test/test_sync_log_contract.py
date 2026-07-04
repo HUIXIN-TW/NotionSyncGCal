@@ -8,7 +8,7 @@ from unittest.mock import MagicMock, patch
 SRC_ROOT = Path(__file__).resolve().parents[1] / "src"
 sys.path.insert(0, str(SRC_ROOT))
 
-from sync.sync import synchronize_notion_and_google_calendar  # noqa: E402
+from sync.sync import SYNC_CAPACITY_LIMIT_ERROR_CODE, synchronize_notion_and_google_calendar  # noqa: E402
 import utils.lambda_utils as lambda_utils  # noqa: E402
 
 USER_SETTING = {
@@ -135,6 +135,38 @@ class SyncContractTests(unittest.TestCase):
             lambda_utils.SAFE_SYNC_FAILURE_MESSAGE,
         )
         self.assertIsNone(persisted_errors[0]["error"])
+
+    def test_capacity_limit_result_keeps_sync_success_with_typed_non_retriable_signal(self):
+        notion_service = MagicMock()
+        google_service = MagicMock()
+
+        notion_service.get_notion_task.return_value = (
+            {"db": "x"},
+            [{"id": f"page-{idx}"} for idx in range(251)],
+        )
+        google_service.get_gcal_event.return_value = []
+
+        result = synchronize_notion_and_google_calendar(
+            user_setting=copy.deepcopy(USER_SETTING),
+            notion_service=notion_service,
+            google_service=google_service,
+            compare_time=True,
+            should_update_notion_tasks=True,
+            should_update_google_events=True,
+        )
+
+        self.assertEqual(result["statusCode"], 200)
+        self.assertEqual(result["body"]["status"], "sync_success")
+        self.assertEqual(
+            result["body"]["message"]["error_code"],
+            SYNC_CAPACITY_LIMIT_ERROR_CODE,
+        )
+        self.assertTrue(result["body"]["message"]["capacity_limited"])
+        self.assertFalse(result["body"]["message"]["retriable"])
+        self.assertEqual(
+            result["body"]["message"]["errors"][0]["error_code"],
+            SYNC_CAPACITY_LIMIT_ERROR_CODE,
+        )
 
 
 if __name__ == "__main__":
