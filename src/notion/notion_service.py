@@ -1,6 +1,7 @@
 from notion_client import Client
 from notion_client.errors import APIResponseError
 from datetime import datetime, timedelta
+from zoneinfo import ZoneInfo
 import emoji
 
 
@@ -78,8 +79,8 @@ class NotionService:
     def get_notion_task(self):
 
         # TODO: Notion has no filter for start date and end date so add extra column: GCAL_END_DATE_NOTION_NAME
-        before_date_with_time_zone = self.setting["before_date"] + "T00:00:00.000" + self.setting["timecode"]
-        after_date_with_time_zone = self.setting["after_date"] + "T00:00:00.000" + self.setting["timecode"]
+        before_date_with_time_zone = self.setting["google_timemax"]
+        after_date_with_time_zone = self.setting["google_timemin"]
         date_range = f"from {self.setting['after_date']} (inclusive) to {self.setting['before_date']} (exclusive)"
         notion_summary = {
             "action": "get_notion_task",
@@ -148,45 +149,47 @@ class NotionService:
         if "date" in gcal_event["end"]:
             gcal_event_end_datetime = self.adjust_end_date(gcal_event_end_datetime)
 
-        self.client.pages.update(
-            page_id=page_id,
-            properties={
-                self.page_property["Task_Notion_Name"]: {
-                    "type": "title",
-                    "title": [{"type": "text", "text": {"content": summary_without_emojis}}],
-                },
-                self.page_property["Date_Notion_Name"]: {
-                    "type": "date",
-                    "date": {
-                        "start": gcal_event_start_datetime,
-                        "end": gcal_event_end_datetime,
-                    },
-                },
-                self.page_property["ExtraInfo_Notion_Name"]: {
-                    "type": "rich_text",
-                    "rich_text": [{"text": {"content": gcal_event.get("description", "")}}],
-                },
-                self.page_property["Location_Notion_Name"]: {
-                    "type": "place",
-                    "place": {
-                        "lat": 0,
-                        "lon": 0,
-                        "address": gcal_event.get("location", ""),
-                    },
-                },
-                self.page_property["GCal_Sync_Time_Notion_Name"]: {
-                    "type": "rich_text",
-                    "rich_text": [{"text": {"content": new_gcal_sync_time}}],
-                },
-                self.page_property["GCal_EventId_Notion_Name"]: {
-                    "type": "rich_text",
-                    "rich_text": [{"text": {"content": gcal_event.get("id", "")}}],
-                },
-                self.page_property["GCal_Name_Notion_Name"]: {
-                    "select": {"name": gcal_cal_name},
+        properties = {
+            self.page_property["Task_Notion_Name"]: {
+                "type": "title",
+                "title": [{"type": "text", "text": {"content": summary_without_emojis}}],
+            },
+            self.page_property["Date_Notion_Name"]: {
+                "type": "date",
+                "date": {
+                    "start": gcal_event_start_datetime,
+                    "end": gcal_event_end_datetime,
                 },
             },
-        )
+            self.page_property["GCal_Sync_Time_Notion_Name"]: {
+                "type": "rich_text",
+                "rich_text": [{"text": {"content": new_gcal_sync_time}}],
+            },
+            self.page_property["GCal_EventId_Notion_Name"]: {
+                "type": "rich_text",
+                "rich_text": [{"text": {"content": gcal_event.get("id", "")}}],
+            },
+            self.page_property["GCal_Name_Notion_Name"]: {
+                "select": {"name": gcal_cal_name},
+            },
+        }
+        extra_info_id = self.page_property.get("ExtraInfo_Notion_Name")
+        if extra_info_id:
+            properties[extra_info_id] = {
+                "type": "rich_text",
+                "rich_text": [{"text": {"content": gcal_event.get("description", "")}}],
+            }
+        location_id = self.page_property.get("Location_Notion_Name")
+        if location_id:
+            properties[location_id] = {
+                "type": "place",
+                "place": {
+                    "lat": 0,
+                    "lon": 0,
+                    "address": gcal_event.get("location", ""),
+                },
+            }
+        self.client.pages.update(page_id=page_id, properties=properties)
 
     def update_notion_task_for_new_gcal_event_id(self, page_id, new_gcal_event_id):
         self.client.pages.update(
@@ -210,17 +213,6 @@ class NotionService:
             },
         )
 
-    def update_notion_task_for_default_calendar(self, page_id, default_calendar_name):
-        """Update the Notion task for the default calendar."""
-        self.client.pages.update(
-            page_id=page_id,
-            properties={
-                self.page_property["GCal_Name_Notion_Name"]: {
-                    "select": {"name": default_calendar_name},
-                },
-            },
-        )
-
     def create_notion_task(self, gcal_event, gcal_cal_name):
         """Create a Notion task using Google Calendar event details."""
 
@@ -231,71 +223,78 @@ class NotionService:
         if "date" in gcal_event["end"]:
             gcal_event_end_datetime = self.adjust_end_date(gcal_event_end_datetime)
 
-        self.client.pages.create(
-            parent={"database_id": self.setting["database_id"]},
-            properties={
-                self.page_property["Task_Notion_Name"]: {
-                    "type": "title",
-                    "title": [
-                        {
-                            "type": "text",
-                            "text": {
-                                "content": gcal_event.get("summary", ""),
-                            },
+        properties = {
+            self.page_property["Task_Notion_Name"]: {
+                "type": "title",
+                "title": [
+                    {
+                        "type": "text",
+                        "text": {
+                            "content": gcal_event.get("summary", ""),
                         },
-                    ],
-                },
-                self.page_property["Date_Notion_Name"]: {
-                    "type": "date",
-                    "date": {
-                        "start": gcal_event_start_datetime,
-                        "end": gcal_event_end_datetime,
                     },
-                },
-                self.page_property["ExtraInfo_Notion_Name"]: {
-                    "type": "rich_text",
-                    "rich_text": [{"text": {"content": gcal_event.get("description", "")}}],
-                },
-                self.page_property["Location_Notion_Name"]: {
-                    "type": "place",
-                    "place": {
-                        "lat": 0,
-                        "lon": 0,
-                        "address": gcal_event.get("location", ""),
-                    },
-                },
-                self.page_property["GCal_EventId_Notion_Name"]: {
-                    "type": "rich_text",
-                    "rich_text": [{"text": {"content": gcal_event.get("id")}}],
-                },
-                self.page_property["GCal_Name_Notion_Name"]: {
-                    "select": {"name": gcal_cal_name},
+                ],
+            },
+            self.page_property["Date_Notion_Name"]: {
+                "type": "date",
+                "date": {
+                    "start": gcal_event_start_datetime,
+                    "end": gcal_event_end_datetime,
                 },
             },
-        )
+            self.page_property["GCal_EventId_Notion_Name"]: {
+                "type": "rich_text",
+                "rich_text": [{"text": {"content": gcal_event.get("id")}}],
+            },
+            self.page_property["GCal_Name_Notion_Name"]: {
+                "select": {"name": gcal_cal_name},
+            },
+        }
+        extra_info_id = self.page_property.get("ExtraInfo_Notion_Name")
+        if extra_info_id:
+            properties[extra_info_id] = {
+                "type": "rich_text",
+                "rich_text": [{"text": {"content": gcal_event.get("description", "")}}],
+            }
+        location_id = self.page_property.get("Location_Notion_Name")
+        if location_id:
+            properties[location_id] = {
+                "type": "place",
+                "place": {
+                    "lat": 0,
+                    "lon": 0,
+                    "address": gcal_event.get("location", ""),
+                },
+            }
+        self.client.pages.create(parent={"database_id": self.setting["database_id"]}, properties=properties)
         self.logger.info("Created Notion task for Google Calendar event_id=%s", gcal_event.get("id"))
 
     def delete_notion_task(self, page_id):
-        self.client.pages.update(
-            page_id=page_id,
-            properties={
-                self.page_property["Delete_Notion_Name"]: {"checkbox": True},
-                self.page_property["GCal_Sync_Time_Notion_Name"]: {
-                    "type": "rich_text",
-                    "rich_text": [{"text": {"content": ""}}],
-                },
-                self.page_property["GCal_EventId_Notion_Name"]: {
-                    "type": "rich_text",
-                    "rich_text": [{"text": {"content": ""}}],
-                },
+        properties = {
+            self.page_property["GCal_Sync_Time_Notion_Name"]: {
+                "type": "rich_text",
+                "rich_text": [{"text": {"content": ""}}],
             },
-        )
+            self.page_property["GCal_EventId_Notion_Name"]: {
+                "type": "rich_text",
+                "rich_text": [{"text": {"content": ""}}],
+            },
+        }
+        deleted_id = self.page_property.get("Delete_Notion_Name")
+        if deleted_id:
+            properties[deleted_id] = {"checkbox": True}
+        self.client.pages.update(page_id=page_id, properties=properties)
         self.logger.info(f"Event {page_id} marked as deletion in Notion successfully.")
 
     def parse_date_in_notion_format(self, date_obj):
         """Helper function to notion format dates."""
         try:
-            formatted_date = date_obj.strftime(f"%Y-%m-%dT%H:%M:%S{self.setting['timecode']}")
+            zone = ZoneInfo(self.setting["timezone"])
+            if date_obj.tzinfo is None:
+                date_obj = date_obj.replace(tzinfo=zone)
+            else:
+                date_obj = date_obj.astimezone(zone)
+            formatted_date = date_obj.isoformat(timespec="seconds")
         except Exception as e:
             self.logger.error(f"Error formatting date: {e}")
             formatted_date = None
@@ -328,49 +327,3 @@ class NotionService:
 
     def get_page_property(self, key: str) -> str:
         return self.setting["page_property"].get(key)
-
-
-if __name__ == "__main__":
-    import sys
-    import logging
-    import json
-    from pathlib import Path
-
-    # python -m src.notion.notion_service
-    logging.basicConfig(level=logging.INFO)
-    logger = logging.getLogger(__name__)
-
-    from rich.console import Console  # noqa: E402
-    from .notion_config import NotionConfig  # noqa: E402
-    from .notion_token import NotionToken  # noqa: E402
-
-    # Add the src directory to the Python path
-    sys.path.append(str(Path(__file__).resolve().parent.parent))
-    from config.config import generate_config  # noqa: E402
-
-    console = Console()
-    Path("logs").mkdir(parents=True, exist_ok=True)
-    log_path = Path("logs/get_notion_task.json")
-    if not log_path.exists():
-        log_path.touch()
-
-    config = generate_config("")
-    user_setting = NotionConfig(config, logger).get()
-    token = NotionToken(config, logger).get()
-    logger.info(f"Notion User Setting: {user_setting}")
-    ns = NotionService(token, user_setting, logger)
-
-    with log_path.open("w") as output:
-        notion_summary, notion_tasks = ns.get_notion_task()
-        json.dump({"summary": notion_summary, "results": notion_tasks}, output, indent=4)
-    logging.info(
-        f"Notion Task Count. {len(notion_tasks)}, from {ns.page_property['GCal_End_Date_Notion_Name']}: {ns.setting['after_date']} "  # noqa: E501
-        f"to {ns.page_property['Date_Notion_Name']}: {ns.setting['before_date']} (exclusive)"
-    )
-
-    # get google calendar event in notion tasks
-    # event_id = ""
-    # result = ns.get_notion_task_by_gcal_event_id(event_id)
-    # console.print(f"[bold cyan]Notion Task from GCal Event ID:[/] [green]{event_id}[/]")
-    # console.print(result)
-    # console.print(result[0].get("properties", {}).get("Location", {}))

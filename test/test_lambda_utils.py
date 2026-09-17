@@ -88,6 +88,7 @@ class TestProcessAndLogSyncResult(unittest.TestCase):
                     "summary": {},
                     "errors": [
                         {
+                            "source_id": "source-1",
                             "action": "create_notion",
                             "error_code": "provider_write_failed",
                             "error": "raw provider payload with private content",
@@ -116,9 +117,8 @@ class TestProcessAndLogSyncResult(unittest.TestCase):
         returned_error = result["message"]["errors"][0]
 
         self.assertEqual(saved_error["error_code"], "provider_write_failed")
-        self.assertEqual(
-            saved_error["error_message"], lambda_utils.SAFE_SYNC_FAILURE_MESSAGE
-        )
+        self.assertEqual(saved_error["source_id"], "source-1")
+        self.assertEqual(saved_error["error_message"], lambda_utils.SAFE_SYNC_FAILURE_MESSAGE)
         self.assertIsNone(saved_error["error"])
         self.assertEqual(saved_error["gcal_event_id"], "evt-123")
         self.assertEqual(saved_error["notion_task_id"], "page-456")
@@ -126,9 +126,7 @@ class TestProcessAndLogSyncResult(unittest.TestCase):
         self.assertNotIn("gcal_event_title", saved_error)
         self.assertNotIn("notion_task_name", saved_error)
         self.assertNotIn("debug_detail", saved_error)
-        self.assertEqual(
-            returned_error["error"], "raw provider payload with private content"
-        )
+        self.assertEqual(returned_error["error"], "raw provider payload with private content")
         self.assertEqual(
             returned_error["debug_detail"],
             "RuntimeError: raw provider payload with private content",
@@ -257,6 +255,40 @@ class TestProcessSqsRecords(unittest.TestCase):
         self.assertEqual(result["failure_count"], 1)
         self.assertEqual(result["batchItemFailures"], [{"itemIdentifier": "msg-0"}])
 
+    def test_retryable_task_error_is_not_counted_as_success(self):
+        event = _make_sqs_event(["uuid-fail"])
+
+        def run_sync(uuid):  # noqa: ARG001
+            return {
+                "statusCode": 200,
+                "body": {
+                    "status": "sync_success",
+                    "message": {
+                        "errors": [
+                            {
+                                "error_code": "provider_write_failed",
+                                "retriable": True,
+                            }
+                        ]
+                    },
+                },
+            }
+
+        with patch.object(lambda_utils, "_save_sync_logs"):
+            result = lambda_utils.process_sqs_records(
+                logger_obj=self.logger,
+                event=event,
+                context=self.ctx,
+                run_sync=run_sync,
+                lambda_start_time=self.start,
+            )
+
+        self.assertEqual(result["success_count"], 0)
+        self.assertEqual(result["failure_count"], 1)
+        self.assertEqual(result["retryable_failure_count"], 1)
+        self.assertEqual(result["non_retriable_failure_count"], 0)
+        self.assertEqual(result["batchItemFailures"], [{"itemIdentifier": "msg-0"}])
+
     def test_non_retriable_capacity_limit_result_is_acked_and_counted_as_success(self):
         event = _make_sqs_event(["uuid-cap"])
 
@@ -289,6 +321,37 @@ class TestProcessSqsRecords(unittest.TestCase):
         self.assertEqual(result["failure_count"], 0)
         self.assertEqual(result["retryable_failure_count"], 0)
         self.assertEqual(result["non_retriable_failure_count"], 0)
+        self.assertEqual(result["batchItemFailures"], [])
+
+    def test_non_retriable_configuration_failure_is_acked_and_counted_as_failure(self):
+        event = _make_sqs_event(["uuid-invalid-config"])
+
+        def run_sync(uuid):  # noqa: ARG001
+            return {
+                "statusCode": 409,
+                "body": {
+                    "status": "sync_error",
+                    "message": {
+                        "error_code": "sync_configuration_invalid",
+                        "retriable": False,
+                    },
+                },
+            }
+
+        with patch.object(lambda_utils, "_save_sync_logs"):
+            result = lambda_utils.process_sqs_records(
+                logger_obj=self.logger,
+                event=event,
+                context=self.ctx,
+                run_sync=run_sync,
+                lambda_start_time=self.start,
+            )
+
+        self.assertEqual(result["success_count"], 0)
+        self.assertEqual(result["failure_count"], 1)
+        self.assertEqual(result["non_retriable_failure_count"], 1)
+        self.assertEqual(result["success_uuids"], [])
+        self.assertEqual(result["failure_uuids"], ["uuid-invalid-config"])
         self.assertEqual(result["batchItemFailures"], [])
 
     def test_retriable_sync_error_in_200_result_returns_partial_batch_failure(self):

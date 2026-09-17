@@ -93,6 +93,7 @@ def _invoke_cloud(uuid: str, logger: logging.Logger):
     _require_env(
         [
             "DYNAMODB_USER_TABLE",
+            "DYNAMODB_MAPPING_DOMAIN_TABLE",
             "DYNAMODB_SYNC_LOGS_TABLE",
             "DYNAMODB_GOOGLE_OAUTH_TOKEN_TABLE",
             "DYNAMODB_NOTION_OAUTH_TOKEN_TABLE",

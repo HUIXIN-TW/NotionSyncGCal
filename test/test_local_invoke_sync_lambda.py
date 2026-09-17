@@ -27,6 +27,7 @@ class LocalInvokeCloudEnvValidationTests(unittest.TestCase):
         required = captured["names"]
         self.assertIn("TOKEN_ENCRYPTION_KEY_SSM_PATH", required)
         self.assertIn("GOOGLE_CALENDAR_CLIENT_SECRET_SSM_PATH", required)
+        self.assertIn("DYNAMODB_MAPPING_DOMAIN_TABLE", required)
         self.assertNotIn("TOKEN_ENCRYPTION_KEY", required)
         self.assertNotIn("GOOGLE_CALENDAR_CLIENT_SECRET", required)
 

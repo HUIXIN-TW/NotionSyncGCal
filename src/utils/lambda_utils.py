@@ -5,6 +5,7 @@ from typing import Any, Dict, Optional
 from sync.contracts import (
     SyncErrorPayload,
     is_retryable_result,
+    is_successful_result,
 )
 
 MAX_SYNC_LOG_ERRORS = 3
@@ -42,6 +43,7 @@ def sanitize_sync_error(error: Any) -> SyncErrorPayload:
         error_message = SAFE_SYNC_FAILURE_MESSAGE
 
     return {
+        "source_id": error.get("source_id"),
         "action": error.get("action"),
         "error_code": error.get("error_code") or "unknown_sync_error",
         "error_message": error_message,
@@ -193,14 +195,14 @@ def process_sqs_records(
             batch_item_failures.append({"itemIdentifier": job_id})
 
     # Summarize results for batch logging
-    success_count = sum(1 for s in sqs_batch_results if not sync_result_requires_retry(s))
+    success_count = sum(1 for s in sqs_batch_results if is_successful_result(s))
     retryable_failure_count = sum(1 for s in sqs_batch_results if sync_result_requires_retry(s))
     non_retriable_failure_count = len(sqs_batch_results) - success_count - retryable_failure_count
     failure_count = retryable_failure_count + non_retriable_failure_count
 
     # Emit a final batch summary log
     # Build enhanced batch summary avoiding duplicate 'results' key collisions
-    success_uuids = [s.get("uuid") for s in sqs_batch_results if not sync_result_requires_retry(s)]
+    success_uuids = [s.get("uuid") for s in sqs_batch_results if is_successful_result(s)]
     failure_uuids = [s.get("uuid") for s in sqs_batch_results if s.get("uuid") not in success_uuids]
     batch_sync_result = {
         # Provide an explicit statusCode for downstream handler uniformity

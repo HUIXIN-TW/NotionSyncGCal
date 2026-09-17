@@ -13,7 +13,7 @@ readonly DEV_FUNCTION_NAME="dev-fn-notion-sync-gcal"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 LOCAL_ENV_FILE="${REPO_ROOT}/.env.local"
-LOCAL_NOTION_CONFIG="${REPO_ROOT}/config/local.notion-setting.json"
+LOCAL_MAPPING_DOMAIN_CONFIG="${REPO_ROOT}/config/local.mapping-domain.json"
 
 MODE=""
 UUID=""
@@ -29,7 +29,7 @@ Usage:
 Runs the Notion-GCal sync locally using the explicit APP_MODE flow.
 
 Modes:
-  local   Uses .env.local and config/local.notion-setting.json only. AWS credentials are not required.
+  local   Uses .env.local and config/local.mapping-domain.json only. AWS credentials are not required.
   cloud   Uses local code with dev AWS-backed config for the supplied user UUID.
 
 Options:
@@ -150,13 +150,13 @@ validate_local_mode() {
   require_env GOOGLE_CLIENT_ID
   require_env GOOGLE_CLIENT_SECRET
   require_env GOOGLE_REFRESH_TOKEN
-  [[ -f "${LOCAL_NOTION_CONFIG}" ]] || fail "${LOCAL_NOTION_CONFIG} does not exist. Create it from config/local.notion-setting.example.json."
+  [[ -f "${LOCAL_MAPPING_DOMAIN_CONFIG}" ]] || fail "${LOCAL_MAPPING_DOMAIN_CONFIG} does not exist. Create it from config/local.mapping-domain.example.json."
 
   export APP_MODE=local
 
   echo "Local prerequisites passed."
   echo "  .env.local: present"
-  echo "  config/local.notion-setting.json: present"
+  echo "  config/local.mapping-domain.json: present"
   echo "  APP_MODE: local"
 }
 
@@ -227,6 +227,7 @@ validate_cloud_mode() {
 
   for name in \
     DYNAMODB_USER_TABLE \
+    DYNAMODB_MAPPING_DOMAIN_TABLE \
     DYNAMODB_SYNC_LOGS_TABLE \
     DYNAMODB_GOOGLE_OAUTH_TOKEN_TABLE \
     DYNAMODB_NOTION_OAUTH_TOKEN_TABLE \
@@ -246,6 +247,7 @@ validate_cloud_mode() {
 
   for name in \
     DYNAMODB_USER_TABLE \
+    DYNAMODB_MAPPING_DOMAIN_TABLE \
     DYNAMODB_SYNC_LOGS_TABLE \
     DYNAMODB_GOOGLE_OAUTH_TOKEN_TABLE \
     DYNAMODB_NOTION_OAUTH_TOKEN_TABLE \
@@ -261,6 +263,7 @@ validate_cloud_mode() {
   echo "  APP_MODE: cloud"
   echo "  UUID: ${UUID}"
   echo "  DYNAMODB_USER_TABLE: [set, not printed]"
+  echo "  DYNAMODB_MAPPING_DOMAIN_TABLE: [set, not printed]"
   echo "  DYNAMODB_SYNC_LOGS_TABLE: [set, not printed]"
   echo "  DYNAMODB_GOOGLE_OAUTH_TOKEN_TABLE: [set, not printed]"
   echo "  DYNAMODB_NOTION_OAUTH_TOKEN_TABLE: [set, not printed]"

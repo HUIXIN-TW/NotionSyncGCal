@@ -21,8 +21,6 @@ USER_SETTING = {
     },
     "gcal_name_dict": {"Primary": "primary@example.com"},
     "gcal_id_dict": {"primary@example.com": "Primary"},
-    "gcal_default_name": "Primary",
-    "gcal_default_id": "primary@example.com",
 }
 
 
@@ -60,6 +58,7 @@ class SyncSanitizationTests(unittest.TestCase):
                 "start": {"dateTime": "2026-05-23T09:00:00+08:00"},
                 "end": {"dateTime": "2026-05-23T10:00:00+08:00"},
                 "organizer": {"email": "primary@example.com"},
+                "_notica_calendar_id": "primary@example.com",
             }
         ]
 
@@ -107,6 +106,7 @@ class SyncSanitizationTests(unittest.TestCase):
                 "start": {"dateTime": "2026-05-23T09:00:00+08:00"},
                 "end": {"dateTime": "2026-05-23T10:00:00+08:00"},
                 "organizer": {"email": "primary@example.com"},
+                "_notica_calendar_id": "primary@example.com",
             }
         ]
 

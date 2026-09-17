@@ -85,6 +85,7 @@ APP_STAGE=dev
 APP_REGION=<aws-region>
 AWS_REGION=<aws-region>
 DYNAMODB_USER_TABLE=<dev-user-table>
+DYNAMODB_MAPPING_DOMAIN_TABLE=<dev-mapping-domain-table>
 DYNAMODB_GOOGLE_OAUTH_TOKEN_TABLE=<dev-google-token-table>
 DYNAMODB_NOTION_OAUTH_TOKEN_TABLE=<dev-notion-token-table>
 DYNAMODB_SYNC_LOGS_TABLE=<dev-sync-logs-table>
@@ -93,7 +94,9 @@ GOOGLE_CALENDAR_CLIENT_SECRET_SSM_PATH=<ssm-parameter-path>
 TOKEN_ENCRYPTION_KEY_SSM_PATH=<ssm-parameter-path>
 ```
 
-Cloud Lambda resolves secret values from SSM at runtime and should not require plaintext `GOOGLE_CALENDAR_CLIENT_SECRET` or plaintext `TOKEN_ENCRYPTION_KEY`. Cloud Lambda loads user config, Notion tokens, and Google OAuth tokens from DynamoDB by UUID. It should not require local-mode variables such as `NOTION_TOKEN`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, or `GOOGLE_REFRESH_TOKEN`.
+Cloud Lambda resolves secret values from SSM at runtime and should not require plaintext `GOOGLE_CALENDAR_CLIENT_SECRET` or plaintext `TOKEN_ENCRYPTION_KEY`. Cloud Lambda loads mapping-domain configuration plus Notion and Google OAuth tokens from DynamoDB. `DYNAMODB_USER_TABLE` is retained only for the existing sync-log summary write; it is never a configuration source. Cloud mode should not require local variables such as `NOTION_TOKEN`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, or `GOOGLE_REFRESH_TOKEN`.
+
+The Lambda role needs least-privilege `dynamodb:GetItem`/`dynamodb:Query` access to `DYNAMODB_MAPPING_DOMAIN_TABLE` and `SourceMappingsIndex`. This document is not deployment evidence; verify the environment and IAM wiring before the canary run.
 
 Lambda execution role must allow:
 - `ssm:GetParameter` on:

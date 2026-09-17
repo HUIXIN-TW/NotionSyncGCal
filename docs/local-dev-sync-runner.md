@@ -26,7 +26,7 @@ Local mode uses local env/config only and does not require AWS.
 ./scripts/local-run-dev-sync.sh --mode local
 ```
 
-The shell script loads `.env.local`, validates `APP_MODE=local`, validates required local credentials, checks `config/local.notion-setting.json`, and invokes the Python helper without a UUID.
+The shell script loads `.env.local`, validates `APP_MODE=local`, validates required local credentials, checks `config/local.mapping-domain.json`, and invokes the Python helper without a UUID.
 
 ## Prerequisites
 
@@ -56,14 +56,14 @@ Local mode requires these untracked files:
 
 ```bash
 .env.local
-config/local.notion-setting.json
+config/local.mapping-domain.json
 ```
 
 Create them from the examples:
 
 ```bash
 cp .env.local.example .env.local
-cp config/local.notion-setting.example.json config/local.notion-setting.json
+cp config/local.mapping-domain.example.json config/local.mapping-domain.json
 ```
 
 Fill in `.env.local` with local-only secrets and keep `APP_MODE=local`:
@@ -81,7 +81,7 @@ GOOGLE_REFRESH_TOKEN=...
 
 `GOOGLE_TOKEN_URI` and `GOOGLE_SCOPES` are optional. If omitted, the runtime uses the Google OAuth token endpoint and the app's default calendar/profile scopes.
 
-Fill `config/local.notion-setting.json` with your Notion database ID, calendar mapping (`gcal_dic`), and page property mapping (`page_property`).
+Fill `config/local.mapping-domain.json` with v2 settings, Task-source, Calendar-mapping, and provider property-ID records matching the tracked example.
 
 ## Generate Google Refresh Token
 
@@ -118,8 +118,8 @@ Do not print plaintext or encrypted token values in logs, docs, or shell output.
 The canonical local config location is the repository root `config/` directory:
 
 ```bash
-config/local.notion-setting.example.json
-config/local.notion-setting.json
+config/local.mapping-domain.example.json
+config/local.mapping-domain.json
 ```
 
 Do not put real local JSON config under `src/config/`; that directory is for Python config code only.
@@ -144,7 +144,7 @@ Local mode validates:
 - `GOOGLE_CLIENT_ID` is set.
 - `GOOGLE_CLIENT_SECRET` is set.
 - `GOOGLE_REFRESH_TOKEN` is set.
-- `config/local.notion-setting.json` exists.
+- `config/local.mapping-domain.json` exists.
 
 The runner does not require or validate AWS credentials in local mode.
 
@@ -222,7 +222,7 @@ The real local files must be ignored by git:
 
 ```bash
 git check-ignore -v .env.local
-git check-ignore -v config/local.notion-setting.json
+git check-ignore -v config/local.mapping-domain.json
 git check-ignore -v token/token.json
 ```
 
@@ -230,7 +230,7 @@ The safe examples should not be ignored:
 
 ```bash
 git check-ignore -v .env.local.example || true
-git check-ignore -v config/local.notion-setting.example.json || true
+git check-ignore -v config/local.mapping-domain.example.json || true
 ```
 
 ## Helper Behavior
@@ -286,7 +286,7 @@ Plaintext tokens do not require `TOKEN_ENCRYPTION_KEY`.
 Create the file if it is missing:
 
 ```bash
-cp config/local.notion-setting.example.json config/local.notion-setting.json
+cp config/local.mapping-domain.example.json config/local.mapping-domain.json
 ```
 
 If it exists but sync fails while loading Notion config, validate the JSON syntax and required database/property fields.
@@ -325,7 +325,7 @@ Local mode does not use UUID.
 ## Security
 
 - Never commit `.env.local`.
-- Never commit `config/local.notion-setting.json`.
+- Never commit `config/local.mapping-domain.json`.
 - Never print secrets in shell scripts, docs, logs, or test fixtures.
 - `token/` is deprecated and must not be reintroduced.
 - Use short-lived AWS credentials for cloud mode.

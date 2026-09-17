@@ -3,6 +3,7 @@ from dateutil.parser import isoparse
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 from google.auth.exceptions import RefreshError
+from notion.notion_properties import get_property
 
 
 class SettingError(Exception):
@@ -30,6 +31,36 @@ class GoogleService:
             self.logger.error(f"Error initializing Google service: {e}")
             raise
 
+    def configure_calendar_mappings(self):
+        """Resolve mutable Calendar display names from persisted provider IDs."""
+        requested_ids = set(self.notion_setting["calendar_ids"])
+        calendars_by_id = {}
+        page_token = None
+        while True:
+            response = self.service.calendarList().list(pageToken=page_token).execute()
+            for calendar in response.get("items", []):
+                calendar_id = calendar.get("id")
+                if calendar_id in requested_ids:
+                    calendars_by_id[calendar_id] = calendar
+            page_token = response.get("nextPageToken")
+            if not page_token:
+                break
+
+        missing = sorted(requested_ids - calendars_by_id.keys())
+        if missing:
+            raise SettingError(f"Configured Google Calendars are not accessible: {missing}")
+
+        name_to_id = {}
+        for calendar_id in sorted(requested_ids):
+            calendar = calendars_by_id[calendar_id]
+            name = calendar.get("summaryOverride") or calendar.get("summary") or calendar_id
+            if name in name_to_id and name_to_id[name] != calendar_id:
+                raise SettingError(f"Configured Google Calendars have a duplicate display name: {name}")
+            name_to_id[name] = calendar_id
+        self.notion_setting["gcal_name_dict"] = name_to_id
+        self.notion_setting["gcal_id_dict"] = {calendar_id: name for name, calendar_id in name_to_id.items()}
+        return name_to_id
+
     def test_connection(self):
         """Quick sanity check to confirm credentials are valid and API reachable."""
         try:
@@ -48,7 +79,7 @@ class GoogleService:
         try:
             events = []
 
-            for cal_id in set(self.notion_setting["gcal_name_dict"].values()):
+            for cal_id in self.notion_setting["calendar_ids"]:
                 page_token = None
                 seen_page_tokens = set()
                 page_count = 0
@@ -83,7 +114,8 @@ class GoogleService:
 
                     response = self.service.events().list(**params).execute()
 
-                    for item in response.get("items", []):
+                    for raw_item in response.get("items", []):
+                        item = {**raw_item, "_notica_calendar_id": cal_id}
                         if item.get("status") == "cancelled":
                             self.logger.debug(
                                 f"Skipping cancelled recurring exception: id={item.get('id')} "
@@ -135,7 +167,7 @@ class GoogleService:
 
     def create_gcal_event(self, notion_task, new_gcal_calendar_id):
         if new_gcal_calendar_id is None:
-            new_gcal_calendar_id = self.notion_setting["gcal_default_id"]
+            raise SettingError("A Notion task must select one configured Google Calendar.")
         event = self.make_event_body(notion_task)
         gcal_event = self.service.events().insert(calendarId=new_gcal_calendar_id, body=event).execute()
         # get the event id and update the notion task by query page id
@@ -178,19 +210,14 @@ class GoogleService:
 
     def make_event_body(self, notion_task):
         # set icone and task name
+        properties = notion_task.get("properties", {})
         event_icon = (
-            notion_task.get("properties", {})
-            .get(self.notion_page_property["CompleteIcon_Notion_Name"], {})
+            get_property(properties, self.notion_page_property.get("CompleteIcon_Notion_Name"))
             .get("formula", {})
-            .get("string", "❓")
+            .get("string", "")
         )
-        event_name = (
-            notion_task.get("properties", {})
-            .get(self.notion_page_property["Task_Notion_Name"], {})
-            .get("title", [{}])[0]
-            .get("text", {})
-            .get("content", "")
-        )
+        task_items = get_property(properties, self.notion_page_property["Task_Notion_Name"]).get("title", [])
+        event_name = task_items[0].get("plain_text", "") if task_items else ""
         event_summary = event_icon + event_name
 
         # set start and end date
@@ -202,26 +229,16 @@ class GoogleService:
         #   case2: without end date (use start date + 1 day)
         # to_utc(event_start_date).strftime("%Y-%m-%dT%H:%M:%S")
         # to_utc(event_start_date).strftime("%Y-%m-%d")
-        notion_task_start_date = (
-            notion_task.get("properties", {})
-            .get(self.notion_page_property["Date_Notion_Name"], {})
-            .get("date", {})
-            .get("start", "")
-        )
-        notion_task_end_date = (
-            notion_task.get("properties", {})
-            .get(self.notion_page_property["Date_Notion_Name"], {})
-            .get("date", {})
-            .get("end", "")
-        )
+        date_property = get_property(properties, self.notion_page_property["Date_Notion_Name"])
+        notion_task_start_date = (date_property.get("date") or {}).get("start", "")
+        notion_task_end_date = (date_property.get("date") or {}).get("end", "")
         # Adjust and convert dates to UTC
         event_start_date, event_end_date = self.adjust_notion_dates(notion_task_start_date, notion_task_end_date)
 
         # set location
         try:
             event_location = (
-                notion_task.get("properties", {})
-                .get(self.notion_page_property["Location_Notion_Name"], {})
+                get_property(properties, self.notion_page_property.get("Location_Notion_Name"))
                 .get("place", {})
                 .get("address", "")
             )
@@ -231,13 +248,10 @@ class GoogleService:
 
         # set description
         try:
-            event_description = (
-                notion_task.get("properties", {})
-                .get(self.notion_page_property["ExtraInfo_Notion_Name"], {})
-                .get("rich_text", [{}])[0]
-                .get("text", {})
-                .get("content", "")
+            rich_text = get_property(properties, self.notion_page_property.get("ExtraInfo_Notion_Name")).get(
+                "rich_text", []
             )
+            event_description = rich_text[0].get("plain_text", "") if rich_text else ""
         except Exception as e:
             self.logger.info(f"Getting description: {e}. Using empty string.")
             event_description = ""
@@ -301,43 +315,3 @@ class GoogleService:
             start_date_str = start_date.strftime("%Y-%m-%d")
             end_date_str = end_date.strftime("%Y-%m-%d")
         return start_date_str, end_date_str
-
-
-# Example usage
-if __name__ == "__main__":
-    import sys
-    import json
-    import logging
-    from pathlib import Path
-
-    # python -m src.gcal.gcal_service
-    logging.basicConfig(filename="google_services.log", level=logging.INFO)
-    logger = logging.getLogger(__name__)
-    # Ensure the directory exists
-    Path("logs").mkdir(parents=True, exist_ok=True)
-
-    # Check if the file exists and create it if not
-    log_path = Path("logs/get_gcal_event.json")
-    if not log_path.exists():
-        log_path.touch()
-
-    # Add the src directory to the Python path
-    sys.path.append(str(Path(__file__).resolve().parent.parent))
-    from config.config import generate_config  # noqa: E402
-    from notion.notion_config import NotionConfig  # noqa: E402
-    from gcal.gcal_token import GoogleToken  # noqa: E402
-
-    config = generate_config("")
-    user_setting = NotionConfig(config, logger).get()
-    gt = GoogleToken(config, logger)
-    gs = GoogleService(user_setting, gt, logger)
-    # Open the file in write mode and dump JSON data
-    with log_path.open("w") as output:
-        json.dump(gs.get_gcal_event(), output, indent=4)
-
-    from rich.console import Console
-    from rich.pretty import pprint
-
-    console = Console()
-    console.rule("[bold blue]Google Calendar Events[/bold blue]")
-    pprint(gs.get_gcal_event())

@@ -8,14 +8,21 @@ from google.auth.exceptions import RefreshError
 sys.path.append(str(Path(__file__).resolve().parent))
 
 from config.config import generate_config  # noqa: E402
-from notion.notion_service import NotionService  # noqa: E402
-from notion.notion_config import (  # noqa: E402
-    NotionConfig,
+from config.mapping_domain_config import (  # noqa: E402
+    MappingDomainConfig,
+    SettingError as MappingDomainSettingError,
     apply_date_range,
 )
+from notion.notion_service import NotionService  # noqa: E402
 from notion.notion_token import NotionToken  # noqa: E402
 from gcal.gcal_token import GoogleToken  # noqa: E402
-from gcal.gcal_service import GoogleService  # noqa: E402
+from gcal.gcal_service import GoogleService, SettingError as GoogleSettingError  # noqa: E402
+from sync.contracts import (  # noqa: E402
+    build_sync_result,
+    get_result_message,
+    get_result_status,
+    is_retryable_result,
+)
 from utils.logging_utils import get_logger  # noqa: E402
 
 
@@ -63,36 +70,134 @@ def _apply_date_range_override(
     )
 
 
+def _run_source(args, source_setting, notion_token, google_token, logger):
+    notion_service = NotionService(notion_token, source_setting, logger)
+    google_service = GoogleService(source_setting, google_token, logger)
+    google_service.configure_calendar_mappings()
+
+    if args.test_connection:
+        notion_connected = notion_service.test_connection()
+        google_connected = google_service.test_connection()
+        status_code = 200 if notion_connected and google_connected else 503
+        return build_sync_result(
+            status_code,
+            "sync_success" if status_code == 200 else "sync_error",
+            {
+                "notion_connection": notion_connected,
+                "google_connection": google_connected,
+            },
+        )
+
+    from sync import sync
+
+    if args.timestamp:
+        _apply_date_range_override(source_setting, args.timestamp[0], args.timestamp[1], logger)
+        return sync.synchronize_notion_and_google_calendar(
+            user_setting=source_setting,
+            notion_service=notion_service,
+            google_service=google_service,
+            compare_time=True,
+            should_update_notion_tasks=True,
+            should_update_google_events=True,
+        )
+    if args.google:
+        _apply_date_range_override(source_setting, args.google[0], args.google[1], logger)
+        return sync.force_update_notion_tasks_by_google_event_and_ignore_time(
+            user_setting=source_setting,
+            notion_service=notion_service,
+            google_service=google_service,
+        )
+    if args.notion:
+        _apply_date_range_override(source_setting, args.notion[0], args.notion[1], logger)
+        return sync.force_update_google_event_by_notion_task_and_ignore_time(
+            user_setting=source_setting,
+            notion_service=notion_service,
+            google_service=google_service,
+        )
+    return sync.synchronize_notion_and_google_calendar(
+        user_setting=source_setting,
+        notion_service=notion_service,
+        google_service=google_service,
+        compare_time=True,
+        should_update_notion_tasks=True,
+        should_update_google_events=True,
+    )
+
+
+def _aggregate_source_results(source_results):
+    summaries = []
+    errors = []
+    retryable_failure_count = 0
+    failure_count = 0
+    for source_id, result in source_results:
+        retryable = is_retryable_result(result)
+        retryable_failure_count += int(retryable)
+        message = get_result_message(result)
+        error_code = message.get("error_code") if isinstance(message, dict) else None
+        source_status_code = int((result or {}).get("statusCode", 500))
+        source_errors = message.get("errors") if isinstance(message, dict) else None
+        has_task_errors = bool(source_errors) and not message.get("capacity_limited", False)
+        source_failed = source_status_code >= 400 or get_result_status(result) == "sync_error" or has_task_errors
+        failure_count += int(source_failed)
+        summaries.append(
+            {
+                "source_id": source_id,
+                "status_code": source_status_code,
+                "status": get_result_status(result),
+                "error_code": error_code,
+                "retriable": retryable,
+            }
+        )
+        if isinstance(message, dict) and isinstance(source_errors, list):
+            for error in source_errors:
+                if isinstance(error, dict):
+                    errors.append({**error, "source_id": source_id})
+
+    source_count = len(source_results)
+    status_code = 500 if retryable_failure_count else (409 if failure_count else 200)
+    return build_sync_result(
+        status_code,
+        "sync_error" if failure_count else "sync_success",
+        {
+            "source_count": source_count,
+            "success_count": source_count - failure_count,
+            "failure_count": failure_count,
+            "source_summaries": summaries,
+            "errors": errors,
+            "retriable": retryable_failure_count > 0,
+        },
+    )
+
+
 def main(uuid: str | None = None) -> dict:
     logger = get_logger(__name__)
 
-    current_dir = Path(__file__).parent.resolve()
-    logger.debug(f"Current directory: {current_dir}")
-    logger.debug("Initialization start")
-
-    # Initialize services
     try:
-        logger.debug(f"Using UUID: {uuid}")
-
-        # Configure paths based on UUID (local vs dynamodb)
-        config = generate_config(uuid)  # APP_MODE determines cloud or local config shape
-        logger.debug(f"Generated config keys: {list(config.keys())}")
-
-        # Notion
-        notion_config = NotionConfig(config, logger).get()
-        logger.debug(f"Notion config type: {type(notion_config).__name__}")
+        config = generate_config(uuid)
+        source_settings = MappingDomainConfig(config, logger).get()
         notion_token = NotionToken(config, logger).get()
-        notion_service = NotionService(notion_token, notion_config, logger)
-
-        # Google
         google_token = GoogleToken(config, logger)
-        google_service = GoogleService(notion_config, google_token, logger)
     except RefreshError as e:
         logger.error(f"Google RefreshError during initialization: {e}", exc_info=True)
-        return {"error": "google_refresh_error", "message": str(e)}
-    except Exception as e:
-        logger.error(f"Error initializing services: {e}", exc_info=True)
-        return {"error": "service_initialization_error", "message": str(e)}
+        return build_sync_result(
+            500,
+            "sync_error",
+            {"error_code": "google_refresh_error", "retriable": True},
+        )
+    except MappingDomainSettingError:
+        logger.exception("Mapping-domain configuration is not sync-ready")
+        return build_sync_result(
+            409,
+            "sync_error",
+            {"error_code": "sync_configuration_invalid", "retriable": False},
+        )
+    except Exception:
+        logger.exception("Error loading mapping-domain configuration or tokens")
+        return build_sync_result(
+            500,
+            "sync_error",
+            {"error_code": "service_initialization_error", "retriable": True},
+        )
 
     # Parse CLI args (safe for lambda - argv is just script name)
     try:
@@ -101,84 +206,27 @@ def main(uuid: str | None = None) -> dict:
     except Exception as e:
         logger.error(f"Error parsing arguments: {e}")
 
-    # Execute requested operation(s)
-    try:
-        res: dict | None = None
-        # Test connections
-        if args.test_connection:
-            logger.debug("▶ Testing connections...")
-            isConnectedToNotion = notion_service.test_connection()
-            isConnectedToGoogle = google_service.test_connection()
-            return {
-                "notion_connection": isConnectedToNotion,
-                "google_connection": isConnectedToGoogle,
-            }
-        if not args.timestamp and not args.google and not args.notion:
-            logger.debug("▶ Running sync with no arguments (default range)...")
-            from sync import sync
-
-            res = sync.synchronize_notion_and_google_calendar(
-                user_setting=notion_config,
-                notion_service=notion_service,
-                google_service=google_service,
-                compare_time=True,
-                should_update_notion_tasks=True,
-                should_update_google_events=True,
+    source_results = []
+    for source_setting in source_settings:
+        source_id = source_setting["source_id"]
+        try:
+            result = _run_source(args, source_setting, notion_token, google_token, logger)
+        except GoogleSettingError:
+            logger.exception("Source Calendar mapping is not sync-ready: source_id=%s", source_id)
+            result = build_sync_result(
+                409,
+                "sync_error",
+                {"error_code": "source_calendar_mapping_invalid", "retriable": False},
             )
-
-        if args.timestamp:
-            logger.debug(f"▶ Syncing with timestamp range: {args.timestamp}")
-            _apply_date_range_override(
-                notion_config,
-                args.timestamp[0],
-                args.timestamp[1],
-                logger,
+        except Exception:
+            logger.exception("Source sync failed during initialization or execution: source_id=%s", source_id)
+            result = build_sync_result(
+                500,
+                "sync_error",
+                {"error_code": "source_sync_failed", "retriable": True},
             )
-            from sync import sync
-
-            res = sync.synchronize_notion_and_google_calendar(
-                user_setting=notion_config,
-                notion_service=notion_service,
-                google_service=google_service,
-                compare_time=True,
-                should_update_notion_tasks=True,
-                should_update_google_events=True,
-            )
-
-        if args.google:
-            logger.debug(f"▶ Forcing update: Notion from Google for {args.google}")
-            _apply_date_range_override(
-                notion_config,
-                args.google[0],
-                args.google[1],
-                logger,
-            )
-            from sync import sync
-
-            res = sync.force_update_notion_tasks_by_google_event_and_ignore_time(
-                user_setting=notion_config,
-                notion_service=notion_service,
-                google_service=google_service,
-            )
-
-        if args.notion:
-            logger.debug(f"▶ Forcing update: Google from Notion for {args.notion}")
-            _apply_date_range_override(
-                notion_config,
-                args.notion[0],
-                args.notion[1],
-                logger,
-            )
-            from sync import sync
-
-            res = sync.force_update_google_event_by_notion_task_and_ignore_time(
-                user_setting=notion_config,
-                notion_service=notion_service,
-                google_service=google_service,
-            )
-        return res
-    except Exception as e:
-        logger.error(f"Error during sync operation {e}")
+        source_results.append((source_id, result))
+    return _aggregate_source_results(source_results)
 
 
 if __name__ == "__main__":
