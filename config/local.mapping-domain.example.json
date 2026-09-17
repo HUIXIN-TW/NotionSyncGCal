@@ -24,15 +24,31 @@
         "defaultStartHour": 8
       },
       "propertyMappings": {
-        "task": {"propertyId": "title-property-id", "propertyName": "Task", "propertyType": "title"},
-        "date": {"propertyId": "date-property-id", "propertyName": "Date", "propertyType": "date"},
-        "location": {"propertyId": "location-property-id", "propertyName": "Location", "propertyType": "place"},
+        "task": {
+          "propertyId": "title-property-id",
+          "propertyName": "Task",
+          "propertyType": "title"
+        },
+        "date": {
+          "propertyId": "date-property-id",
+          "propertyName": "Date",
+          "propertyType": "date"
+        },
+        "location": {
+          "propertyId": "location-property-id",
+          "propertyName": "Location",
+          "propertyType": "place"
+        },
         "extraInfo": {
           "propertyId": "extra-info-property-id",
           "propertyName": "Extra Info",
           "propertyType": "rich_text"
         },
-        "calendarName": {"propertyId": "calendar-property-id", "propertyName": "Calendar", "propertyType": "select"},
+        "calendarName": {
+          "propertyId": "calendar-property-id",
+          "propertyName": "Calendar",
+          "propertyType": "select"
+        },
         "googleCalendarEventId": {
           "propertyId": "event-id-property-id",
           "propertyName": "GCal Event Id",
@@ -53,7 +69,11 @@
           "propertyName": "GCal Deleted?",
           "propertyType": "checkbox"
         },
-        "googleCalendarIcon": {"propertyId": "icon-property-id", "propertyName": "GCal Icon", "propertyType": "formula"}
+        "googleCalendarIcon": {
+          "propertyId": "icon-property-id",
+          "propertyName": "GCal Icon",
+          "propertyType": "formula"
+        }
       },
       "createdAtMs": 0,
       "updatedAtMs": 0
