@@ -3,6 +3,7 @@ import sys
 import tempfile
 import unittest
 from datetime import datetime
+from decimal import Decimal
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 from zoneinfo import ZoneInfo
@@ -181,10 +182,17 @@ class MappingDomainConfigLocalTests(unittest.TestCase):
         with self.assertRaisesRegex(SettingError, "multiple active Task sources"):
             self.load(payload)
 
-    def test_requires_at_least_one_active_source_mapping_pair(self):
+    def test_rejects_active_source_without_active_calendar_mapping(self):
         payload = contract(owner="local-user")
         payload["calendarMappings"][0]["lifecycle"] = "disabled"
-        with self.assertRaisesRegex(SettingError, "No active Task source"):
+        with self.assertRaisesRegex(SettingError, "active but has no active Calendar mapping"):
+            self.load(payload)
+
+    def test_rejects_one_unmapped_active_source_even_when_another_source_is_ready(self):
+        payload = contract(owner="local-user")
+        payload["taskSources"].append(task_source("source-2", "local-user", database_id="db-2"))
+
+        with self.assertRaisesRegex(SettingError, "Task source source-2 is active but has no active Calendar mapping"):
             self.load(payload)
 
 
@@ -211,6 +219,77 @@ class MappingDomainConfigCloudTests(unittest.TestCase):
         get_settings.assert_called_once_with("user-1")
         list_sources.assert_called_once_with("user-1")
         list_mappings.assert_called_once_with("user-1", "source-1")
+
+    def test_accepts_integral_dynamodb_decimal_defaults(self):
+        payload = contract()
+        defaults = payload["taskSources"][0]["defaults"]
+        defaults["goBackDays"] = Decimal("3")
+        defaults["goForwardDays"] = Decimal("14")
+        defaults["defaultEventLengthMinutes"] = Decimal("60")
+        defaults["defaultStartHour"] = Decimal("8")
+
+        with (
+            patch(
+                "utils.dynamodb_utils.get_mapping_domain_settings",
+                return_value=payload["settings"],
+            ),
+            patch(
+                "utils.dynamodb_utils.list_mapping_domain_task_sources",
+                return_value=payload["taskSources"],
+            ),
+            patch(
+                "utils.dynamodb_utils.list_mapping_domain_calendar_mappings",
+                return_value=payload["calendarMappings"],
+            ),
+        ):
+            result = MappingDomainConfig({"mode": "cloud", "uuid": "user-1"}, MagicMock()).get()
+
+        self.assertEqual(result[0]["goback_days"], 3)
+        self.assertIsInstance(result[0]["goback_days"], int)
+        self.assertEqual(result[0]["default_event_length"], 60)
+        self.assertIsInstance(result[0]["default_event_length"], int)
+
+    def test_rejects_non_integral_dynamodb_decimal_defaults(self):
+        payload = contract()
+        payload["taskSources"][0]["defaults"]["goBackDays"] = Decimal("1.5")
+
+        with (
+            patch(
+                "utils.dynamodb_utils.get_mapping_domain_settings",
+                return_value=payload["settings"],
+            ),
+            patch(
+                "utils.dynamodb_utils.list_mapping_domain_task_sources",
+                return_value=payload["taskSources"],
+            ),
+            patch(
+                "utils.dynamodb_utils.list_mapping_domain_calendar_mappings",
+                return_value=payload["calendarMappings"],
+            ),
+        ):
+            with self.assertRaisesRegex(SettingError, "goBackDays must be an integer"):
+                MappingDomainConfig({"mode": "cloud", "uuid": "user-1"}, MagicMock()).get()
+
+    def test_rejects_mapping_returned_from_wrong_source_index_partition(self):
+        payload = contract()
+        mismatched_mapping = calendar_mapping(source_id="source-2", owner="user-1")
+
+        with (
+            patch(
+                "utils.dynamodb_utils.get_mapping_domain_settings",
+                return_value=payload["settings"],
+            ),
+            patch(
+                "utils.dynamodb_utils.list_mapping_domain_task_sources",
+                return_value=payload["taskSources"],
+            ),
+            patch(
+                "utils.dynamodb_utils.list_mapping_domain_calendar_mappings",
+                return_value=[mismatched_mapping],
+            ),
+        ):
+            with self.assertRaisesRegex(SettingError, "queried for Task source source-1 but declares sourceId source-2"):
+                MappingDomainConfig({"mode": "cloud", "uuid": "user-1"}, MagicMock()).get()
 
 
 class MappingDomainDateRangeTests(unittest.TestCase):
