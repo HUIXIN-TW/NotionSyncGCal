@@ -96,9 +96,9 @@ No AWS dependency for runtime.
 
 - Secrets are read from `.env.local`:
   - `NOTION_TOKEN`
-  - `GOOGLE_CLIENT_ID`
-  - `GOOGLE_CLIENT_SECRET`
-  - `GOOGLE_REFRESH_TOKEN`
+  - `GOOGLE_CALENDAR_CLIENT_ID`
+  - `GOOGLE_CALENDAR_CLIENT_SECRET`
+  - `GOOGLE_CALENDAR_REFRESH_TOKEN`
   - `TOKEN_ENCRYPTION_KEY` only when local token values are stored as `enc:v1:` payloads
 - Structured local sync config is read from:
   - `config/local.mapping-domain.json`
@@ -140,7 +140,7 @@ APP_MODE=local uv run python src/main.py -n <goback_days> <goforward_days>
 
 CLI date range flags (`-t`, `-g`, `-n`) are runtime in-memory overrides only. They do not modify `config/local.mapping-domain.json`.
 
-Generate a local `GOOGLE_REFRESH_TOKEN` with:
+Generate a local `GOOGLE_CALENDAR_REFRESH_TOKEN` with:
 
 ```bash
 uv run python scripts/generate-google-refresh-token.py --client-id <client_id> --client-secret <client_secret>

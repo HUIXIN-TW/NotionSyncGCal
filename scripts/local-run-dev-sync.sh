@@ -147,9 +147,9 @@ validate_local_mode() {
 
   [[ "${APP_MODE:-}" == "local" ]] || fail ".env.local must set APP_MODE=local."
   require_env NOTION_TOKEN
-  require_env GOOGLE_CLIENT_ID
-  require_env GOOGLE_CLIENT_SECRET
-  require_env GOOGLE_REFRESH_TOKEN
+  require_env GOOGLE_CALENDAR_CLIENT_ID
+  require_env GOOGLE_CALENDAR_CLIENT_SECRET
+  require_env GOOGLE_CALENDAR_REFRESH_TOKEN
   [[ -f "${LOCAL_MAPPING_DOMAIN_CONFIG}" ]] || fail "${LOCAL_MAPPING_DOMAIN_CONFIG} does not exist. Create it from config/local.mapping-domain.example.json."
 
   export APP_MODE=local

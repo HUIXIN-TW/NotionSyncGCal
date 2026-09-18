@@ -115,9 +115,9 @@ _CLOUD_ENV = {
     "APP_REGION": "ap-southeast-2",
 }
 _BASE_LOCAL_ENV = {
-    "GOOGLE_CLIENT_ID": "test-client-id",
-    "GOOGLE_CLIENT_SECRET": "test-client-secret",
-    "GOOGLE_REFRESH_TOKEN": "test-refresh-token",
+    "GOOGLE_CALENDAR_CLIENT_ID": "test-client-id",
+    "GOOGLE_CALENDAR_CLIENT_SECRET": "test-client-secret",
+    "GOOGLE_CALENDAR_REFRESH_TOKEN": "test-refresh-token",
 }
 _TOKEN_ENCRYPTION_KEY = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
 
@@ -159,13 +159,13 @@ class TestGoogleTokenLocalModeCredentialConstruction(unittest.TestCase):
             creds = self._load(_local_env())
         self.assertIsInstance(creds, Credentials)
         self.assertIsNone(creds.token)
-        self.assertEqual(creds.refresh_token, _BASE_LOCAL_ENV["GOOGLE_REFRESH_TOKEN"])
+        self.assertEqual(creds.refresh_token, _BASE_LOCAL_ENV["GOOGLE_CALENDAR_REFRESH_TOKEN"])
 
     def test_plaintext_local_refresh_token_works_without_encryption_key(self):
         env = _local_env()
         env.pop("TOKEN_ENCRYPTION_KEY", None)
         creds = self._load(env)
-        self.assertEqual(creds.refresh_token, _BASE_LOCAL_ENV["GOOGLE_REFRESH_TOKEN"])
+        self.assertEqual(creds.refresh_token, _BASE_LOCAL_ENV["GOOGLE_CALENDAR_REFRESH_TOKEN"])
 
     def test_encrypted_local_refresh_token_calls_decrypt_token(self):
         encrypted_token = "enc:v1:encrypted-refresh-token"
@@ -173,7 +173,7 @@ class TestGoogleTokenLocalModeCredentialConstruction(unittest.TestCase):
             "gcal.gcal_token.decrypt_token_if_encrypted",
             return_value="plain-refresh-token",
         ) as mock_decrypt:
-            creds = self._load(_local_env(GOOGLE_REFRESH_TOKEN=encrypted_token))
+            creds = self._load(_local_env(GOOGLE_CALENDAR_REFRESH_TOKEN=encrypted_token))
         mock_decrypt.assert_called_once_with(encrypted_token)
         self.assertEqual(creds.refresh_token, "plain-refresh-token")
 
@@ -184,7 +184,7 @@ class TestGoogleTokenLocalModeCredentialConstruction(unittest.TestCase):
             side_effect=TokenCryptoError("TOKEN_ENCRYPTION_KEY missing"),
         ):
             with self.assertRaises(SettingError) as ctx:
-                self._load(_local_env(GOOGLE_REFRESH_TOKEN=encrypted_token))
+                self._load(_local_env(GOOGLE_CALENDAR_REFRESH_TOKEN=encrypted_token))
         self.assertIn("Failed to decrypt encrypted Google OAuth token", str(ctx.exception))
         self.assertIn("TOKEN_ENCRYPTION_KEY", str(ctx.exception))
 
@@ -193,12 +193,12 @@ class TestGoogleTokenLocalModeCredentialConstruction(unittest.TestCase):
         self.assertIsNone(creds.token)
 
     def test_defaults_token_uri_when_google_token_uri_missing(self):
-        creds = self._load(_local_env_without("GOOGLE_TOKEN_URI"))
+        creds = self._load(_local_env_without("GOOGLE_CALENDAR_TOKEN_URI"))
         self.assertEqual(creds.token_uri, _DEFAULT_TOKEN_URI)
 
     def test_uses_custom_token_uri_when_provided(self):
         custom_uri = "https://custom.example.com/token"
-        creds = self._load(_local_env(GOOGLE_TOKEN_URI=custom_uri))
+        creds = self._load(_local_env(GOOGLE_CALENDAR_TOKEN_URI=custom_uri))
         self.assertEqual(creds.token_uri, custom_uri)
 
     def test_uses_default_scopes_when_google_scopes_missing(self):
@@ -219,22 +219,22 @@ class TestGoogleTokenLocalModeCredentialConstruction(unittest.TestCase):
 
     def test_missing_google_client_id_raises(self):
         with self.assertRaises(SettingError) as ctx:
-            self._load(_local_env_without("GOOGLE_CLIENT_ID"))
-        self.assertIn("GOOGLE_CLIENT_ID", str(ctx.exception))
+            self._load(_local_env_without("GOOGLE_CALENDAR_CLIENT_ID"))
+        self.assertIn("GOOGLE_CALENDAR_CLIENT_ID", str(ctx.exception))
 
     def test_missing_google_client_secret_raises(self):
         with self.assertRaises(SettingError) as ctx:
-            self._load(_local_env_without("GOOGLE_CLIENT_SECRET"))
-        self.assertIn("GOOGLE_CLIENT_SECRET", str(ctx.exception))
+            self._load(_local_env_without("GOOGLE_CALENDAR_CLIENT_SECRET"))
+        self.assertIn("GOOGLE_CALENDAR_CLIENT_SECRET", str(ctx.exception))
 
     def test_missing_google_refresh_token_raises(self):
         with self.assertRaises(SettingError) as ctx:
-            self._load(_local_env_without("GOOGLE_REFRESH_TOKEN"))
-        self.assertIn("GOOGLE_REFRESH_TOKEN", str(ctx.exception))
+            self._load(_local_env_without("GOOGLE_CALENDAR_REFRESH_TOKEN"))
+        self.assertIn("GOOGLE_CALENDAR_REFRESH_TOKEN", str(ctx.exception))
 
     def test_empty_google_client_id_raises(self):
         with self.assertRaises(SettingError):
-            self._load(_local_env(GOOGLE_CLIENT_ID="   "))
+            self._load(_local_env(GOOGLE_CALENDAR_CLIENT_ID="   "))
 
     def test_empty_google_scopes_raises(self):
         with self.assertRaises(SettingError) as ctx:
@@ -294,8 +294,8 @@ class TestGoogleTokenLocalModeActivation(unittest.TestCase):
             with patch("google.oauth2.credentials.Credentials.refresh"):
                 GoogleToken({"mode": "local"}, logger)
         log_calls = str(logger.mock_calls)
-        self.assertNotIn(_BASE_LOCAL_ENV["GOOGLE_CLIENT_SECRET"], log_calls)
-        self.assertNotIn(_BASE_LOCAL_ENV["GOOGLE_REFRESH_TOKEN"], log_calls)
+        self.assertNotIn(_BASE_LOCAL_ENV["GOOGLE_CALENDAR_CLIENT_SECRET"], log_calls)
+        self.assertNotIn(_BASE_LOCAL_ENV["GOOGLE_CALENDAR_REFRESH_TOKEN"], log_calls)
 
 
 class TestGoogleTokenCloudMode(unittest.TestCase):

@@ -102,16 +102,16 @@ class GoogleToken:
         raise SettingError(f"Unknown config mode '{self.mode}'. Expected 'cloud' or 'local'.")
 
     def _load_local_credentials(self):
-        client_id = os.environ.get("GOOGLE_CLIENT_ID", "").strip()
-        client_secret = os.environ.get("GOOGLE_CLIENT_SECRET", "").strip()
-        refresh_token = os.environ.get("GOOGLE_REFRESH_TOKEN", "").strip()
+        client_id = os.environ.get("GOOGLE_CALENDAR_CLIENT_ID", "").strip()
+        client_secret = os.environ.get("GOOGLE_CALENDAR_CLIENT_SECRET", "").strip()
+        refresh_token = os.environ.get("GOOGLE_CALENDAR_REFRESH_TOKEN", "").strip()
 
         missing = [
             name
             for name, val in [
-                ("GOOGLE_CLIENT_ID", client_id),
-                ("GOOGLE_CLIENT_SECRET", client_secret),
-                ("GOOGLE_REFRESH_TOKEN", refresh_token),
+                ("GOOGLE_CALENDAR_CLIENT_ID", client_id),
+                ("GOOGLE_CALENDAR_CLIENT_SECRET", client_secret),
+                ("GOOGLE_CALENDAR_REFRESH_TOKEN", refresh_token),
             ]
             if not val
         ]
@@ -123,7 +123,7 @@ class GoogleToken:
             raise SettingError(f"Failed to decrypt encrypted Google OAuth token: {e}") from e
         self._assert_plaintext_runtime_token("refreshToken", refresh_token)
 
-        token_uri = os.environ.get("GOOGLE_TOKEN_URI", "").strip() or _DEFAULT_TOKEN_URI
+        token_uri = os.environ.get("GOOGLE_CALENDAR_TOKEN_URI", "").strip() or _DEFAULT_TOKEN_URI
 
         scopes_raw = os.environ.get("GOOGLE_SCOPES", "").strip()
         if scopes_raw:
@@ -164,7 +164,7 @@ class GoogleToken:
             if self.mode == "local":
                 raise RefreshError(
                     "Failed to refresh Google credentials in local mode. "
-                    "GOOGLE_REFRESH_TOKEN is likely invalid/expired; renew it outside runtime and update .env.local."
+                    "GOOGLE_CALENDAR_REFRESH_TOKEN is likely invalid/expired; renew it outside runtime and update .env.local."
                 ) from e
             raise RefreshError("Failed to refresh Google credentials. Refresh token is likely invalid/expired.") from e
 
