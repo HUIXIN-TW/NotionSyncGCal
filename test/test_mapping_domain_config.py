@@ -288,7 +288,10 @@ class MappingDomainConfigCloudTests(unittest.TestCase):
                 return_value=[mismatched_mapping],
             ),
         ):
-            with self.assertRaisesRegex(SettingError, "queried for Task source source-1 but declares sourceId source-2"):
+            with self.assertRaisesRegex(
+                SettingError,
+                "queried for Task source source-1 but declares sourceId source-2",
+            ):
                 MappingDomainConfig({"mode": "cloud", "uuid": "user-1"}, MagicMock()).get()
 
 
