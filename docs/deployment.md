@@ -96,11 +96,11 @@ TOKEN_ENCRYPTION_KEY_SSM_PATH=<ssm-parameter-path>
 Cloud Lambda resolves secret values from SSM at runtime and should not require plaintext `GOOGLE_CALENDAR_CLIENT_SECRET` or plaintext `TOKEN_ENCRYPTION_KEY`. Cloud Lambda loads user config, Notion tokens, and Google OAuth tokens from DynamoDB by UUID. It should not require local-mode variables such as `NOTION_TOKEN`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, or `GOOGLE_REFRESH_TOKEN`.
 
 Lambda execution role must allow:
-- `ssm:GetParameter` on:
-  - `arn:aws:ssm:ap-southeast-2:217248978496:parameter/dev/notica/google_calendar_client_secret`
-  - `arn:aws:ssm:ap-southeast-2:217248978496:parameter/dev/notica/token_encryption_key`
+- `ssm:GetParameter` only for the application parameters it reads, for example:
+  - `arn:aws:ssm:<region>:<account-id>:parameter/<environment>/<service>/google_calendar_client_secret`
+  - `arn:aws:ssm:<region>:<account-id>:parameter/<environment>/<service>/token_encryption_key`
 
-If the SecureString parameters use a customer-managed KMS key, also allow `kms:Decrypt` for that key.
+Keep real account IDs, parameter paths, role ARNs, and other environment-specific resource identifiers out of public documentation. If the SecureString parameters use a customer-managed KMS key, also allow `kms:Decrypt` only for that key.
 
 ## Production Image Publish
 
