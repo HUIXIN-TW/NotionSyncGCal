@@ -94,7 +94,7 @@ Coverage enforcement is configured in `.coveragerc` (`fail_under = 50`).
 
 No AWS dependency for runtime.
 
-- Secrets are read from `.env.local`:
+- Local configuration/credentials are read from `.env.local`:
   - `NOTION_TOKEN`
   - `GOOGLE_CALENDAR_CLIENT_ID`
   - `GOOGLE_CALENDAR_CLIENT_SECRET`

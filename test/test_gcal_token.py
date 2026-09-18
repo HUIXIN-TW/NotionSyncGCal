@@ -192,7 +192,7 @@ class TestGoogleTokenLocalModeCredentialConstruction(unittest.TestCase):
         creds = self._load(_local_env())
         self.assertIsNone(creds.token)
 
-    def test_defaults_token_uri_when_google_token_uri_missing(self):
+    def test_defaults_token_uri_when_google_calendar_token_uri_missing(self):
         creds = self._load(_local_env_without("GOOGLE_CALENDAR_TOKEN_URI"))
         self.assertEqual(creds.token_uri, _DEFAULT_TOKEN_URI)
 
@@ -217,22 +217,22 @@ class TestGoogleTokenLocalModeCredentialConstruction(unittest.TestCase):
             },
         )
 
-    def test_missing_google_client_id_raises(self):
+    def test_missing_google_calendar_client_id_raises(self):
         with self.assertRaises(SettingError) as ctx:
             self._load(_local_env_without("GOOGLE_CALENDAR_CLIENT_ID"))
         self.assertIn("GOOGLE_CALENDAR_CLIENT_ID", str(ctx.exception))
 
-    def test_missing_google_client_secret_raises(self):
+    def test_missing_google_calendar_client_secret_raises(self):
         with self.assertRaises(SettingError) as ctx:
             self._load(_local_env_without("GOOGLE_CALENDAR_CLIENT_SECRET"))
         self.assertIn("GOOGLE_CALENDAR_CLIENT_SECRET", str(ctx.exception))
 
-    def test_missing_google_refresh_token_raises(self):
+    def test_missing_google_calendar_refresh_token_raises(self):
         with self.assertRaises(SettingError) as ctx:
             self._load(_local_env_without("GOOGLE_CALENDAR_REFRESH_TOKEN"))
         self.assertIn("GOOGLE_CALENDAR_REFRESH_TOKEN", str(ctx.exception))
 
-    def test_empty_google_client_id_raises(self):
+    def test_empty_google_calendar_client_id_raises(self):
         with self.assertRaises(SettingError):
             self._load(_local_env(GOOGLE_CALENDAR_CLIENT_ID="   "))
 

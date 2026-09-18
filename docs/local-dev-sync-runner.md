@@ -210,7 +210,7 @@ APP_MODE=cloud
 
 The local cloud runner also exports `APP_MODE=cloud` before invoking the helper.
 
-Cloud Lambda should not require local-mode variables such as `NOTION_TOKEN`, `GOOGLE_CALENDAR_CLIENT_ID`, `GOOGLE_CALENDAR_CLIENT_SECRET`, or `GOOGLE_CALENDAR_REFRESH_TOKEN`. It uses DynamoDB-backed config/tokens and cloud Google OAuth client env vars instead.
+Cloud Lambda reuses the non-secret `GOOGLE_CALENDAR_CLIENT_ID`, but must not require local-only `NOTION_TOKEN`, plaintext `GOOGLE_CALENDAR_CLIENT_SECRET`, or `GOOGLE_CALENDAR_REFRESH_TOKEN`. It loads OAuth tokens from DynamoDB and resolves the Google client secret from SSM instead.
 Cloud mode also requires:
 - `GOOGLE_CALENDAR_CLIENT_SECRET_SSM_PATH`
 - `TOKEN_ENCRYPTION_KEY_SSM_PATH`

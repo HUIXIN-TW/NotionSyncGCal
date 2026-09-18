@@ -41,7 +41,7 @@ prettier --write .
 
 Do not infer mode from UUID. Do not fallback to `token/*.json`. Do not commit secrets.
 
-Local secrets live in `.env.local`: `NOTION_TOKEN`, `GOOGLE_CALENDAR_CLIENT_ID`, `GOOGLE_CALENDAR_CLIENT_SECRET`, and `GOOGLE_CALENDAR_REFRESH_TOKEN`. Cloud uses DynamoDB-backed config/tokens, `GOOGLE_CALENDAR_CLIENT_ID`, `GOOGLE_CALENDAR_CLIENT_SECRET_SSM_PATH`, and `TOKEN_ENCRYPTION_KEY_SSM_PATH`.
+Local configuration/credentials live in `.env.local`: `NOTION_TOKEN`, `GOOGLE_CALENDAR_CLIENT_ID`, `GOOGLE_CALENDAR_CLIENT_SECRET`, and `GOOGLE_CALENDAR_REFRESH_TOKEN`. Cloud reuses the non-secret `GOOGLE_CALENDAR_CLIENT_ID`, loads OAuth tokens from DynamoDB, and resolves secrets through `GOOGLE_CALENDAR_CLIENT_SECRET_SSM_PATH` and `TOKEN_ENCRYPTION_KEY_SSM_PATH`.
 
 Tokens may be plaintext or `enc:v1:` encrypted. Use `src/utils/token_crypto.py:decrypt_token_if_encrypted()` at token read boundaries; `decrypt_token()` stays strict. In cloud mode, token encryption keys are resolved from SSM via `TOKEN_ENCRYPTION_KEY_SSM_PATH`; local mode may still use plaintext `TOKEN_ENCRYPTION_KEY`.
 
