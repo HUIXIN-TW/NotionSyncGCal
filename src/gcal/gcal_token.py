@@ -164,7 +164,8 @@ class GoogleToken:
             if self.mode == "local":
                 raise RefreshError(
                     "Failed to refresh Google credentials in local mode. "
-                    "GOOGLE_CALENDAR_REFRESH_TOKEN is likely invalid/expired; renew it outside runtime and update .env.local."
+                    "GOOGLE_CALENDAR_REFRESH_TOKEN is likely invalid/expired; "
+                    "renew it outside runtime and update .env.local."
                 ) from e
             raise RefreshError("Failed to refresh Google credentials. Refresh token is likely invalid/expired.") from e
 

@@ -120,7 +120,14 @@ def _invoke_cloud(uuid: str, logger: logging.Logger):
 
 def _invoke_local(logger: logging.Logger):
     _set_and_validate_mode("local")
-    _require_env(["NOTION_TOKEN", "GOOGLE_CALENDAR_CLIENT_ID", "GOOGLE_CALENDAR_CLIENT_SECRET", "GOOGLE_CALENDAR_REFRESH_TOKEN"])
+    _require_env(
+        [
+            "NOTION_TOKEN",
+            "GOOGLE_CALENDAR_CLIENT_ID",
+            "GOOGLE_CALENDAR_CLIENT_SECRET",
+            "GOOGLE_CALENDAR_REFRESH_TOKEN",
+        ]
+    )
 
     logger.info("Mode: local")
     logger.info("Invoking src.main.main(uuid=None).")
