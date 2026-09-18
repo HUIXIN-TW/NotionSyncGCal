@@ -1,6 +1,7 @@
 import json
 from copy import deepcopy
 from datetime import datetime, time, timedelta
+from decimal import Decimal
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 
@@ -54,8 +55,16 @@ def _require_string(value, label):
 
 
 def _require_int(value, label, *, minimum=None, maximum=None):
-    if isinstance(value, bool) or not isinstance(value, int):
+    if isinstance(value, bool):
         raise SettingError(f"{label} must be an integer.")
+
+    if isinstance(value, Decimal):
+        if value != value.to_integral_value():
+            raise SettingError(f"{label} must be an integer.")
+        value = int(value)
+    elif not isinstance(value, int):
+        raise SettingError(f"{label} must be an integer.")
+
     if minimum is not None and value < minimum:
         raise SettingError(f"{label} must be at least {minimum}.")
     if maximum is not None and value > maximum:
@@ -119,7 +128,10 @@ class MappingDomainConfig:
             for raw_source in sources:
                 source = _require_dict(raw_source, "taskSource")
                 source_id = _require_string(source.get("id"), "taskSource.id")
-                mappings.extend(list_mapping_domain_calendar_mappings(owner, source_id))
+                for raw_mapping in list_mapping_domain_calendar_mappings(owner, source_id):
+                    mapping = dict(_require_dict(raw_mapping, "calendarMapping"))
+                    mapping["_queriedSourceId"] = source_id
+                    mappings.append(mapping)
             return {"settings": settings, "taskSources": sources, "calendarMappings": mappings}
 
         if self.mode == "local":
@@ -176,6 +188,12 @@ class MappingDomainConfig:
                 raise SettingError(f"Duplicate Calendar mapping id: {mapping_id}")
             seen_mapping_ids.add(mapping_id)
             source_id = _require_string(mapping.get("sourceId"), f"calendarMapping[{mapping_id}].sourceId")
+            queried_source_id = mapping.pop("_queriedSourceId", None)
+            if queried_source_id is not None and queried_source_id != source_id:
+                raise SettingError(
+                    f"Calendar mapping {mapping_id} was queried for Task source {queried_source_id} "
+                    f"but declares sourceId {source_id}."
+                )
             if source_id not in seen_source_ids:
                 raise SettingError(f"Calendar mapping {mapping_id} references unknown Task source {source_id}.")
             lifecycle = _require_string(mapping.get("lifecycle"), f"calendarMapping[{mapping_id}].lifecycle")
@@ -213,11 +231,11 @@ class MappingDomainConfig:
                 source_mappings.append(mapping)
 
             if not source_mappings:
-                continue
+                raise SettingError(f"Task source {source_id} is active but has no active Calendar mapping.")
             active_sources.append(self._to_source_setting(source, source_mappings, timezone))
 
         if not active_sources:
-            raise SettingError("No active Task source with an active Calendar mapping was found.")
+            raise SettingError("No active Task source was found.")
         return active_sources
 
     def _to_source_setting(self, source, mappings, timezone):
