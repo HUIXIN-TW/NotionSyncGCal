@@ -129,8 +129,13 @@ class MappingDomainConfig:
                 source = _require_dict(raw_source, "taskSource")
                 source_id = _require_string(source.get("id"), "taskSource.id")
                 for raw_mapping in list_mapping_domain_calendar_mappings(owner, source_id):
-                    mapping = dict(_require_dict(raw_mapping, "calendarMapping"))
-                    mapping["_queriedSourceId"] = source_id
+                    mapping = _require_dict(raw_mapping, "calendarMapping")
+                    mapping_source_id = _require_string(mapping.get("sourceId"), "calendarMapping.sourceId")
+                    if mapping_source_id != source_id:
+                        raise SettingError(
+                            f"Calendar mapping was queried for Task source {source_id} "
+                            f"but declares sourceId {mapping_source_id}."
+                        )
                     mappings.append(mapping)
             return {"settings": settings, "taskSources": sources, "calendarMappings": mappings}
 
@@ -188,12 +193,6 @@ class MappingDomainConfig:
                 raise SettingError(f"Duplicate Calendar mapping id: {mapping_id}")
             seen_mapping_ids.add(mapping_id)
             source_id = _require_string(mapping.get("sourceId"), f"calendarMapping[{mapping_id}].sourceId")
-            queried_source_id = mapping.pop("_queriedSourceId", None)
-            if queried_source_id is not None and queried_source_id != source_id:
-                raise SettingError(
-                    f"Calendar mapping {mapping_id} was queried for Task source {queried_source_id} "
-                    f"but declares sourceId {source_id}."
-                )
             if source_id not in seen_source_ids:
                 raise SettingError(f"Calendar mapping {mapping_id} references unknown Task source {source_id}.")
             lifecycle = _require_string(mapping.get("lifecycle"), f"calendarMapping[{mapping_id}].lifecycle")
