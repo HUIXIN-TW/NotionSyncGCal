@@ -189,7 +189,11 @@ class DynamoDbMappingDomainTests(unittest.TestCase):
         kwargs = table.query.call_args.kwargs
         self.assertEqual(kwargs["IndexName"], "SourceMappingsIndex")
         self.assertEqual(
-            kwargs["ExpressionAttributeValues"][":gsiPk"],
+            kwargs["ExpressionAttributeNames"]["#sourceMappingOwnerSourceKey"],
+            "sourceMappingOwnerSourceKey",
+        )
+        self.assertEqual(
+            kwargs["ExpressionAttributeValues"][":sourceMappingOwnerSourceKey"],
             "USER#user-1#TASK_SOURCE#source-1",
         )
         self.assertNotIn("ConsistentRead", kwargs)

@@ -205,9 +205,9 @@ def list_mapping_domain_calendar_mappings(uuid: str, source_id: str) -> list[dic
     return _query_all(
         table,
         IndexName=SOURCE_MAPPINGS_INDEX_NAME,
-        KeyConditionExpression="#gsiPk = :gsiPk",
-        ExpressionAttributeNames={"#gsiPk": "gsi1pk"},
-        ExpressionAttributeValues={":gsiPk": f"USER#{uuid}#TASK_SOURCE#{source_id}"},
+        KeyConditionExpression="#sourceMappingOwnerSourceKey = :sourceMappingOwnerSourceKey",
+        ExpressionAttributeNames={"#sourceMappingOwnerSourceKey": "sourceMappingOwnerSourceKey"},
+        ExpressionAttributeValues={":sourceMappingOwnerSourceKey": f"USER#{uuid}#TASK_SOURCE#{source_id}"},
     )
 
 
