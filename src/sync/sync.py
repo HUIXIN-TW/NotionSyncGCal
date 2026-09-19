@@ -1,6 +1,4 @@
-import sys
 import re
-from pathlib import Path
 from datetime import datetime, timezone
 from dateutil.parser import isoparse
 from sync.contracts import (
@@ -151,20 +149,29 @@ def synchronize_notion_and_google_calendar(
                     notion_page_property["GCal_Name_Notion_Name"],
                 )
                 if not notion_gcal_cal_name:
-                    notion_gcal_cal_name = user_setting["gcal_default_name"]
-                    notion_gcal_cal_id = user_setting["gcal_default_id"]
-                    logger.warning(f"Calendar name not found. Use the default calendar: {notion_gcal_cal_name}")
-                    logger.debug(f"Calendar id not found. Use the default calendar id: {notion_gcal_cal_id}")
-                    logger.info("Update Notion Task for default calendar id and calendar name")
-                    notion_service.update_notion_task_for_default_calendar(notion_task_page_id, notion_gcal_cal_name)
-                else:
-                    notion_gcal_cal_id = gcal_name_dict.get(notion_gcal_cal_name)
-                    if not notion_gcal_cal_id:
-                        logger.warning(
-                            f"Calendar '{notion_gcal_cal_name}' not found in gcal_name_dict, "
-                            f"skipping task '{notion_task_page_id}'"
+                    sync_errors.append(
+                        build_sync_error(
+                            "resolve_calendar_mapping",
+                            "calendar_assignment_missing",
+                            error_message="Select one configured Google Calendar for this Notion task.",
+                            notion_task_id=notion_task_page_id,
+                            retriable=False,
                         )
-                        continue
+                    )
+                    continue
+
+                notion_gcal_cal_id = gcal_name_dict.get(notion_gcal_cal_name)
+                if not notion_gcal_cal_id:
+                    sync_errors.append(
+                        build_sync_error(
+                            "resolve_calendar_mapping",
+                            "calendar_assignment_invalid",
+                            error_message="The selected Google Calendar is not active for this Task source.",
+                            notion_task_id=notion_task_page_id,
+                            retriable=False,
+                        )
+                    )
+                    continue
 
                 notion_gcal_event_id = get_rich_text(
                     notion_task["properties"],
@@ -172,7 +179,7 @@ def synchronize_notion_and_google_calendar(
                 )
                 notion_deletion = get_checkbox(
                     notion_task["properties"],
-                    notion_page_property["Delete_Notion_Name"],
+                    notion_page_property.get("Delete_Notion_Name"),
                 )
                 notion_task_name = (
                     get_title(
@@ -223,7 +230,7 @@ def synchronize_notion_and_google_calendar(
                     gcal_event_summary = gcal_event.get("summary", "")
                     gcal_event_id = gcal_event.get("id", "")
                     gcal_event_updated_time = gcal_event.get("updated")
-                    gcal_cal_id = gcal_event.get("organizer", {}).get("email")
+                    gcal_cal_id = gcal_event.get("_notica_calendar_id")
                     gcal_cal_name = gcal_id_dict.get(gcal_cal_id)
 
                     if notion_gcal_event_id == gcal_event_id:
@@ -365,17 +372,14 @@ def synchronize_notion_and_google_calendar(
                     gcal_event_id,
                 )
                 try:
-                    organizer_email = (gcal_event.get("organizer") or {}).get("email")
-                    gcal_cal_name = gcal_id_dict.get(organizer_email)
+                    source_calendar_id = gcal_event.get("_notica_calendar_id")
+                    gcal_cal_name = gcal_id_dict.get(source_calendar_id)
                     if not gcal_cal_name:
                         sync_errors.append(
                             build_sync_error(
                                 "create_notion",
-                                "gcal_event_not_owned",
-                                error=(
-                                    "Skipped: You are not the owner of this Google Calendar event, "
-                                    "so it was not synced."
-                                ),
+                                "gcal_source_calendar_unresolved",
+                                error="Skipped: the event source Calendar is not active for this Task source.",
                                 gcal_event_id=gcal_event_id,
                                 gcal_event_start=gcal_event.get("start", {}).get("dateTime")
                                 or gcal_event.get("start", {}).get("date"),
@@ -383,7 +387,7 @@ def synchronize_notion_and_google_calendar(
                             )
                         )
                         logger.warning(
-                            "Skipped create_notion for non-owned/invited Google Calendar event_id=%s",
+                            "Skipped create_notion for unresolved source Calendar event_id=%s",
                             gcal_event_id,
                         )
                         continue
@@ -473,42 +477,3 @@ def force_update_google_event_by_notion_task_and_ignore_time(user_setting, notio
         should_update_google_events=True,
     )
     return result
-
-
-if __name__ == "__main__":
-    # python -m src.sync.sync
-    from rich.pretty import pprint
-
-    sys.path.append(str(Path(__file__).resolve().parent.parent))
-    from config.config import generate_uuid_config  # noqa: E402
-    from notion.notion_service import NotionService  # noqa: E402
-    from notion.notion_config import NotionConfig  # noqa: E402
-    from gcal.gcal_token import GoogleToken  # noqa: E402
-    from gcal.gcal_service import GoogleService  # noqa: E402
-
-    config = generate_uuid_config("huixinyang")
-    notion_config = NotionConfig(config, logger)
-    notion_token = notion_config.token
-    notion_user_setting = notion_config.user_setting
-    notion_service = NotionService(notion_token, notion_user_setting, logger)
-    google_token = GoogleToken(config, logger)
-    google_service = GoogleService(notion_user_setting, google_token, logger)
-    pprint(notion_config.user_setting)
-    synchronize_notion_and_google_calendar(
-        user_setting=notion_config.user_setting,
-        notion_service=notion_service,
-        google_service=google_service,
-        compare_time=True,
-        should_update_notion_tasks=True,
-        should_update_google_events=True,
-    )
-    # force_update_notion_tasks_by_google_event_and_ignore_time(
-    #     user_setting=notion_config.user_setting,
-    #     notion_service=notion_service,
-    #     google_service=google_service,
-    # )
-    # force_update_google_event_by_notion_task_and_ignore_time(
-    #     user_setting=notion_config.user_setting,
-    #     notion_service=notion_service,
-    #     google_service=google_service,
-    # )

@@ -24,8 +24,6 @@ USER_SETTING = {
     },
     "gcal_name_dict": {"Primary": "primary@example.com"},
     "gcal_id_dict": {"primary@example.com": "Primary"},
-    "gcal_default_name": "Primary",
-    "gcal_default_id": "primary@example.com",
 }
 
 
@@ -113,9 +111,7 @@ class SyncContractTests(unittest.TestCase):
             "duration_ms",
         }
         self.assertTrue(required_top_level_keys.issubset(payload.keys()))
-        self.assertEqual(
-            payload["contract_version"], lambda_utils.SYNC_LOG_CONTRACT_VERSION
-        )
+        self.assertEqual(payload["contract_version"], lambda_utils.SYNC_LOG_CONTRACT_VERSION)
 
         persisted_errors = payload["message"]["errors"]
         self.assertEqual(len(persisted_errors), 1)

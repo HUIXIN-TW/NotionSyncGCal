@@ -20,7 +20,7 @@ def _cloud_config(uuid="test-uuid-1234"):
 
 
 def _local_config():
-    return {"mode": "local", "notion_setting_path": Path("/tmp/x.json")}
+    return {"mode": "local", "mapping_domain_config_path": Path("/tmp/x.json")}
 
 
 class TestNotionTokenLocalMode(unittest.TestCase):
@@ -91,9 +91,7 @@ class TestNotionTokenLocalMode(unittest.TestCase):
 class TestNotionTokenCloudMode(unittest.TestCase):
     def test_cloud_calls_dynamodb(self):
         mock_response = {"accessToken": "enc:v1:encrypted-cloud-notion-token"}
-        with patch(
-            "utils.dynamodb_utils.get_notion_token_by_uuid", return_value=mock_response
-        ) as mock_db:
+        with patch("utils.dynamodb_utils.get_notion_token_by_uuid", return_value=mock_response) as mock_db:
             with patch(
                 "notion.notion_token.decrypt_token",
                 return_value="plain-cloud-notion-token",
@@ -105,9 +103,7 @@ class TestNotionTokenCloudMode(unittest.TestCase):
 
     def test_cloud_plaintext_token_fails_closed(self):
         mock_response = {"accessToken": "cloud-token-xyz"}
-        with patch(
-            "utils.dynamodb_utils.get_notion_token_by_uuid", return_value=mock_response
-        ):
+        with patch("utils.dynamodb_utils.get_notion_token_by_uuid", return_value=mock_response):
             with patch.dict(os.environ, {}, clear=True):
                 with self.assertRaises(SettingError) as ctx:
                     NotionToken(_cloud_config("uuid-abc"), _make_logger())
@@ -116,9 +112,7 @@ class TestNotionTokenCloudMode(unittest.TestCase):
     def test_cloud_encrypted_token_calls_decrypt_token_if_encrypted(self):
         encrypted_token = "enc:v1:encrypted-cloud-notion-token"
         mock_response = {"accessToken": encrypted_token}
-        with patch(
-            "utils.dynamodb_utils.get_notion_token_by_uuid", return_value=mock_response
-        ) as mock_db:
+        with patch("utils.dynamodb_utils.get_notion_token_by_uuid", return_value=mock_response) as mock_db:
             with patch(
                 "notion.notion_token.decrypt_token",
                 return_value="plain-cloud-notion-token",
@@ -131,9 +125,7 @@ class TestNotionTokenCloudMode(unittest.TestCase):
     def test_cloud_encrypted_token_missing_key_raises_setting_error(self):
         encrypted_token = "enc:v1:encrypted-cloud-notion-token"
         mock_response = {"accessToken": encrypted_token}
-        with patch(
-            "utils.dynamodb_utils.get_notion_token_by_uuid", return_value=mock_response
-        ):
+        with patch("utils.dynamodb_utils.get_notion_token_by_uuid", return_value=mock_response):
             with patch(
                 "notion.notion_token.decrypt_token",
                 side_effect=TokenCryptoError("TOKEN_ENCRYPTION_KEY missing"),

@@ -26,7 +26,7 @@ Local mode uses local env/config only and does not require AWS.
 ./scripts/local-run-dev-sync.sh --mode local
 ```
 
-The shell script loads `.env.local`, validates `APP_MODE=local`, validates required local credentials, checks `config/local.notion-setting.json`, and invokes the Python helper without a UUID.
+The shell script loads `.env.local`, validates `APP_MODE=local`, validates required local credentials, checks `config/local.mapping-domain.json`, and invokes the Python helper without a UUID.
 
 ## Prerequisites
 
@@ -56,14 +56,14 @@ Local mode requires these untracked files:
 
 ```bash
 .env.local
-config/local.notion-setting.json
+config/local.mapping-domain.json
 ```
 
 Create them from the examples:
 
 ```bash
 cp .env.local.example .env.local
-cp config/local.notion-setting.example.json config/local.notion-setting.json
+cp config/local.mapping-domain.example.json config/local.mapping-domain.json
 ```
 
 Fill in `.env.local` with local-only secrets and keep `APP_MODE=local`:
@@ -74,18 +74,18 @@ APP_STAGE=dev
 APP_REGION=ap-southeast-2
 AWS_REGION=ap-southeast-2
 NOTION_TOKEN=...
-GOOGLE_CLIENT_ID=...
-GOOGLE_CLIENT_SECRET=...
-GOOGLE_REFRESH_TOKEN=...
+GOOGLE_CALENDAR_CLIENT_ID=...
+GOOGLE_CALENDAR_CLIENT_SECRET=...
+GOOGLE_CALENDAR_REFRESH_TOKEN=...
 ```
 
-`GOOGLE_TOKEN_URI` and `GOOGLE_SCOPES` are optional. If omitted, the runtime uses the Google OAuth token endpoint and the app's default calendar/profile scopes.
+`GOOGLE_CALENDAR_TOKEN_URI` and `GOOGLE_SCOPES` are optional. If omitted, the runtime uses the Google OAuth token endpoint and the app's default calendar/profile scopes.
 
-Fill `config/local.notion-setting.json` with your Notion database ID, calendar mapping (`gcal_dic`), and page property mapping (`page_property`).
+Fill `config/local.mapping-domain.json` with v2 settings, Task-source, Calendar-mapping, and provider property-ID records matching the tracked example.
 
 ## Generate Google Refresh Token
 
-Local runtime reads Google credentials from `.env.local`. If you need a `GOOGLE_REFRESH_TOKEN`, use the standalone developer setup helper:
+Local runtime reads Google credentials from `.env.local`. If you need a `GOOGLE_CALENDAR_REFRESH_TOKEN`, use the standalone developer setup helper:
 
 ```bash
 uv run python scripts/generate-google-refresh-token.py \
@@ -96,10 +96,10 @@ uv run python scripts/generate-google-refresh-token.py \
 The helper uses an in-memory OAuth client config and does not read or write token JSON files. Paste the printed env snippet into `.env.local`:
 
 ```bash
-GOOGLE_CLIENT_ID=...
-GOOGLE_CLIENT_SECRET=...
-GOOGLE_REFRESH_TOKEN=...
-GOOGLE_TOKEN_URI=https://oauth2.googleapis.com/token
+GOOGLE_CALENDAR_CLIENT_ID=...
+GOOGLE_CALENDAR_CLIENT_SECRET=...
+GOOGLE_CALENDAR_REFRESH_TOKEN=...
+GOOGLE_CALENDAR_TOKEN_URI=https://oauth2.googleapis.com/token
 ```
 
 Do not commit `.env.local` or any generated env snippet. Refresh-token generation is separate from runtime sync.
@@ -108,7 +108,7 @@ Do not commit `.env.local` or any generated env snippet. Refresh-token generatio
 
 Local tokens may be plaintext or `enc:v1:` encrypted. Cloud DynamoDB token rows must already be `enc:v1:` encrypted:
 
-- Plaintext `NOTION_TOKEN` and `GOOGLE_REFRESH_TOKEN` work without `TOKEN_ENCRYPTION_KEY`.
+- Plaintext `NOTION_TOKEN` and `GOOGLE_CALENDAR_REFRESH_TOKEN` work without `TOKEN_ENCRYPTION_KEY`.
 - Encrypted local tokens in `.env.local` require `TOKEN_ENCRYPTION_KEY` to match the key used to encrypt them.
 - Cloud tokens loaded from DynamoDB must be `enc:v1:` payloads. Plaintext cloud token rows fail closed at runtime.
 - A decrypt failure means the key is missing, the key does not match, the encrypted payload is malformed, or the cloud token row was stored in plaintext.
@@ -118,8 +118,8 @@ Do not print plaintext or encrypted token values in logs, docs, or shell output.
 The canonical local config location is the repository root `config/` directory:
 
 ```bash
-config/local.notion-setting.example.json
-config/local.notion-setting.json
+config/local.mapping-domain.example.json
+config/local.mapping-domain.json
 ```
 
 Do not put real local JSON config under `src/config/`; that directory is for Python config code only.
@@ -141,10 +141,10 @@ Local mode validates:
 - `.env.local` exists.
 - `.env.local` sets `APP_MODE=local`.
 - `NOTION_TOKEN` is set.
-- `GOOGLE_CLIENT_ID` is set.
-- `GOOGLE_CLIENT_SECRET` is set.
-- `GOOGLE_REFRESH_TOKEN` is set.
-- `config/local.notion-setting.json` exists.
+- `GOOGLE_CALENDAR_CLIENT_ID` is set.
+- `GOOGLE_CALENDAR_CLIENT_SECRET` is set.
+- `GOOGLE_CALENDAR_REFRESH_TOKEN` is set.
+- `config/local.mapping-domain.json` exists.
 
 The runner does not require or validate AWS credentials in local mode.
 
@@ -210,7 +210,7 @@ APP_MODE=cloud
 
 The local cloud runner also exports `APP_MODE=cloud` before invoking the helper.
 
-Cloud Lambda should not require local-mode variables such as `NOTION_TOKEN`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, or `GOOGLE_REFRESH_TOKEN`. It uses DynamoDB-backed config/tokens and cloud Google OAuth client env vars instead.
+Cloud Lambda reuses the non-secret `GOOGLE_CALENDAR_CLIENT_ID`, but must not require local-only `NOTION_TOKEN`, plaintext `GOOGLE_CALENDAR_CLIENT_SECRET`, or `GOOGLE_CALENDAR_REFRESH_TOKEN`. It loads OAuth tokens from DynamoDB and resolves the Google client secret from SSM instead.
 Cloud mode also requires:
 - `GOOGLE_CALENDAR_CLIENT_SECRET_SSM_PATH`
 - `TOKEN_ENCRYPTION_KEY_SSM_PATH`
@@ -222,7 +222,7 @@ The real local files must be ignored by git:
 
 ```bash
 git check-ignore -v .env.local
-git check-ignore -v config/local.notion-setting.json
+git check-ignore -v config/local.mapping-domain.json
 git check-ignore -v token/token.json
 ```
 
@@ -230,7 +230,7 @@ The safe examples should not be ignored:
 
 ```bash
 git check-ignore -v .env.local.example || true
-git check-ignore -v config/local.notion-setting.example.json || true
+git check-ignore -v config/local.mapping-domain.example.json || true
 ```
 
 ## Helper Behavior
@@ -268,7 +268,7 @@ Local mode reads `NOTION_TOKEN` from `.env.local`. Add a local Notion internal i
 
 ### Google refresh token invalid
 
-If sync fails with a Google refresh error, the local `GOOGLE_REFRESH_TOKEN` may be expired, revoked, or issued for a different OAuth client. Re-authorize locally and update `.env.local`.
+If sync fails with a Google refresh error, the local `GOOGLE_CALENDAR_REFRESH_TOKEN` may be expired, revoked, or issued for a different OAuth client. Re-authorize locally and update `.env.local`.
 
 ### Encrypted token decrypt failure
 
@@ -286,7 +286,7 @@ Plaintext tokens do not require `TOKEN_ENCRYPTION_KEY`.
 Create the file if it is missing:
 
 ```bash
-cp config/local.notion-setting.example.json config/local.notion-setting.json
+cp config/local.mapping-domain.example.json config/local.mapping-domain.json
 ```
 
 If it exists but sync fails while loading Notion config, validate the JSON syntax and required database/property fields.
@@ -325,7 +325,7 @@ Local mode does not use UUID.
 ## Security
 
 - Never commit `.env.local`.
-- Never commit `config/local.notion-setting.json`.
+- Never commit `config/local.mapping-domain.json`.
 - Never print secrets in shell scripts, docs, logs, or test fixtures.
 - `token/` is deprecated and must not be reintroduced.
 - Use short-lived AWS credentials for cloud mode.

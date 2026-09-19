@@ -51,10 +51,10 @@ def build_client_config(client_id: str, client_secret: str) -> dict:
 def build_env_snippet(client_id: str, client_secret: str, refresh_token: str) -> str:
     return "\n".join(
         [
-            f"GOOGLE_CLIENT_ID={client_id}",
-            f"GOOGLE_CLIENT_SECRET={client_secret}",
-            f"GOOGLE_REFRESH_TOKEN={refresh_token}",
-            f"GOOGLE_TOKEN_URI={DEFAULT_TOKEN_URI}",
+            f"GOOGLE_CALENDAR_CLIENT_ID={client_id}",
+            f"GOOGLE_CALENDAR_CLIENT_SECRET={client_secret}",
+            f"GOOGLE_CALENDAR_REFRESH_TOKEN={refresh_token}",
+            f"GOOGLE_CALENDAR_TOKEN_URI={DEFAULT_TOKEN_URI}",
             "",
         ]
     )
@@ -110,7 +110,7 @@ def run_oauth_flow(client_id: str, client_secret: str, scopes: list[str], no_bro
 
 
 def parse_args(argv: list[str] | None = None):
-    parser = argparse.ArgumentParser(description="Generate GOOGLE_REFRESH_TOKEN for local .env.local setup.")
+    parser = argparse.ArgumentParser(description="Generate GOOGLE_CALENDAR_REFRESH_TOKEN for local .env.local setup.")
     parser.add_argument("--client-id", help="Google OAuth Desktop client ID")
     parser.add_argument("--client-secret", help="Google OAuth Desktop client secret")
     parser.add_argument(

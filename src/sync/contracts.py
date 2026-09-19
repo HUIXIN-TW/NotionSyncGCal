@@ -5,6 +5,7 @@ SYNC_CAPACITY_LIMIT_ERROR_CODE = "sync_capacity_limit_exceeded"
 
 
 class SyncErrorPayload(TypedDict, total=False):
+    source_id: str | None
     action: str | None
     error_code: str
     error_message: str | None
@@ -150,7 +151,7 @@ def is_retryable_result(sync_result: dict[str, Any] | None) -> bool:
 
 def is_successful_result(sync_result: dict[str, Any] | None) -> bool:
     status_code = int((sync_result or {}).get("statusCode", 500))
-    if status_code >= 400:
+    if status_code >= 400 or is_retryable_result(sync_result):
         return False
     return get_result_status(sync_result) in {"sync_success", "batch_processed"}
 

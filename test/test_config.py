@@ -56,18 +56,18 @@ class TestGenerateConfigLocalMode(unittest.TestCase):
             cfg = generate_config()
         self.assertEqual(cfg["mode"], "local")
 
-    def test_local_mode_contains_notion_setting_path(self):
+    def test_local_mode_contains_mapping_domain_config_path(self):
         with patch.dict(os.environ, {"APP_MODE": "local"}):
             cfg = generate_config()
-        self.assertIn("notion_setting_path", cfg)
-        self.assertIsInstance(cfg["notion_setting_path"], Path)
+        self.assertIn("mapping_domain_config_path", cfg)
+        self.assertIsInstance(cfg["mapping_domain_config_path"], Path)
 
-    def test_local_mode_notion_setting_path_ends_correctly(self):
+    def test_local_mode_mapping_domain_path_ends_correctly(self):
         with patch.dict(os.environ, {"APP_MODE": "local"}):
             cfg = generate_config()
         self.assertTrue(
-            str(cfg["notion_setting_path"]).endswith("config/local.notion-setting.json"),
-            msg=f"Unexpected path: {cfg['notion_setting_path']}",
+            str(cfg["mapping_domain_config_path"]).endswith("config/local.mapping-domain.json"),
+            msg=f"Unexpected path: {cfg['mapping_domain_config_path']}",
         )
 
     def test_local_mode_does_not_require_uuid(self):

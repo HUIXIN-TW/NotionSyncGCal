@@ -5,6 +5,9 @@ import boto3
 from utils.token_crypto import encrypt_token_if_plaintext
 
 
+SOURCE_MAPPINGS_INDEX_NAME = "SourceMappingsIndex"
+
+
 class GoogleTokenWriteConflictError(RuntimeError):
     """Raised when a Google token update loses a conditional-write race."""
 
@@ -48,6 +51,27 @@ def _get_notion_tables():
         raise ValueError("DYNAMODB_NOTION_OAUTH_TOKEN_TABLE env var is not set")
     notion_oauth_token_tbl = _get_dynamodb().Table(notion_oauth_token_table)
     return notion_oauth_token_tbl
+
+
+def _get_mapping_domain_table():
+    mapping_domain_table = os.getenv("DYNAMODB_MAPPING_DOMAIN_TABLE")
+    if not mapping_domain_table:
+        raise ValueError("DYNAMODB_MAPPING_DOMAIN_TABLE env var is not set")
+    return _get_dynamodb().Table(mapping_domain_table)
+
+
+def _query_all(table, **kwargs) -> list[dict]:
+    items = []
+    exclusive_start_key = None
+    while True:
+        request = dict(kwargs)
+        if exclusive_start_key:
+            request["ExclusiveStartKey"] = exclusive_start_key
+        response = table.query(**request)
+        items.extend(response.get("Items", []))
+        exclusive_start_key = response.get("LastEvaluatedKey")
+        if not exclusive_start_key:
+            return items
 
 
 def save_sync_logs(uuid: str, response: dict, ttl_days: int = 7):
@@ -150,25 +174,40 @@ def update_google_token_by_uuid(
         raise
 
 
-# get notion config in user table by uuid
-def get_notion_config_by_uuid(uuid: str) -> dict:
-    users_tbl = _get_users_table()
-    response = users_tbl.get_item(Key={"uuid": uuid})
+def get_mapping_domain_settings(uuid: str) -> dict:
+    table = _get_mapping_domain_table()
+    response = table.get_item(
+        Key={"pk": f"USER#{uuid}", "sk": "NOTION_SETTINGS"},
+        ConsistentRead=True,
+    )
     item = response.get("Item")
-    if not item or "notionConfig" not in item:
-        raise ValueError(f"No Notion config found for uuid: {uuid}")
-    return item["notionConfig"]
+    if not item:
+        raise ValueError(f"No Notion settings found for uuid: {uuid}")
+    return item
 
 
-# update notion config in user table by uuid
-def update_notion_config_by_uuid(uuid: str, notion_config: dict):
-    users_tbl = _get_users_table()
-    users_tbl.update_item(
-        Key={"uuid": uuid},
-        UpdateExpression="SET notionConfig = :nc",
+def list_mapping_domain_task_sources(uuid: str) -> list[dict]:
+    table = _get_mapping_domain_table()
+    return _query_all(
+        table,
+        KeyConditionExpression="#pk = :pk AND begins_with(#sk, :sourcePrefix)",
+        ExpressionAttributeNames={"#pk": "pk", "#sk": "sk"},
         ExpressionAttributeValues={
-            ":nc": notion_config,
+            ":pk": f"USER#{uuid}",
+            ":sourcePrefix": "NOTION_TASK_SOURCE#",
         },
+        ConsistentRead=True,
+    )
+
+
+def list_mapping_domain_calendar_mappings(uuid: str, source_id: str) -> list[dict]:
+    table = _get_mapping_domain_table()
+    return _query_all(
+        table,
+        IndexName=SOURCE_MAPPINGS_INDEX_NAME,
+        KeyConditionExpression="#sourceMappingOwnerSourceKey = :sourceMappingOwnerSourceKey",
+        ExpressionAttributeNames={"#sourceMappingOwnerSourceKey": "sourceMappingOwnerSourceKey"},
+        ExpressionAttributeValues={":sourceMappingOwnerSourceKey": f"USER#{uuid}#TASK_SOURCE#{source_id}"},
     )
 
 
@@ -178,6 +217,7 @@ __all__ = [
     "get_google_token_by_uuid",
     "GoogleTokenWriteConflictError",
     "update_google_token_by_uuid",
-    "get_notion_config_by_uuid",
-    "update_notion_config_by_uuid",
+    "get_mapping_domain_settings",
+    "list_mapping_domain_task_sources",
+    "list_mapping_domain_calendar_mappings",
 ]

@@ -13,6 +13,7 @@ Covers:
 """
 
 import sys
+import copy
 import unittest
 from pathlib import Path
 from unittest.mock import MagicMock, patch
@@ -21,7 +22,7 @@ from googleapiclient.errors import HttpError
 SRC_ROOT = Path(__file__).resolve().parents[1] / "src"
 sys.path.insert(0, str(SRC_ROOT))
 
-from gcal.gcal_service import GoogleService  # noqa: E402
+from gcal.gcal_service import GoogleService, SettingError  # noqa: E402
 from notion.notion_service import NotionService  # noqa: E402
 
 
@@ -44,12 +45,10 @@ MINIMAL_USER_SETTING = {
     },
     "gcal_name_dict": {"My Calendar": "cal@group.calendar.google.com"},
     "gcal_id_dict": {"cal@group.calendar.google.com": "My Calendar"},
-    "gcal_default_name": "My Calendar",
-    "gcal_default_id": "cal@group.calendar.google.com",
+    "calendar_ids": ["cal@group.calendar.google.com"],
     "google_timemin": "2026-05-01T00:00:00+08:00",
     "google_timemax": "2026-06-01T00:00:00+08:00",
     "timezone": "Australia/Perth",
-    "timecode": "+08:00",
     "database_id": "db-id",
     "default_event_length": 60,
 }
@@ -172,6 +171,56 @@ def _make_notion_task(gcal_event_id, last_edited_time="2026-04-01T00:00:00.000Z"
     }
 
 
+class TestConfigureCalendarMappings(unittest.TestCase):
+    def make_service(self, calendar_ids, calendar_pages):
+        setting = copy.deepcopy(MINIMAL_USER_SETTING)
+        setting["calendar_ids"] = calendar_ids
+        api = MagicMock()
+        api.calendarList.return_value.list.return_value.execute.side_effect = calendar_pages
+        with patch("gcal.gcal_service.build", return_value=api):
+            service = GoogleService(setting, MagicMock(), MagicMock())
+        return service, setting
+
+    def test_resolves_provider_names_from_persisted_calendar_ids(self):
+        service, setting = self.make_service(
+            ["cal-1", "cal-2"],
+            [
+                {
+                    "items": [{"id": "cal-1", "summary": "Work"}],
+                    "nextPageToken": "next",
+                },
+                {"items": [{"id": "cal-2", "summaryOverride": "Personal"}]},
+            ],
+        )
+
+        result = service.configure_calendar_mappings()
+
+        self.assertEqual(result, {"Work": "cal-1", "Personal": "cal-2"})
+        self.assertEqual(setting["gcal_id_dict"], {"cal-1": "Work", "cal-2": "Personal"})
+        calls = service.service.calendarList.return_value.list.call_args_list
+        self.assertEqual(calls[0].kwargs["pageToken"], None)
+        self.assertEqual(calls[1].kwargs["pageToken"], "next")
+
+    def test_rejects_missing_or_duplicate_provider_names(self):
+        missing_service, _ = self.make_service(["cal-1"], [{"items": []}])
+        with self.assertRaisesRegex(SettingError, "not accessible"):
+            missing_service.configure_calendar_mappings()
+
+        duplicate_service, _ = self.make_service(
+            ["cal-1", "cal-2"],
+            [
+                {
+                    "items": [
+                        {"id": "cal-1", "summary": "Same"},
+                        {"id": "cal-2", "summary": "Same"},
+                    ]
+                }
+            ],
+        )
+        with self.assertRaisesRegex(SettingError, "duplicate display name"):
+            duplicate_service.configure_calendar_mappings()
+
+
 # ---------------------------------------------------------------------------
 # Tests: events().list() call parameters
 # ---------------------------------------------------------------------------
@@ -182,11 +231,12 @@ class TestGetGcalEventApiParams(unittest.TestCase):
 
     def test_single_events_true_and_order_by_start_time(self):
         gs, mock_service, _ = _make_google_service([SINGLE_TIMED_EVENT])
-        gs.get_gcal_event()
+        events = gs.get_gcal_event()
 
         _, kwargs = mock_service.events.return_value.list.call_args
         self.assertTrue(kwargs.get("singleEvents"), "singleEvents must be True")
         self.assertEqual(kwargs.get("orderBy"), "startTime")
+        self.assertEqual(events[0]["_notica_calendar_id"], "cal@group.calendar.google.com")
 
     def test_time_min_and_max_are_passed(self):
         gs, mock_service, _ = _make_google_service([])
@@ -435,6 +485,7 @@ class TestRecurringEventIdentity(unittest.TestCase):
 
         for ev in gcal_events:
             ev.setdefault("organizer", {"email": "cal@group.calendar.google.com"})
+            ev.setdefault("_notica_calendar_id", "cal@group.calendar.google.com")
 
         orig_logger = sync_module.logger
         sync_module.logger = MagicMock()
