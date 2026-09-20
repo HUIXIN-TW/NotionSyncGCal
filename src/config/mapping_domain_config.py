@@ -22,14 +22,7 @@ TASK_PROPERTY_POLICY = {
 }
 
 DOMAIN_REQUIRED_PROPERTIES = frozenset({"task", "date"})
-SYNC_REQUIRED_PROPERTIES = frozenset(
-    {
-        "calendarName",
-        "googleCalendarEventId",
-        "googleCalendarSyncTime",
-        "googleCalendarEndDate",
-    }
-)
+SYNC_REQUIRED_PROPERTIES = frozenset({"googleCalendarEndDate"})
 
 
 class SettingError(Exception):
