@@ -157,7 +157,6 @@ class OneWayProjectionTests(unittest.TestCase):
         notion.update_notion_task.assert_not_called()
         notion.create_notion_task.assert_not_called()
 
-
     def test_missing_notion_task_retires_owned_projection_in_current_window(self):
         notion = MagicMock()
         google = MagicMock()
@@ -209,6 +208,7 @@ class OneWayProjectionTests(unittest.TestCase):
         error = result["body"]["message"]["errors"][0]
         self.assertEqual(error["error_code"], "projection_identity_mismatch")
         self.assertFalse(error["retriable"])
+
 
 if __name__ == "__main__":
     unittest.main()
