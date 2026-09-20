@@ -169,6 +169,10 @@ def main(uuid: str | None = None, execution: dict | None = None) -> dict:
         source_settings = mapping_config.get()
         notion_token = NotionToken(config, logger).get()
         google_token = GoogleToken(config, logger)
+        if execution is not None:
+            google_token.assert_admission_binding(
+                source_settings[0]["admission_started_at_ms"]
+            )
     except RefreshError as e:
         logger.error(f"Google RefreshError during initialization: {e}", exc_info=True)
         return build_sync_result(
@@ -182,6 +186,13 @@ def main(uuid: str | None = None, execution: dict | None = None) -> dict:
             409,
             "sync_error",
             {"error_code": "sync_configuration_invalid", "retriable": False},
+        )
+    except GoogleTokenSettingError:
+        logger.exception("Google provider binding is not valid for this sync execution")
+        return build_sync_result(
+            409,
+            "sync_error",
+            {"error_code": "sync_provider_binding_stale", "retriable": False},
         )
     except Exception:
         logger.exception("Error loading mapping-domain configuration or tokens")
