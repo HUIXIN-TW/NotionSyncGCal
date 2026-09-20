@@ -201,10 +201,16 @@ class GoogleToken:
 
         from utils.dynamodb_utils import get_google_token_by_uuid
 
-        current = get_google_token_by_uuid(
-            self.config.get("uuid"),
-            consistent_read=True,
-        )
+        try:
+            current = get_google_token_by_uuid(
+                self.config.get("uuid"),
+                consistent_read=True,
+            )
+        except ValueError as exc:
+            raise SettingError(
+                "Google OAuth connection disappeared while the sync job was running."
+            ) from exc
+
         current_updated_at = current.get("updatedAt")
         if self._loaded_updated_at is None or current_updated_at is None:
             raise SettingError("Google OAuth token row has no stable updatedAt fence.")
