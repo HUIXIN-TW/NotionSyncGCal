@@ -19,8 +19,14 @@ BASE_SETTING = {
     "default_start_time": 8,
     "gcal_name_dict": {"TestCal": "test@gmail.com"},
     "gcal_id_dict": {"test@gmail.com": "TestCal"},
-    "calendar_ids": ["test@gmail.com"],
+    "owner_user_uuid": "local-user",
+    "settings_version": 1,
     "source_id": "source-1",
+    "source_version": 1,
+    "mapping_id": "mapping-1",
+    "mapping_version": 1,
+    "calendar_id": "test@gmail.com",
+    "calendar_ids": ["test@gmail.com"],
     "page_property": {
         "Task_Notion_Name": "Task Name",
         "Date_Notion_Name": "Date",
@@ -82,7 +88,7 @@ class MainCliOverrideTests(unittest.TestCase):
     def test_default_run_uses_loaded_setting_without_override(self):
         result, setting, mock_sync = self._run_main_with_args(
             [],
-            "sync.sync.synchronize_notion_and_google_calendar",
+            "sync.sync.project_notion_to_google_calendar",
         )
 
         self.assertEqual(result["statusCode"], 200)
@@ -94,7 +100,7 @@ class MainCliOverrideTests(unittest.TestCase):
     def test_timestamp_flag_applies_date_range_in_memory(self):
         result, setting, mock_sync = self._run_main_with_args(
             ["-t", "3", "9"],
-            "sync.sync.synchronize_notion_and_google_calendar",
+            "sync.sync.project_notion_to_google_calendar",
         )
 
         self.assertEqual(result["statusCode"], 200)
@@ -104,21 +110,14 @@ class MainCliOverrideTests(unittest.TestCase):
         self.assertTrue(setting["google_timemax"].endswith("+08:00"))
         self.assertIs(mock_sync.call_args.kwargs["user_setting"], setting)
 
-    def test_google_force_flag_uses_in_memory_setting_dict(self):
-        result, setting, mock_sync = self._run_main_with_args(
-            ["-g", "4", "10"],
-            ("sync.sync." "force_update_notion_tasks_by_google_event_and_ignore_time"),
-        )
-
-        self.assertEqual(result["statusCode"], 200)
-        self.assertEqual(setting["goback_days"], 4)
-        self.assertEqual(setting["goforward_days"], 10)
-        self.assertIs(mock_sync.call_args.kwargs["user_setting"], setting)
+    def test_google_force_flag_is_removed(self):
+        with self.assertRaises(SystemExit):
+            main_module._parse_args(["--google", "4", "10"])
 
     def test_notion_force_flag_uses_in_memory_setting_dict(self):
         result, setting, mock_sync = self._run_main_with_args(
             ["-n", "6", "12"],
-            ("sync.sync." "force_update_google_event_by_notion_task_and_ignore_time"),
+            "sync.sync.project_notion_to_google_calendar",
         )
 
         self.assertEqual(result["statusCode"], 200)
