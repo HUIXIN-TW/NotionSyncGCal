@@ -22,9 +22,6 @@ SETTING = {
         "Task_Notion_Name": "task-id",
         "Date_Notion_Name": "date-id",
         "GCal_End_Date_Notion_Name": "end-id",
-        "GCal_EventId_Notion_Name": "event-id",
-        "GCal_Sync_Time_Notion_Name": "sync-id",
-        "GCal_Name_Notion_Name": "calendar-id",
     },
 }
 
@@ -46,14 +43,14 @@ class NotionServiceMappingContractTests(unittest.TestCase):
         self.assertEqual(filters[0]["property"], "date-id")
         self.assertEqual(filters[1]["property"], "end-id")
 
-    def test_updates_use_stable_provider_property_ids(self):
+    def test_query_path_does_not_write_notion_pages(self):
         service, client = self.make_service()
+        client.request.return_value = {"results": [], "has_more": False}
 
-        service.update_notion_task_for_new_gcal_event_id("page-id", "event-123")
+        service.get_notion_task()
 
-        properties = client.pages.update.call_args.kwargs["properties"]
-        self.assertEqual(list(properties), ["event-id"])
-        self.assertEqual(properties["event-id"]["rich_text"][0]["text"]["content"], "event-123")
+        client.pages.update.assert_not_called()
+        client.pages.create.assert_not_called()
 
 
 if __name__ == "__main__":
