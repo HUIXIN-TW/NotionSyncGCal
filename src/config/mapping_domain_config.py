@@ -242,13 +242,22 @@ class MappingDomainConfig:
             if semantic_key not in TASK_PROPERTY_POLICY:
                 continue
             runtime_key, expected_type = TASK_PROPERTY_POLICY[semantic_key]
-            mapping = _require_dict(raw_mapping, f"propertyMappings.{semantic_key}")
-            property_id = _require_string(mapping.get("propertyId"), f"propertyMappings.{semantic_key}.propertyId")
+            property_mapping = _require_dict(
+                raw_mapping,
+                f"propertyMappings.{semantic_key}",
+            )
+            property_id = _require_string(
+                property_mapping.get("propertyId"),
+                f"propertyMappings.{semantic_key}.propertyId",
+            )
             property_type = _require_string(
-                mapping.get("propertyType"), f"propertyMappings.{semantic_key}.propertyType"
+                property_mapping.get("propertyType"),
+                f"propertyMappings.{semantic_key}.propertyType",
             )
             if property_type != expected_type:
-                raise SettingError(f"propertyMappings.{semantic_key} must be {expected_type}, got {property_type}.")
+                raise SettingError(
+                    f"propertyMappings.{semantic_key} must be {expected_type}, got {property_type}."
+                )
             page_property[runtime_key] = property_id
 
         calendar_id = _require_string(mapping.get("calendarId"), "calendarMapping.calendarId")
