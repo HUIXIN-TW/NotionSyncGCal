@@ -67,7 +67,6 @@ def calendar_mapping(source_id="source-1", calendar_id="calendar-1", owner="user
 def contract(owner="user-1"):
     return {
         "settings": {
-            "schemaVersion": 2,
             "ownerUserUuid": owner,
             "timeZone": "Australia/Perth",
             "version": 1,
@@ -103,6 +102,12 @@ class MappingDomainConfigLocalTests(unittest.TestCase):
         self.assertEqual(settings[0]["page_property"]["Task_Notion_Name"], "task-id")
         self.assertEqual(settings[0]["calendar_ids"], ["calendar-1"])
         self.assertNotIn("timecode", settings[0])
+
+    def test_rejects_missing_required_settings_shape(self):
+        payload = contract(owner="local-user")
+        del payload["settings"]["timeZone"]
+        with self.assertRaisesRegex(SettingError, "settings.timeZone"):
+            self.load(payload)
 
     def test_filters_disabled_sources_and_mappings(self):
         payload = contract(owner="local-user")

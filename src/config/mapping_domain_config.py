@@ -159,8 +159,6 @@ class MappingDomainConfig:
         owner = self.owner_user_uuid
 
         _validate_owner(settings, owner, "settings")
-        if settings.get("schemaVersion") != 2:
-            raise SettingError("settings.schemaVersion must be 2.")
         timezone = _require_string(settings.get("timeZone"), "settings.timeZone")
         try:
             ZoneInfo(timezone)
