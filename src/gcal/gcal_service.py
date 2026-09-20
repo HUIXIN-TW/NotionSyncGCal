@@ -43,6 +43,12 @@ class GoogleService:
             ) from exc
         if calendar.get("id") != self.calendar_id:
             raise SettingError("Google Calendar lookup returned an unexpected Calendar ID.")
+
+        access_role = calendar.get("accessRole")
+        if access_role not in {"owner", "writer"}:
+            raise SettingError(
+                f"Configured Google Calendar is not writable: accessRole={access_role!r}."
+            )
         return True
 
     # Compatibility alias for older callers/tests while routing no longer uses names.
