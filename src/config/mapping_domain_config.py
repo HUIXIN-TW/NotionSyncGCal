@@ -303,10 +303,16 @@ class MappingDomainConfig:
             "execution.contractVersion",
             minimum=1,
         )
-        if contract_version != 1:
+        if contract_version != 2:
             raise SettingError(
                 f"Unsupported sync execution contract version: {contract_version}."
             )
+
+        admission_started_at_ms = _require_int(
+            fence.get("admissionStartedAtMs"),
+            "execution.admissionStartedAtMs",
+            minimum=0,
+        )
 
         owner = _require_string(fence.get("ownerUserUuid"), "execution.ownerUserUuid")
         if owner != self.owner_user_uuid:
@@ -369,6 +375,7 @@ class MappingDomainConfig:
 
             setting["operation_id"] = operation_id
             setting["execution_contract_version"] = contract_version
+            setting["admission_started_at_ms"] = admission_started_at_ms
 
     def revalidate_source(self, setting):
         """Strongly re-read the exact execution snapshot before provider mutation."""
