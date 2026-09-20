@@ -48,7 +48,6 @@ def task_source(source_id="source-1", owner="user-1", lifecycle="active", databa
             "googleCalendarSyncTime": property_mapping("sync-id", "rich_text"),
             "googleCalendarEndDate": property_mapping("end-id", "formula"),
         },
-        "createdAtMs": 1,
         "updatedAtMs": 1,
     }
 
@@ -61,7 +60,6 @@ def calendar_mapping(source_id="source-1", calendar_id="calendar-1", owner="user
         "calendarId": calendar_id,
         "lifecycle": lifecycle,
         "version": 1,
-        "createdAtMs": 1,
         "updatedAtMs": 1,
     }
 

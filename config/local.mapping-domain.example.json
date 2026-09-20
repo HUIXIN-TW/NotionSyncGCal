@@ -75,7 +75,6 @@
           "propertyType": "formula"
         }
       },
-      "createdAtMs": 0,
       "updatedAtMs": 0
     }
   ],
@@ -87,7 +86,6 @@
       "calendarId": "your_calendar_id@gmail.com",
       "lifecycle": "active",
       "version": 1,
-      "createdAtMs": 0,
       "updatedAtMs": 0
     }
   ]
