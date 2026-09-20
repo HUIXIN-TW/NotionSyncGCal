@@ -8,7 +8,10 @@ SRC_ROOT = Path(__file__).resolve().parents[1] / "src"
 sys.path.insert(0, str(SRC_ROOT))
 
 from sync.contracts import StaleExecutionError  # noqa: E402
-from sync.projection_identity import ProjectionIdentityError  # noqa: E402
+from sync.projection_identity import (  # noqa: E402
+    ProjectionIdentityError,
+    build_projection_identity,
+)
 from sync.sync import (  # noqa: E402
     force_update_notion_tasks_by_google_event_and_ignore_time,
     project_notion_to_google_calendar,
@@ -42,6 +45,14 @@ def _task(task_id, *, deleted=False):
             "Date": {"date": {"start": "2026-09-20"}},
             "Delete": {"checkbox": deleted},
         },
+    }
+
+
+def _owned_event(task_id):
+    projection = build_projection_identity(SETTING, task_id)
+    return {
+        "id": projection["event_id"],
+        "extendedProperties": {"private": dict(projection["private"])},
     }
 
 
@@ -146,6 +157,58 @@ class OneWayProjectionTests(unittest.TestCase):
         notion.update_notion_task.assert_not_called()
         notion.create_notion_task.assert_not_called()
 
+
+    def test_missing_notion_task_retires_owned_projection_in_current_window(self):
+        notion = MagicMock()
+        google = MagicMock()
+        notion.get_notion_task.return_value = ({}, [])
+        google.get_gcal_event.return_value = [_owned_event(TASK_ONE)]
+
+        result = project_notion_to_google_calendar(
+            copy.deepcopy(SETTING),
+            notion,
+            google,
+        )
+
+        self.assertEqual(result["statusCode"], 200)
+        google.delete_projection.assert_called_once_with(
+            build_projection_identity(SETTING, TASK_ONE)
+        )
+
+    def test_current_notion_task_is_not_retired_during_inventory(self):
+        notion = MagicMock()
+        google = MagicMock()
+        notion.get_notion_task.return_value = ({}, [_task(TASK_ONE)])
+        google.get_gcal_event.return_value = [_owned_event(TASK_ONE)]
+
+        project_notion_to_google_calendar(copy.deepcopy(SETTING), notion, google)
+
+        google.upsert_projection.assert_called_once()
+        google.delete_projection.assert_not_called()
+
+    def test_incomplete_tagged_event_is_ignored_without_provider_mutation(self):
+        notion = MagicMock()
+        google = MagicMock()
+        notion.get_notion_task.return_value = ({}, [])
+        google.get_gcal_event.return_value = [
+            {
+                "id": "legacy-event",
+                "extendedProperties": {
+                    "private": {"noticaMapping": "mapping-1"}
+                },
+            }
+        ]
+
+        result = project_notion_to_google_calendar(
+            copy.deepcopy(SETTING),
+            notion,
+            google,
+        )
+
+        google.delete_projection.assert_not_called()
+        error = result["body"]["message"]["errors"][0]
+        self.assertEqual(error["error_code"], "projection_identity_mismatch")
+        self.assertFalse(error["retriable"])
 
 if __name__ == "__main__":
     unittest.main()
