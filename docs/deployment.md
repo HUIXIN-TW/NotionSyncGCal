@@ -99,11 +99,11 @@ Cloud Lambda resolves secret values from SSM at runtime and should not require p
 The Lambda role needs least-privilege `dynamodb:GetItem`/`dynamodb:Query` access to `DYNAMODB_MAPPING_DOMAIN_TABLE` and `SourceMappingsIndex`. This document is not deployment evidence; verify the environment and IAM wiring before the canary run.
 
 Lambda execution role must allow:
-- `ssm:GetParameter` on:
-  - `arn:aws:ssm:ap-southeast-2:217248978496:parameter/dev/notica/google_calendar_client_secret`
-  - `arn:aws:ssm:ap-southeast-2:217248978496:parameter/dev/notica/token_encryption_key`
+- `ssm:GetParameter` only for the application parameters it reads, for example:
+  - `arn:aws:ssm:<region>:<account-id>:parameter/<environment>/<service>/google_calendar_client_secret`
+  - `arn:aws:ssm:<region>:<account-id>:parameter/<environment>/<service>/token_encryption_key`
 
-If the SecureString parameters use a customer-managed KMS key, also allow `kms:Decrypt` for that key.
+Keep real account IDs, parameter paths, role ARNs, and other environment-specific resource identifiers out of public documentation. If the SecureString parameters use a customer-managed KMS key, also allow `kms:Decrypt` only for that key.
 
 ## Production Image Publish
 
