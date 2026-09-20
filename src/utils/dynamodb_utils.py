@@ -200,6 +200,30 @@ def list_mapping_domain_task_sources(uuid: str) -> list[dict]:
     )
 
 
+def get_mapping_domain_task_source(uuid: str, source_id: str) -> dict:
+    table = _get_mapping_domain_table()
+    response = table.get_item(
+        Key={"pk": f"USER#{uuid}", "sk": f"NOTION_TASK_SOURCE#{source_id}"},
+        ConsistentRead=True,
+    )
+    item = response.get("Item")
+    if not item:
+        raise ValueError(f"No Task source {source_id} found for uuid: {uuid}")
+    return item
+
+
+def get_mapping_domain_calendar_mapping(uuid: str, mapping_id: str) -> dict:
+    table = _get_mapping_domain_table()
+    response = table.get_item(
+        Key={"pk": f"USER#{uuid}", "sk": f"CALENDAR_MAPPING#{mapping_id}"},
+        ConsistentRead=True,
+    )
+    item = response.get("Item")
+    if not item:
+        raise ValueError(f"No Calendar mapping {mapping_id} found for uuid: {uuid}")
+    return item
+
+
 def list_mapping_domain_calendar_mappings(uuid: str, source_id: str) -> list[dict]:
     table = _get_mapping_domain_table()
     return _query_all(
@@ -238,6 +262,8 @@ __all__ = [
     "GoogleTokenWriteConflictError",
     "update_google_token_by_uuid",
     "get_mapping_domain_settings",
+    "get_mapping_domain_task_source",
+    "get_mapping_domain_calendar_mapping",
     "list_mapping_domain_task_sources",
     "list_mapping_domain_calendar_mappings",
     "list_mapping_domain_calendar_mappings_for_owner",
