@@ -892,5 +892,48 @@ class TestGoogleTokenUnknownMode(unittest.TestCase):
             GoogleToken({"mode": None}, _make_logger())
 
 
+class TestGoogleTokenBindingFence(unittest.TestCase):
+    def _token(self, *, mode="cloud", updated_at="1710000000000"):
+        token = GoogleToken.__new__(GoogleToken)
+        token.mode = mode
+        token.config = {"mode": mode, "uuid": "user-1"}
+        token._loaded_updated_at = updated_at
+        return token
+
+    def test_current_cloud_binding_uses_strong_read(self):
+        token = self._token()
+        with patch(
+            "utils.dynamodb_utils.get_google_token_by_uuid",
+            return_value={"updatedAt": "1710000000000"},
+        ) as loader:
+            token.assert_current_binding()
+
+        loader.assert_called_once_with("user-1", consistent_read=True)
+
+    def test_changed_cloud_binding_fails_closed(self):
+        token = self._token()
+        with patch(
+            "utils.dynamodb_utils.get_google_token_by_uuid",
+            return_value={"updatedAt": "1710000009999"},
+        ):
+            with self.assertRaisesRegex(SettingError, "connection changed"):
+                token.assert_current_binding()
+
+    def test_missing_binding_version_fails_closed(self):
+        token = self._token(updated_at=None)
+        with patch(
+            "utils.dynamodb_utils.get_google_token_by_uuid",
+            return_value={"updatedAt": "1710000000000"},
+        ):
+            with self.assertRaisesRegex(SettingError, "stable updatedAt"):
+                token.assert_current_binding()
+
+    def test_local_mode_has_no_persisted_binding_fence(self):
+        token = self._token(mode="local")
+        with patch("utils.dynamodb_utils.get_google_token_by_uuid") as loader:
+            token.assert_current_binding()
+        loader.assert_not_called()
+
+
 if __name__ == "__main__":
     unittest.main()
