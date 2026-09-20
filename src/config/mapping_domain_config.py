@@ -368,5 +368,75 @@ class MappingDomainConfig:
             setting["operation_id"] = operation_id
             setting["execution_contract_version"] = contract_version
 
+    def revalidate_source(self, setting):
+        """Strongly re-read the exact execution snapshot before provider mutation."""
+        if self.mode != "cloud":
+            return
+
+        from utils.dynamodb_utils import (
+            get_mapping_domain_calendar_mapping,
+            get_mapping_domain_settings,
+            get_mapping_domain_task_source,
+            list_mapping_domain_calendar_mappings_for_owner,
+        )
+
+        owner = _require_string(setting.get("owner_user_uuid"), "owner_user_uuid")
+        if owner != self.owner_user_uuid:
+            raise SettingError("Source execution snapshot belongs to a different owner.")
+
+        source_id = _require_string(setting.get("source_id"), "source_id")
+        mapping_id = _require_string(setting.get("mapping_id"), "mapping_id")
+        expected_calendar_id = _require_string(setting.get("calendar_id"), "calendar_id")
+
+        settings = _require_dict(get_mapping_domain_settings(owner), "settings")
+        _validate_owner(settings, owner, "settings")
+        if _require_int(settings.get("version"), "settings.version", minimum=1) != setting.get("settings_version"):
+            raise SettingError("Notion settings changed while the sync job was running.")
+        if _require_string(settings.get("timeZone"), "settings.timeZone") != setting.get("timezone"):
+            raise SettingError("Notion timezone changed while the sync job was running.")
+
+        source = _require_dict(get_mapping_domain_task_source(owner, source_id), "taskSource")
+        _validate_owner(source, owner, "taskSource")
+        if _require_string(source.get("id"), "taskSource.id") != source_id:
+            raise SettingError("Task source identity changed while the sync job was running.")
+        if _require_string(source.get("lifecycle"), "taskSource.lifecycle") != "active":
+            raise SettingError("Task source is no longer active.")
+        if _require_int(source.get("version"), "taskSource.version", minimum=1) != setting.get("source_version"):
+            raise SettingError("Task source changed while the sync job was running.")
+
+        database = _require_dict(source.get("database"), "taskSource.database")
+        if _require_string(database.get("externalId"), "taskSource.database.externalId") != setting.get("database_id"):
+            raise SettingError("Task source database changed while the sync job was running.")
+
+        mapping = _require_dict(
+            get_mapping_domain_calendar_mapping(owner, mapping_id),
+            "calendarMapping",
+        )
+        _validate_owner(mapping, owner, "calendarMapping")
+        if _require_string(mapping.get("id"), "calendarMapping.id") != mapping_id:
+            raise SettingError("Calendar mapping identity changed while the sync job was running.")
+        if _require_string(mapping.get("sourceId"), "calendarMapping.sourceId") != source_id:
+            raise SettingError("Calendar mapping source changed while the sync job was running.")
+        if _require_string(mapping.get("lifecycle"), "calendarMapping.lifecycle") != "active":
+            raise SettingError("Calendar mapping is no longer active.")
+        if _require_int(mapping.get("version"), "calendarMapping.version", minimum=1) != setting.get("mapping_version"):
+            raise SettingError("Calendar mapping changed while the sync job was running.")
+        if _require_string(mapping.get("calendarId"), "calendarMapping.calendarId") != expected_calendar_id:
+            raise SettingError("Calendar target changed while the sync job was running.")
+
+        active_for_source = []
+        for raw_mapping in list_mapping_domain_calendar_mappings_for_owner(owner):
+            candidate = _require_dict(raw_mapping, "calendarMapping")
+            if (
+                candidate.get("sourceId") == source_id
+                and candidate.get("lifecycle") == "active"
+            ):
+                active_for_source.append(candidate)
+
+        if len(active_for_source) != 1 or active_for_source[0].get("id") != mapping_id:
+            raise SettingError(
+                "Task source no longer has exactly one authoritative active Calendar mapping."
+            )
+
     def get(self):
         return deepcopy(self.source_settings)
