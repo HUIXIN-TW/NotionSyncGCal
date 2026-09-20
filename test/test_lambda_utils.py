@@ -167,7 +167,7 @@ class TestProcessSqsRecords(unittest.TestCase):
         self.logger = _make_logger()
         self.start = datetime.now(timezone.utc)
 
-    def _run_sync(self, uuid):
+    def _run_sync(self, uuid, execution=None):  # noqa: ARG002
         return _ok_sync_result()
 
     def _process(self, uuids):
@@ -186,6 +186,37 @@ class TestProcessSqsRecords(unittest.TestCase):
         self.assertEqual(mock_save.call_count, len(uuids))
         saved_uuids = [c[0][0] for c in mock_save.call_args_list]
         self.assertEqual(saved_uuids, uuids)
+
+    def test_sqs_forwards_backend_execution_fence(self):
+        execution = {
+            "contractVersion": 1,
+            "operationId": "operation-1",
+            "ownerUserUuid": "uuid-001",
+            "settingsVersion": 1,
+            "taskSources": [],
+        }
+        event = _make_sqs_event(["uuid-001"])
+        body = json.loads(event["Records"][0]["body"])
+        body["execution"] = execution
+        event["Records"][0]["body"] = json.dumps(body)
+        seen = {}
+
+        def run_sync(uuid, execution=None):
+            seen["uuid"] = uuid
+            seen["execution"] = execution
+            return _ok_sync_result()
+
+        with patch.object(lambda_utils, "_save_sync_logs"):
+            result = lambda_utils.process_sqs_records(
+                logger_obj=self.logger,
+                event=event,
+                context=self.ctx,
+                run_sync=run_sync,
+                lambda_start_time=self.start,
+            )
+
+        self.assertEqual(seen, {"uuid": "uuid-001", "execution": execution})
+        self.assertEqual(result["batchItemFailures"], [])
 
     def test_save_sync_logs_never_called_with_batch_sentinel(self):
         with patch.object(lambda_utils, "_save_sync_logs") as mock_save:
@@ -212,7 +243,7 @@ class TestProcessSqsRecords(unittest.TestCase):
     def test_record_exception_returns_partial_batch_failure(self):
         event = _make_sqs_event(["uuid-ok", "uuid-boom"])
 
-        def run_sync(uuid):
+        def run_sync(uuid, execution=None):  # noqa: ARG002
             if uuid == "uuid-boom":
                 raise RuntimeError("sync exploded")
             return _ok_sync_result()
@@ -233,7 +264,7 @@ class TestProcessSqsRecords(unittest.TestCase):
     def test_retryable_500_result_returns_partial_batch_failure(self):
         event = _make_sqs_event(["uuid-fail"])
 
-        def run_sync(uuid):  # noqa: ARG001
+        def run_sync(uuid, execution=None):  # noqa: ARG002  # noqa: ARG001
             return {
                 "statusCode": 500,
                 "body": {
@@ -258,7 +289,7 @@ class TestProcessSqsRecords(unittest.TestCase):
     def test_retryable_task_error_is_not_counted_as_success(self):
         event = _make_sqs_event(["uuid-fail"])
 
-        def run_sync(uuid):  # noqa: ARG001
+        def run_sync(uuid, execution=None):  # noqa: ARG002  # noqa: ARG001
             return {
                 "statusCode": 200,
                 "body": {
@@ -292,7 +323,7 @@ class TestProcessSqsRecords(unittest.TestCase):
     def test_non_retriable_capacity_limit_result_is_acked_and_counted_as_success(self):
         event = _make_sqs_event(["uuid-cap"])
 
-        def run_sync(uuid):  # noqa: ARG001
+        def run_sync(uuid, execution=None):  # noqa: ARG002  # noqa: ARG001
             return {
                 "statusCode": 200,
                 "body": {
@@ -326,7 +357,7 @@ class TestProcessSqsRecords(unittest.TestCase):
     def test_non_retriable_configuration_failure_is_acked_and_counted_as_failure(self):
         event = _make_sqs_event(["uuid-invalid-config"])
 
-        def run_sync(uuid):  # noqa: ARG001
+        def run_sync(uuid, execution=None):  # noqa: ARG002  # noqa: ARG001
             return {
                 "statusCode": 409,
                 "body": {
@@ -357,7 +388,7 @@ class TestProcessSqsRecords(unittest.TestCase):
     def test_retriable_sync_error_in_200_result_returns_partial_batch_failure(self):
         event = _make_sqs_event(["uuid-retry"])
 
-        def run_sync(uuid):  # noqa: ARG001
+        def run_sync(uuid, execution=None):  # noqa: ARG002  # noqa: ARG001
             return {
                 "statusCode": 200,
                 "body": {
@@ -398,7 +429,7 @@ class TestProcessSqsRecords(unittest.TestCase):
     def test_mixed_batch_only_retries_failed_records(self):
         event = _make_sqs_event(["uuid-ok", "uuid-fail", "uuid-ok-2"])
 
-        def run_sync(uuid):
+        def run_sync(uuid, execution=None):  # noqa: ARG002
             if uuid == "uuid-fail":
                 return {
                     "statusCode": 500,
@@ -465,7 +496,7 @@ class TestProcessEventBridgeEvent(unittest.TestCase):
                     logger_obj=self.logger,
                     event=self.event,
                     context=self.ctx,
-                    run_sync=lambda uuid: sync_result,  # noqa: ARG005
+                    run_sync=lambda uuid, execution=None: sync_result,  # noqa: ARG005
                     lambda_start_time=self.start,
                 )
 
@@ -475,7 +506,7 @@ class TestProcessEventBridgeEvent(unittest.TestCase):
                 logger_obj=self.logger,
                 event=self.event,
                 context=self.ctx,
-                run_sync=lambda uuid: _ok_sync_result(),  # noqa: ARG005
+                run_sync=lambda uuid, execution=None: _ok_sync_result(),  # noqa: ARG005
                 lambda_start_time=self.start,
             )
 
