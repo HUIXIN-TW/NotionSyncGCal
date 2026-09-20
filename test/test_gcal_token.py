@@ -898,7 +898,22 @@ class TestGoogleTokenBindingFence(unittest.TestCase):
         token.mode = mode
         token.config = {"mode": mode, "uuid": "user-1"}
         token._loaded_updated_at = updated_at
+        token._initial_loaded_updated_at = updated_at
         return token
+
+    def test_provider_binding_loaded_before_admission_is_accepted(self):
+        token = self._token(updated_at="1789919999999")
+        token.assert_admission_binding(1789920000000)
+
+    def test_provider_binding_changed_after_admission_is_rejected(self):
+        token = self._token(updated_at="1789920000001")
+        with self.assertRaisesRegex(SettingError, "after the sync job was admitted"):
+            token.assert_admission_binding(1789920000000)
+
+    def test_missing_admission_binding_version_is_rejected(self):
+        token = self._token(updated_at=None)
+        with self.assertRaisesRegex(SettingError, "admission updatedAt"):
+            token.assert_admission_binding(1789920000000)
 
     def test_current_cloud_binding_uses_strong_read(self):
         token = self._token()
