@@ -127,7 +127,7 @@ class MappingDomainConfigLocalTests(unittest.TestCase):
 
     def test_rejects_missing_sync_required_mapping(self):
         payload = contract(owner="local-user")
-        del payload["taskSources"][0]["propertyMappings"]["googleCalendarEventId"]
+        del payload["taskSources"][0]["propertyMappings"]["googleCalendarEndDate"]
         with self.assertRaisesRegex(SettingError, "not sync-ready"):
             self.load(payload)
 
