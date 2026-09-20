@@ -169,12 +169,12 @@ def _aggregate_source_results(source_results):
     )
 
 
-def main(uuid: str | None = None) -> dict:
+def main(uuid: str | None = None, execution: dict | None = None) -> dict:
     logger = get_logger(__name__)
 
     try:
         config = generate_config(uuid)
-        source_settings = MappingDomainConfig(config, logger).get()
+        source_settings = MappingDomainConfig(config, logger, execution_fence=execution).get()
         notion_token = NotionToken(config, logger).get()
         google_token = GoogleToken(config, logger)
     except RefreshError as e:
