@@ -84,7 +84,8 @@ class GoogleCalendarTargetTests(unittest.TestCase):
     def test_validates_target_by_immutable_calendar_id(self):
         service, api, _ = _service()
         api.calendarList.return_value.get.return_value.execute.return_value = {
-            "id": "calendar@example.com"
+            "id": "calendar@example.com",
+            "accessRole": "writer",
         }
 
         self.assertTrue(service.validate_calendar_access())
@@ -95,10 +96,21 @@ class GoogleCalendarTargetTests(unittest.TestCase):
     def test_rejects_unexpected_calendar_identity(self):
         service, api, _ = _service()
         api.calendarList.return_value.get.return_value.execute.return_value = {
-            "id": "other@example.com"
+            "id": "other@example.com",
+            "accessRole": "writer",
         }
 
         with self.assertRaisesRegex(SettingError, "unexpected Calendar ID"):
+            service.validate_calendar_access()
+
+    def test_rejects_calendar_that_is_no_longer_writable(self):
+        service, api, _ = _service()
+        api.calendarList.return_value.get.return_value.execute.return_value = {
+            "id": "calendar@example.com",
+            "accessRole": "reader",
+        }
+
+        with self.assertRaisesRegex(SettingError, "not writable"):
             service.validate_calendar_access()
 
 
