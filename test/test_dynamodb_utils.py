@@ -14,7 +14,9 @@ sys.modules.setdefault("boto3", boto3_module)
 from utils.dynamodb_utils import (  # noqa: E402
     GoogleTokenWriteConflictError,
     get_google_token_by_uuid,
+    get_mapping_domain_calendar_mapping,
     get_mapping_domain_settings,
+    get_mapping_domain_task_source,
     list_mapping_domain_calendar_mappings,
     list_mapping_domain_calendar_mappings_for_owner,
     list_mapping_domain_task_sources,
@@ -161,6 +163,36 @@ class DynamoDbMappingDomainTests(unittest.TestCase):
         self.assertEqual(result["ownerUserUuid"], "user-1")
         table.get_item.assert_called_once_with(
             Key={"pk": "USER#user-1", "sk": "NOTION_SETTINGS"},
+            ConsistentRead=True,
+        )
+
+    def test_gets_exact_task_source_with_consistent_read(self):
+        table = MagicMock()
+        table.get_item.return_value = {"Item": {"id": "source-1"}}
+        with patch("utils.dynamodb_utils._get_mapping_domain_table", return_value=table):
+            result = get_mapping_domain_task_source("user-1", "source-1")
+
+        self.assertEqual(result["id"], "source-1")
+        table.get_item.assert_called_once_with(
+            Key={
+                "pk": "USER#user-1",
+                "sk": "NOTION_TASK_SOURCE#source-1",
+            },
+            ConsistentRead=True,
+        )
+
+    def test_gets_exact_calendar_mapping_with_consistent_read(self):
+        table = MagicMock()
+        table.get_item.return_value = {"Item": {"id": "mapping-1"}}
+        with patch("utils.dynamodb_utils._get_mapping_domain_table", return_value=table):
+            result = get_mapping_domain_calendar_mapping("user-1", "mapping-1")
+
+        self.assertEqual(result["id"], "mapping-1")
+        table.get_item.assert_called_once_with(
+            Key={
+                "pk": "USER#user-1",
+                "sk": "CALENDAR_MAPPING#mapping-1",
+            },
             ConsistentRead=True,
         )
 
