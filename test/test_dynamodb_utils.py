@@ -16,6 +16,7 @@ from utils.dynamodb_utils import (  # noqa: E402
     get_google_token_by_uuid,
     get_mapping_domain_settings,
     list_mapping_domain_calendar_mappings,
+    list_mapping_domain_calendar_mappings_for_owner,
     list_mapping_domain_task_sources,
     update_google_token_by_uuid,
 )
@@ -197,6 +198,26 @@ class DynamoDbMappingDomainTests(unittest.TestCase):
             "USER#user-1#TASK_SOURCE#source-1",
         )
         self.assertNotIn("ConsistentRead", kwargs)
+
+    def test_lists_calendar_mappings_for_owner_with_consistent_base_query(self):
+        table = MagicMock()
+        table.query.side_effect = [
+            {"Items": [{"id": "mapping-1"}], "LastEvaluatedKey": {"pk": "next"}},
+            {"Items": [{"id": "mapping-2"}]},
+        ]
+        with patch("utils.dynamodb_utils._get_mapping_domain_table", return_value=table):
+            result = list_mapping_domain_calendar_mappings_for_owner("user-1")
+
+        self.assertEqual([item["id"] for item in result], ["mapping-1", "mapping-2"])
+        first = table.query.call_args_list[0].kwargs
+        self.assertTrue(first["ConsistentRead"])
+        self.assertNotIn("IndexName", first)
+        self.assertEqual(first["ExpressionAttributeValues"][":pk"], "USER#user-1")
+        self.assertEqual(first["ExpressionAttributeValues"][":mappingPrefix"], "CALENDAR_MAPPING#")
+        self.assertEqual(
+            table.query.call_args_list[1].kwargs["ExclusiveStartKey"],
+            {"pk": "next"},
+        )
 
 
 if __name__ == "__main__":
