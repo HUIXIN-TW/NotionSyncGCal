@@ -36,6 +36,7 @@ class GoogleToken:
         self.mode = config.get("mode")
         self.logger = logger
         self._loaded_updated_at = None
+        self._initial_loaded_updated_at = None
         self.activate_token()
 
     def activate_token(self):
@@ -57,7 +58,10 @@ class GoogleToken:
 
                 self.logger.debug("Loading credentials from DynamoDB")
                 data = get_google_token_by_uuid(self.config.get("uuid"), consistent_read=consistent_read)
-                self._loaded_updated_at = data.get("updatedAt")
+                loaded_updated_at = data.get("updatedAt")
+                self._loaded_updated_at = loaded_updated_at
+                if self._initial_loaded_updated_at is None:
+                    self._initial_loaded_updated_at = loaded_updated_at
                 try:
                     access_token = decrypt_token(data.get("accessToken"))
                     refresh_token = decrypt_token(data.get("refreshToken"))
@@ -193,6 +197,30 @@ class GoogleToken:
         except Exception as e:
             self.logger.error(f"Error saving credentials: {e}")
             raise SettingError(f"Error saving credentials: {e}")
+
+    def assert_admission_binding(self, admission_started_at_ms):
+        """Reject a provider row that changed after backend admission began."""
+        if self.mode != "cloud":
+            return
+
+        if isinstance(admission_started_at_ms, bool) or not isinstance(
+            admission_started_at_ms,
+            int,
+        ):
+            raise SettingError("Sync admission provider fence is invalid.")
+
+        if self._initial_loaded_updated_at is None:
+            raise SettingError("Google OAuth token row has no admission updatedAt fence.")
+
+        try:
+            loaded_updated_at_ms = int(self._initial_loaded_updated_at)
+        except (TypeError, ValueError) as exc:
+            raise SettingError("Google OAuth token updatedAt is invalid.") from exc
+
+        if loaded_updated_at_ms > admission_started_at_ms:
+            raise SettingError(
+                "Google OAuth connection changed after the sync job was admitted."
+            )
 
     def assert_current_binding(self):
         """Fail closed if the persisted Google OAuth row changed during this job."""
