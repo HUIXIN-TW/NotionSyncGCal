@@ -390,14 +390,28 @@ class MappingDomainConfig:
         mapping_id = _require_string(setting.get("mapping_id"), "mapping_id")
         expected_calendar_id = _require_string(setting.get("calendar_id"), "calendar_id")
 
-        settings = _require_dict(get_mapping_domain_settings(owner), "settings")
+        try:
+            settings = _require_dict(get_mapping_domain_settings(owner), "settings")
+            source = _require_dict(
+                get_mapping_domain_task_source(owner, source_id),
+                "taskSource",
+            )
+            mapping = _require_dict(
+                get_mapping_domain_calendar_mapping(owner, mapping_id),
+                "calendarMapping",
+            )
+            owner_mappings = list_mapping_domain_calendar_mappings_for_owner(owner)
+        except ValueError as exc:
+            raise SettingError(
+                "Authoritative sync configuration disappeared while the job was running."
+            ) from exc
+
         _validate_owner(settings, owner, "settings")
         if _require_int(settings.get("version"), "settings.version", minimum=1) != setting.get("settings_version"):
             raise SettingError("Notion settings changed while the sync job was running.")
         if _require_string(settings.get("timeZone"), "settings.timeZone") != setting.get("timezone"):
             raise SettingError("Notion timezone changed while the sync job was running.")
 
-        source = _require_dict(get_mapping_domain_task_source(owner, source_id), "taskSource")
         _validate_owner(source, owner, "taskSource")
         if _require_string(source.get("id"), "taskSource.id") != source_id:
             raise SettingError("Task source identity changed while the sync job was running.")
@@ -410,10 +424,6 @@ class MappingDomainConfig:
         if _require_string(database.get("externalId"), "taskSource.database.externalId") != setting.get("database_id"):
             raise SettingError("Task source database changed while the sync job was running.")
 
-        mapping = _require_dict(
-            get_mapping_domain_calendar_mapping(owner, mapping_id),
-            "calendarMapping",
-        )
         _validate_owner(mapping, owner, "calendarMapping")
         if _require_string(mapping.get("id"), "calendarMapping.id") != mapping_id:
             raise SettingError("Calendar mapping identity changed while the sync job was running.")
@@ -427,7 +437,7 @@ class MappingDomainConfig:
             raise SettingError("Calendar target changed while the sync job was running.")
 
         active_for_source = []
-        for raw_mapping in list_mapping_domain_calendar_mappings_for_owner(owner):
+        for raw_mapping in owner_mappings:
             candidate = _require_dict(raw_mapping, "calendarMapping")
             if (
                 candidate.get("sourceId") == source_id
