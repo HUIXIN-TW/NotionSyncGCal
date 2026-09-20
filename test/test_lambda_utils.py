@@ -189,8 +189,9 @@ class TestProcessSqsRecords(unittest.TestCase):
 
     def test_sqs_forwards_backend_execution_fence(self):
         execution = {
-            "contractVersion": 1,
+            "contractVersion": 2,
             "operationId": "operation-1",
+            "admissionStartedAtMs": 1789920000000,
             "ownerUserUuid": "uuid-001",
             "settingsVersion": 1,
             "taskSources": [],
