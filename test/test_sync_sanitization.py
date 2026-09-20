@@ -10,6 +10,13 @@ sys.path.insert(0, str(SRC_ROOT))
 from sync.sync import synchronize_notion_and_google_calendar  # noqa: E402
 
 USER_SETTING = {
+    "owner_user_uuid": "11111111-1111-4111-8111-111111111111",
+    "settings_version": 1,
+    "source_id": "source-1",
+    "source_version": 1,
+    "mapping_id": "mapping-1",
+    "mapping_version": 1,
+    "calendar_id": "primary@example.com",
     "page_property": {
         "Task_Notion_Name": "Task Name",
         "Date_Notion_Name": "Date",
@@ -26,7 +33,7 @@ USER_SETTING = {
 
 def _make_notion_task(event_id: str) -> dict:
     return {
-        "id": "page-123",
+        "id": "22222222-2222-4222-8222-222222222222",
         "last_edited_time": "2026-05-01T00:00:00.000Z",
         "properties": {
             "Calendar": {"select": {"name": "Primary"}},
@@ -47,20 +54,9 @@ class SyncSanitizationTests(unittest.TestCase):
             {},
             [_make_notion_task("evt-123")],
         )
-        notion_service.update_notion_task.side_effect = RuntimeError(
+        google_service.upsert_projection.side_effect = RuntimeError(
             "private provider payload: secret summary and customer data"
         )
-        google_service.get_gcal_event.return_value = [
-            {
-                "id": "evt-123",
-                "summary": "Private calendar summary",
-                "updated": "2026-05-23T00:00:00.000Z",
-                "start": {"dateTime": "2026-05-23T09:00:00+08:00"},
-                "end": {"dateTime": "2026-05-23T10:00:00+08:00"},
-                "organizer": {"email": "primary@example.com"},
-                "_notica_calendar_id": "primary@example.com",
-            }
-        ]
 
         result = synchronize_notion_and_google_calendar(
             user_setting=copy.deepcopy(USER_SETTING),
@@ -73,16 +69,19 @@ class SyncSanitizationTests(unittest.TestCase):
 
         self.assertEqual(result["statusCode"], 200)
         error = result["body"]["message"]["errors"][0]
-        self.assertEqual(error["action"], "update_notion")
+        self.assertEqual(error["action"], "upsert_gcal")
         self.assertEqual(error["error_code"], "runtime_error")
         self.assertEqual(
             error["error_message"],
             "Sync failed. See Lambda logs with aws_request_id for details.",
         )
         self.assertIsNone(error["error"])
-        self.assertEqual(error["notion_task_id"], "page-123")
-        self.assertEqual(error["gcal_event_id"], "evt-123")
-        self.assertEqual(error["gcal_event_start"], "2026-05-23T09:00:00+08:00")
+        self.assertEqual(
+            error["notion_task_id"],
+            "22222222-2222-4222-8222-222222222222",
+        )
+        self.assertTrue(error["gcal_event_id"].startswith("n"))
+        self.assertIsNone(error["gcal_event_start"])
         self.assertTrue(error["retriable"])
         self.assertNotIn("notion_task_name", error)
         self.assertNotIn("gcal_event_title", error)
@@ -95,20 +94,9 @@ class SyncSanitizationTests(unittest.TestCase):
             {},
             [_make_notion_task("evt-123")],
         )
-        notion_service.update_notion_task.side_effect = RuntimeError(
+        google_service.upsert_projection.side_effect = RuntimeError(
             "private provider payload: secret summary and customer data"
         )
-        google_service.get_gcal_event.return_value = [
-            {
-                "id": "evt-123",
-                "summary": "Private calendar summary",
-                "updated": "2026-05-23T00:00:00.000Z",
-                "start": {"dateTime": "2026-05-23T09:00:00+08:00"},
-                "end": {"dateTime": "2026-05-23T10:00:00+08:00"},
-                "organizer": {"email": "primary@example.com"},
-                "_notica_calendar_id": "primary@example.com",
-            }
-        ]
 
         with patch.dict(
             "os.environ",
