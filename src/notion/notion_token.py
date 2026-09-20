@@ -14,13 +14,15 @@ class SettingError(Exception):
 
 
 class NotionToken:
-    """Handles Notion API token"""
+    """Loads a Notion token and fences cloud execution to one provider binding."""
 
     def __init__(self, config, logger):
         self.logger = logger
         self.config = config
         self.mode = config.get("mode")
         self.uuid = config.get("uuid")
+        self._loaded_updated_at = None
+        self._loaded_workspace_id = None
         self.token = self.load_settings(self.uuid if self.mode == "cloud" else None)
 
     def load_settings(self, uuid=None):
@@ -30,7 +32,15 @@ class NotionToken:
             try:
                 from utils.dynamodb_utils import get_notion_token_by_uuid
 
-                response = get_notion_token_by_uuid(uuid)
+                response = get_notion_token_by_uuid(uuid, consistent_read=True)
+                self._loaded_updated_at = self._require_binding_value(
+                    response.get("updatedAt"),
+                    "Notion OAuth token updatedAt",
+                )
+                self._loaded_workspace_id = self._require_binding_value(
+                    response.get("workspaceId"),
+                    "Notion OAuth workspaceId",
+                )
                 try:
                     return decrypt_token(response.get("accessToken"))
                 except TokenCryptoError as e:
@@ -48,6 +58,62 @@ class NotionToken:
             except TokenCryptoError as e:
                 raise SettingError(f"Failed to decrypt Notion token: {e}") from e
         raise SettingError(f"Unknown config mode '{self.mode}'. Expected 'cloud' or 'local'.")
+
+    @staticmethod
+    def _require_binding_value(value, label):
+        if value is None:
+            raise SettingError(f"{label} is missing.")
+        normalized = str(value).strip()
+        if not normalized:
+            raise SettingError(f"{label} is missing.")
+        return normalized
+
+    def assert_admission_binding(self, admission_started_at_ms):
+        """Reject a Notion OAuth row changed after backend admission began."""
+        if self.mode != "cloud":
+            return
+        if isinstance(admission_started_at_ms, bool) or not isinstance(
+            admission_started_at_ms, int
+        ):
+            raise SettingError("Sync admission timestamp is invalid.")
+        try:
+            loaded_updated_at_ms = int(self._loaded_updated_at)
+        except (TypeError, ValueError) as exc:
+            raise SettingError("Notion OAuth token updatedAt is invalid.") from exc
+        if loaded_updated_at_ms > admission_started_at_ms:
+            raise SettingError(
+                "Notion OAuth connection changed after the sync job was admitted."
+            )
+
+    def assert_current_binding(self):
+        """Fail closed if the persisted Notion OAuth binding changed during this job."""
+        if self.mode != "cloud":
+            return
+
+        from utils.dynamodb_utils import get_notion_token_by_uuid
+
+        try:
+            current = get_notion_token_by_uuid(self.uuid, consistent_read=True)
+        except ValueError as exc:
+            raise SettingError(
+                "Notion OAuth connection disappeared while the sync job was running."
+            ) from exc
+
+        current_updated_at = self._require_binding_value(
+            current.get("updatedAt"),
+            "Notion OAuth token updatedAt",
+        )
+        current_workspace_id = self._require_binding_value(
+            current.get("workspaceId"),
+            "Notion OAuth workspaceId",
+        )
+        if (
+            current_updated_at != self._loaded_updated_at
+            or current_workspace_id != self._loaded_workspace_id
+        ):
+            raise SettingError(
+                "Notion OAuth connection changed while the sync job was running."
+            )
 
     def get(self):
         return self.token
