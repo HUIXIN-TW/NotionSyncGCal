@@ -15,9 +15,13 @@ from config.mapping_domain_config import (  # noqa: E402
 )
 from notion.notion_service import NotionService  # noqa: E402
 from notion.notion_token import NotionToken  # noqa: E402
-from gcal.gcal_token import GoogleToken  # noqa: E402
+from gcal.gcal_token import (  # noqa: E402
+    GoogleToken,
+    SettingError as GoogleTokenSettingError,
+)
 from gcal.gcal_service import GoogleService, SettingError as GoogleSettingError  # noqa: E402
 from sync.contracts import (  # noqa: E402
+    StaleExecutionError,
     build_sync_result,
     get_result_message,
     get_result_status,
@@ -42,13 +46,6 @@ def _parse_args(argv: list[str] | None = None):
         help="Update Notion Task and Google Calendar by timestamp [start end]",
     )
     parser.add_argument(
-        "-g",
-        "--google",
-        nargs=2,
-        type=int,
-        help="Force: Update Notion Task from Google Calendar [start end]",
-    )
-    parser.add_argument(
         "-n",
         "--notion",
         nargs=2,
@@ -70,10 +67,22 @@ def _apply_date_range_override(
     )
 
 
-def _run_source(args, source_setting, notion_token, google_token, logger):
+def _run_source(
+    args,
+    source_setting,
+    notion_token,
+    google_token,
+    logger,
+    mutation_guard,
+):
     notion_service = NotionService(notion_token, source_setting, logger)
-    google_service = GoogleService(source_setting, google_token, logger)
-    google_service.configure_calendar_mappings()
+    google_service = GoogleService(
+        source_setting,
+        google_token,
+        logger,
+        mutation_guard=mutation_guard,
+    )
+    google_service.validate_calendar_access()
 
     if args.test_connection:
         notion_connected = notion_service.test_connection()
@@ -92,35 +101,13 @@ def _run_source(args, source_setting, notion_token, google_token, logger):
 
     if args.timestamp:
         _apply_date_range_override(source_setting, args.timestamp[0], args.timestamp[1], logger)
-        return sync.synchronize_notion_and_google_calendar(
-            user_setting=source_setting,
-            notion_service=notion_service,
-            google_service=google_service,
-            compare_time=True,
-            should_update_notion_tasks=True,
-            should_update_google_events=True,
-        )
-    if args.google:
-        _apply_date_range_override(source_setting, args.google[0], args.google[1], logger)
-        return sync.force_update_notion_tasks_by_google_event_and_ignore_time(
-            user_setting=source_setting,
-            notion_service=notion_service,
-            google_service=google_service,
-        )
-    if args.notion:
+    elif args.notion:
         _apply_date_range_override(source_setting, args.notion[0], args.notion[1], logger)
-        return sync.force_update_google_event_by_notion_task_and_ignore_time(
-            user_setting=source_setting,
-            notion_service=notion_service,
-            google_service=google_service,
-        )
-    return sync.synchronize_notion_and_google_calendar(
+
+    return sync.project_notion_to_google_calendar(
         user_setting=source_setting,
         notion_service=notion_service,
         google_service=google_service,
-        compare_time=True,
-        should_update_notion_tasks=True,
-        should_update_google_events=True,
     )
 
 
@@ -174,7 +161,12 @@ def main(uuid: str | None = None, execution: dict | None = None) -> dict:
 
     try:
         config = generate_config(uuid)
-        source_settings = MappingDomainConfig(config, logger, execution_fence=execution).get()
+        mapping_config = MappingDomainConfig(
+            config,
+            logger,
+            execution_fence=execution,
+        )
+        source_settings = mapping_config.get()
         notion_token = NotionToken(config, logger).get()
         google_token = GoogleToken(config, logger)
     except RefreshError as e:
@@ -210,7 +202,23 @@ def main(uuid: str | None = None, execution: dict | None = None) -> dict:
     for source_setting in source_settings:
         source_id = source_setting["source_id"]
         try:
-            result = _run_source(args, source_setting, notion_token, google_token, logger)
+            def mutation_guard(setting=source_setting):
+                try:
+                    mapping_config.revalidate_source(setting)
+                    google_token.assert_current_binding()
+                except (MappingDomainSettingError, GoogleTokenSettingError) as exc:
+                    raise StaleExecutionError(
+                        "Sync execution is no longer authoritative."
+                    ) from exc
+
+            result = _run_source(
+                args,
+                source_setting,
+                notion_token,
+                google_token,
+                logger,
+                mutation_guard,
+            )
         except GoogleSettingError:
             logger.exception("Source Calendar mapping is not sync-ready: source_id=%s", source_id)
             result = build_sync_result(
