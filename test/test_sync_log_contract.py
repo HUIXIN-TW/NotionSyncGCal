@@ -13,6 +13,13 @@ from sync.sync import synchronize_notion_and_google_calendar  # noqa: E402
 import utils.lambda_utils as lambda_utils  # noqa: E402
 
 USER_SETTING = {
+    "owner_user_uuid": "11111111-1111-4111-8111-111111111111",
+    "settings_version": 1,
+    "source_id": "source-1",
+    "source_version": 1,
+    "mapping_id": "mapping-1",
+    "mapping_version": 1,
+    "calendar_id": "primary@example.com",
     "page_property": {
         "Task_Notion_Name": "Task Name",
         "Date_Notion_Name": "Date",
@@ -73,7 +80,7 @@ class SyncContractTests(unittest.TestCase):
                     "trigger_time": "2026-05-23T00:00:00.000Z",
                     "errors": [
                         {
-                            "action": "update_notion",
+                            "action": "upsert_gcal",
                             "error_code": "runtime_error",
                             "error": "provider failure",
                             "gcal_event_start": "2026-05-23T09:00:00+08:00",
