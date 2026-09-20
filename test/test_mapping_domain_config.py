@@ -285,7 +285,8 @@ class MappingDomainConfigCloudTests(unittest.TestCase):
     def test_rejects_execution_fence_when_settings_version_changed(self):
         payload = contract()
         execution = {
-            "contractVersion": 1,
+            "contractVersion": 2,
+            "admissionStartedAtMs": 1789920000000,
             "operationId": "operation-1",
             "ownerUserUuid": "user-1",
             "settingsVersion": 2,
@@ -324,7 +325,8 @@ class MappingDomainConfigCloudTests(unittest.TestCase):
     def test_accepts_matching_execution_fence_and_keeps_operation_identity(self):
         payload = contract()
         execution = {
-            "contractVersion": 1,
+            "contractVersion": 2,
+            "admissionStartedAtMs": 1789920000000,
             "operationId": "operation-1",
             "ownerUserUuid": "user-1",
             "settingsVersion": 1,
@@ -360,7 +362,8 @@ class MappingDomainConfigCloudTests(unittest.TestCase):
             ).get()
 
         self.assertEqual(result[0]["operation_id"], "operation-1")
-        self.assertEqual(result[0]["execution_contract_version"], 1)
+        self.assertEqual(result[0]["execution_contract_version"], 2)
+        self.assertEqual(result[0]["admission_started_at_ms"], 1789920000000)
 
 
 class MappingDomainDateRangeTests(unittest.TestCase):
