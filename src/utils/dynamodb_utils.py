@@ -211,6 +211,26 @@ def list_mapping_domain_calendar_mappings(uuid: str, source_id: str) -> list[dic
     )
 
 
+def list_mapping_domain_calendar_mappings_for_owner(uuid: str) -> list[dict]:
+    """Strongly read all Calendar mappings from the owner's base-table partition.
+
+    The GSI helper above remains available for non-authoritative discovery. Sync
+    execution must not authorize provider writes from an eventually consistent
+    index result.
+    """
+    table = _get_mapping_domain_table()
+    return _query_all(
+        table,
+        KeyConditionExpression="#pk = :pk AND begins_with(#sk, :mappingPrefix)",
+        ExpressionAttributeNames={"#pk": "pk", "#sk": "sk"},
+        ExpressionAttributeValues={
+            ":pk": f"USER#{uuid}",
+            ":mappingPrefix": "CALENDAR_MAPPING#",
+        },
+        ConsistentRead=True,
+    )
+
+
 __all__ = [
     "save_sync_logs",
     "get_notion_token_by_uuid",
@@ -220,4 +240,5 @@ __all__ = [
     "get_mapping_domain_settings",
     "list_mapping_domain_task_sources",
     "list_mapping_domain_calendar_mappings",
+    "list_mapping_domain_calendar_mappings_for_owner",
 ]
