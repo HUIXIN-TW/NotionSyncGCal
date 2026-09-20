@@ -194,6 +194,25 @@ class GoogleToken:
             self.logger.error(f"Error saving credentials: {e}")
             raise SettingError(f"Error saving credentials: {e}")
 
+    def assert_current_binding(self):
+        """Fail closed if the persisted Google OAuth row changed during this job."""
+        if self.mode != "cloud":
+            return
+
+        from utils.dynamodb_utils import get_google_token_by_uuid
+
+        current = get_google_token_by_uuid(
+            self.config.get("uuid"),
+            consistent_read=True,
+        )
+        current_updated_at = current.get("updatedAt")
+        if self._loaded_updated_at is None or current_updated_at is None:
+            raise SettingError("Google OAuth token row has no stable updatedAt fence.")
+        if str(current_updated_at) != str(self._loaded_updated_at):
+            raise SettingError(
+                "Google OAuth connection changed while the sync job was running."
+            )
+
     def _convert_google_expiry_date_format(self, expiryDate):
         expiry_ts = int(expiryDate) / 1000
         return datetime.fromtimestamp(expiry_ts, tz=timezone.utc).replace(tzinfo=None)
