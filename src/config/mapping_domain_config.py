@@ -106,37 +106,26 @@ def apply_date_range(setting, go_back_days, go_forward_days, *, now=None):
 class MappingDomainConfig:
     """Loads and validates the v2 settings/source/calendar-mapping contract."""
 
-    def __init__(self, config, logger):
+    def __init__(self, config, logger, execution_fence=None):
         self.config = _require_dict(config, "configuration")
         self.logger = logger
         self.mode = config.get("mode")
         self.owner_user_uuid = config.get("uuid") if self.mode == "cloud" else "local-user"
+        self.execution_fence = execution_fence
         self.source_settings = self._format_contract(self._load_contract())
 
     def _load_contract(self):
         if self.mode == "cloud":
             from utils.dynamodb_utils import (
                 get_mapping_domain_settings,
-                list_mapping_domain_calendar_mappings,
+                list_mapping_domain_calendar_mappings_for_owner,
                 list_mapping_domain_task_sources,
             )
 
             owner = _require_string(self.config.get("uuid"), "uuid")
             settings = get_mapping_domain_settings(owner)
             sources = list_mapping_domain_task_sources(owner)
-            mappings = []
-            for raw_source in sources:
-                source = _require_dict(raw_source, "taskSource")
-                source_id = _require_string(source.get("id"), "taskSource.id")
-                for raw_mapping in list_mapping_domain_calendar_mappings(owner, source_id):
-                    mapping = _require_dict(raw_mapping, "calendarMapping")
-                    mapping_source_id = _require_string(mapping.get("sourceId"), "calendarMapping.sourceId")
-                    if mapping_source_id != source_id:
-                        raise SettingError(
-                            f"Calendar mapping was queried for Task source {source_id} "
-                            f"but declares sourceId {mapping_source_id}."
-                        )
-                    mappings.append(mapping)
+            mappings = list_mapping_domain_calendar_mappings_for_owner(owner)
             return {"settings": settings, "taskSources": sources, "calendarMappings": mappings}
 
         if self.mode == "local":
@@ -160,6 +149,7 @@ class MappingDomainConfig:
 
         _validate_owner(settings, owner, "settings")
         timezone = _require_string(settings.get("timeZone"), "settings.timeZone")
+        settings_version = _require_int(settings.get("version"), "settings.version", minimum=1)
         try:
             ZoneInfo(timezone)
         except ZoneInfoNotFoundError as exc:
@@ -179,6 +169,11 @@ class MappingDomainConfig:
                 raise SettingError(f"taskSource[{source_id}].lifecycle must be active or disabled.")
             source["id"] = source_id
             source["lifecycle"] = lifecycle
+            source["version"] = _require_int(
+                source.get("version"),
+                f"taskSource[{source_id}].version",
+                minimum=1,
+            )
             validated_sources.append(source)
 
         mappings_by_source = {source_id: [] for source_id in seen_source_ids}
@@ -201,41 +196,44 @@ class MappingDomainConfig:
             mapping["sourceId"] = source_id
             mapping["lifecycle"] = lifecycle
             mapping["calendarId"] = calendar_id
+            mapping["version"] = _require_int(
+                mapping.get("version"),
+                f"calendarMapping[{mapping_id}].version",
+                minimum=1,
+            )
             mappings_by_source[source_id].append(mapping)
 
         active_sources = []
-        active_calendar_owners = {}
         for source in validated_sources:
             source_id = _require_string(source.get("id"), "taskSource.id")
             if source.get("lifecycle") != "active":
                 continue
 
-            source_mappings = []
-            source_calendar_ids = set()
-            for mapping in mappings_by_source[source_id]:
-                if mapping["lifecycle"] != "active":
-                    continue
-                calendar_id = _require_string(mapping.get("calendarId"), "calendarMapping.calendarId")
-                if calendar_id in source_calendar_ids:
-                    raise SettingError(
-                        f"Google Calendar {calendar_id} has multiple active mappings for Task source {source_id}."
-                    )
-                source_calendar_ids.add(calendar_id)
-                previous_source = active_calendar_owners.get(calendar_id)
-                if previous_source:
-                    raise SettingError(f"Google Calendar {calendar_id} is assigned to multiple active Task sources.")
-                active_calendar_owners[calendar_id] = source_id
-                source_mappings.append(mapping)
-
-            if not source_mappings:
-                raise SettingError(f"Task source {source_id} is active but has no active Calendar mapping.")
-            active_sources.append(self._to_source_setting(source, source_mappings, timezone))
+            active_mappings = [
+                mapping
+                for mapping in mappings_by_source[source_id]
+                if mapping["lifecycle"] == "active"
+            ]
+            if len(active_mappings) != 1:
+                raise SettingError(
+                    f"Task source {source_id} requires exactly one active Calendar mapping for sync."
+                )
+            active_sources.append(
+                self._to_source_setting(
+                    source,
+                    active_mappings[0],
+                    timezone,
+                    settings_version,
+                )
+            )
 
         if not active_sources:
             raise SettingError("No active Task source was found.")
+
+        self._validate_execution_fence(settings_version, active_sources)
         return active_sources
 
-    def _to_source_setting(self, source, mappings, timezone):
+    def _to_source_setting(self, source, mapping, timezone, settings_version):
         source_id = source["id"]
         database = _require_dict(source.get("database"), f"taskSource[{source_id}].database")
         defaults = _require_dict(source.get("defaults"), f"taskSource[{source_id}].defaults")
@@ -260,11 +258,15 @@ class MappingDomainConfig:
                 raise SettingError(f"propertyMappings.{semantic_key} must be {expected_type}, got {property_type}.")
             page_property[runtime_key] = property_id
 
-        calendar_ids = sorted(
-            {_require_string(mapping.get("calendarId"), "calendarMapping.calendarId") for mapping in mappings}
-        )
+        calendar_id = _require_string(mapping.get("calendarId"), "calendarMapping.calendarId")
         setting = {
+            "owner_user_uuid": self.owner_user_uuid,
+            "settings_version": settings_version,
             "source_id": source_id,
+            "source_version": source["version"],
+            "mapping_id": _require_string(mapping.get("id"), "calendarMapping.id"),
+            "mapping_version": mapping["version"],
+            "calendar_id": calendar_id,
             "database_id": _require_string(database.get("externalId"), "taskSource.database.externalId"),
             "timezone": timezone,
             "default_event_length": _require_int(
@@ -279,7 +281,7 @@ class MappingDomainConfig:
                 minimum=0,
                 maximum=23,
             ),
-            "calendar_ids": calendar_ids,
+            "calendar_ids": [calendar_id],
             "page_property": page_property,
             "notion_api_version": "2022-06-28",
         }
@@ -288,6 +290,83 @@ class MappingDomainConfig:
             defaults.get("goBackDays"),
             defaults.get("goForwardDays"),
         )
+
+    def _validate_execution_fence(self, settings_version, active_sources):
+        if self.execution_fence is None:
+            return
+
+        fence = _require_dict(self.execution_fence, "execution")
+        contract_version = _require_int(
+            fence.get("contractVersion"),
+            "execution.contractVersion",
+            minimum=1,
+        )
+        if contract_version != 1:
+            raise SettingError(
+                f"Unsupported sync execution contract version: {contract_version}."
+            )
+
+        owner = _require_string(fence.get("ownerUserUuid"), "execution.ownerUserUuid")
+        if owner != self.owner_user_uuid:
+            raise SettingError("Sync execution fence belongs to a different owner.")
+
+        expected_settings_version = _require_int(
+            fence.get("settingsVersion"),
+            "execution.settingsVersion",
+            minimum=1,
+        )
+        if expected_settings_version != settings_version:
+            raise SettingError("Notion settings changed after the sync job was admitted.")
+
+        operation_id = _require_string(fence.get("operationId"), "execution.operationId")
+        task_fences = _require_list(fence.get("taskSources"), "execution.taskSources")
+        by_source = {}
+        for raw_fence in task_fences:
+            task_fence = _require_dict(raw_fence, "execution.taskSource")
+            source_id = _require_string(task_fence.get("sourceId"), "execution.taskSource.sourceId")
+            if source_id in by_source:
+                raise SettingError(f"Duplicate execution fence for Task source {source_id}.")
+            by_source[source_id] = task_fence
+
+        active_by_source = {setting["source_id"]: setting for setting in active_sources}
+        if set(by_source) != set(active_by_source):
+            raise SettingError("Active Task sources changed after the sync job was admitted.")
+
+        for source_id, setting in active_by_source.items():
+            task_fence = by_source[source_id]
+            checks = (
+                ("sourceVersion", setting["source_version"]),
+                ("mappingVersion", setting["mapping_version"]),
+            )
+            for key, expected in checks:
+                actual = _require_int(
+                    task_fence.get(key),
+                    f"execution.taskSource[{source_id}].{key}",
+                    minimum=1,
+                )
+                if actual != expected:
+                    raise SettingError(
+                        f"Task source {source_id} changed after the sync job was admitted."
+                    )
+
+            mapping_id = _require_string(
+                task_fence.get("mappingId"),
+                f"execution.taskSource[{source_id}].mappingId",
+            )
+            calendar_id = _require_string(
+                task_fence.get("calendarId"),
+                f"execution.taskSource[{source_id}].calendarId",
+            )
+            if (
+                mapping_id != setting["mapping_id"]
+                or calendar_id != setting["calendar_id"]
+            ):
+                raise SettingError(
+                    f"Calendar mapping for Task source {source_id} changed after the sync job was admitted."
+                )
+
+            setting["operation_id"] = operation_id
+            setting["execution_contract_version"] = contract_version
 
     def get(self):
         return deepcopy(self.source_settings)
