@@ -2,7 +2,6 @@ from datetime import timedelta
 from dateutil.parser import isoparse
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
-from google.auth.exceptions import RefreshError
 from notion.notion_properties import get_property
 from sync.projection_identity import assert_projection_ownership
 
