@@ -35,9 +35,10 @@ BASE_SETTING = {
 class FakeMappingDomainConfig:
     setting = None
 
-    def __init__(self, config, logger):
+    def __init__(self, config, logger, execution_fence=None):
         self.config = config
         self.logger = logger
+        self.execution_fence = execution_fence
 
     def get(self):
         return [self.setting]
