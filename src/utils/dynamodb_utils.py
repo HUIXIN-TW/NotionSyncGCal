@@ -111,9 +111,12 @@ def save_sync_logs(uuid: str, response: dict, ttl_days: int = 7):
 
 
 # get data from notion oauth token tables by uuid
-def get_notion_token_by_uuid(uuid: str) -> str:
+def get_notion_token_by_uuid(uuid: str, consistent_read: bool = False) -> dict:
     notion_tbl = _get_notion_tables()
-    response = notion_tbl.get_item(Key={"uuid": uuid})
+    response = notion_tbl.get_item(
+        Key={"uuid": uuid},
+        ConsistentRead=consistent_read,
+    )
     item = response.get("Item")
     if not item:
         raise ValueError(f"No Notion token found for uuid: {uuid}")
