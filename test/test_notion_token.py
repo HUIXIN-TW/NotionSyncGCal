@@ -89,20 +89,30 @@ class TestNotionTokenLocalMode(unittest.TestCase):
 
 
 class TestNotionTokenCloudMode(unittest.TestCase):
+    @staticmethod
+    def _row(**overrides):
+        row = {
+            "accessToken": "enc:v1:encrypted-cloud-notion-token",
+            "workspaceId": "workspace-1",
+            "updatedAt": 1_000,
+        }
+        row.update(overrides)
+        return row
+
     def test_cloud_calls_dynamodb(self):
-        mock_response = {"accessToken": "enc:v1:encrypted-cloud-notion-token"}
+        mock_response = self._row()
         with patch("utils.dynamodb_utils.get_notion_token_by_uuid", return_value=mock_response) as mock_db:
             with patch(
                 "notion.notion_token.decrypt_token",
                 return_value="plain-cloud-notion-token",
             ) as mock_decrypt:
                 nt = NotionToken(_cloud_config("uuid-abc"), _make_logger())
-            mock_db.assert_called_once_with("uuid-abc")
+            mock_db.assert_called_once_with("uuid-abc", consistent_read=True)
             mock_decrypt.assert_called_once_with("enc:v1:encrypted-cloud-notion-token")
             self.assertEqual(nt.get(), "plain-cloud-notion-token")
 
     def test_cloud_plaintext_token_fails_closed(self):
-        mock_response = {"accessToken": "cloud-token-xyz"}
+        mock_response = self._row(accessToken="cloud-token-xyz")
         with patch("utils.dynamodb_utils.get_notion_token_by_uuid", return_value=mock_response):
             with patch.dict(os.environ, {}, clear=True):
                 with self.assertRaises(SettingError) as ctx:
@@ -111,14 +121,14 @@ class TestNotionTokenCloudMode(unittest.TestCase):
 
     def test_cloud_encrypted_token_calls_decrypt_token_if_encrypted(self):
         encrypted_token = "enc:v1:encrypted-cloud-notion-token"
-        mock_response = {"accessToken": encrypted_token}
+        mock_response = self._row(accessToken=encrypted_token)
         with patch("utils.dynamodb_utils.get_notion_token_by_uuid", return_value=mock_response) as mock_db:
             with patch(
                 "notion.notion_token.decrypt_token",
                 return_value="plain-cloud-notion-token",
             ) as mock_decrypt:
                 nt = NotionToken(_cloud_config("uuid-abc"), _make_logger())
-        mock_db.assert_called_once_with("uuid-abc")
+        mock_db.assert_called_once_with("uuid-abc", consistent_read=True)
         mock_decrypt.assert_called_once_with(encrypted_token)
         self.assertEqual(nt.get(), "plain-cloud-notion-token")
 
@@ -143,6 +153,118 @@ class TestNotionTokenCloudMode(unittest.TestCase):
             with self.assertRaises(SettingError) as ctx:
                 NotionToken(_cloud_config(), _make_logger())
             self.assertIn("DDB down", str(ctx.exception))
+
+
+    def test_cloud_requires_workspace_binding(self):
+        with patch(
+            "utils.dynamodb_utils.get_notion_token_by_uuid",
+            return_value=self._row(workspaceId=""),
+        ):
+            with self.assertRaises(SettingError) as ctx:
+                NotionToken(_cloud_config("uuid-abc"), _make_logger())
+        self.assertIn("workspaceId", str(ctx.exception))
+
+    def test_cloud_requires_updated_at_binding(self):
+        with patch(
+            "utils.dynamodb_utils.get_notion_token_by_uuid",
+            return_value=self._row(updatedAt=None),
+        ):
+            with self.assertRaises(SettingError) as ctx:
+                NotionToken(_cloud_config("uuid-abc"), _make_logger())
+        self.assertIn("updatedAt", str(ctx.exception))
+
+    def test_admission_binding_accepts_row_loaded_before_admission(self):
+        with patch(
+            "utils.dynamodb_utils.get_notion_token_by_uuid",
+            return_value=self._row(updatedAt=1_000),
+        ), patch(
+            "notion.notion_token.decrypt_token",
+            return_value="plain-cloud-notion-token",
+        ):
+            nt = NotionToken(_cloud_config("uuid-abc"), _make_logger())
+
+        nt.assert_admission_binding(1_001)
+
+    def test_admission_binding_rejects_reconnect_after_admission(self):
+        with patch(
+            "utils.dynamodb_utils.get_notion_token_by_uuid",
+            return_value=self._row(updatedAt=1_002),
+        ), patch(
+            "notion.notion_token.decrypt_token",
+            return_value="plain-cloud-notion-token",
+        ):
+            nt = NotionToken(_cloud_config("uuid-abc"), _make_logger())
+
+        with self.assertRaises(SettingError):
+            nt.assert_admission_binding(1_001)
+
+    def test_admission_binding_rejects_malformed_updated_at(self):
+        with patch(
+            "utils.dynamodb_utils.get_notion_token_by_uuid",
+            return_value=self._row(updatedAt="not-a-timestamp"),
+        ), patch(
+            "notion.notion_token.decrypt_token",
+            return_value="plain-cloud-notion-token",
+        ):
+            nt = NotionToken(_cloud_config("uuid-abc"), _make_logger())
+
+        with self.assertRaises(SettingError):
+            nt.assert_admission_binding(1_001)
+
+    def test_current_binding_accepts_unchanged_row(self):
+        row = self._row()
+        with patch(
+            "utils.dynamodb_utils.get_notion_token_by_uuid",
+            side_effect=[row, dict(row)],
+        ) as mock_db, patch(
+            "notion.notion_token.decrypt_token",
+            return_value="plain-cloud-notion-token",
+        ):
+            nt = NotionToken(_cloud_config("uuid-abc"), _make_logger())
+            nt.assert_current_binding()
+
+        self.assertEqual(mock_db.call_count, 2)
+        self.assertTrue(mock_db.call_args_list[1].kwargs["consistent_read"])
+
+    def test_current_binding_rejects_workspace_reconnect(self):
+        with patch(
+            "utils.dynamodb_utils.get_notion_token_by_uuid",
+            side_effect=[
+                self._row(),
+                self._row(workspaceId="workspace-2", updatedAt=1_001),
+            ],
+        ), patch(
+            "notion.notion_token.decrypt_token",
+            return_value="plain-cloud-notion-token",
+        ):
+            nt = NotionToken(_cloud_config("uuid-abc"), _make_logger())
+            with self.assertRaises(SettingError):
+                nt.assert_current_binding()
+
+    def test_current_binding_rejects_same_workspace_token_replacement(self):
+        with patch(
+            "utils.dynamodb_utils.get_notion_token_by_uuid",
+            side_effect=[self._row(), self._row(updatedAt=1_001)],
+        ), patch(
+            "notion.notion_token.decrypt_token",
+            return_value="plain-cloud-notion-token",
+        ):
+            nt = NotionToken(_cloud_config("uuid-abc"), _make_logger())
+            with self.assertRaises(SettingError):
+                nt.assert_current_binding()
+
+    def test_current_binding_rejects_missing_row(self):
+        with patch(
+            "utils.dynamodb_utils.get_notion_token_by_uuid",
+            side_effect=[self._row(), ValueError("missing")],
+        ), patch(
+            "notion.notion_token.decrypt_token",
+            return_value="plain-cloud-notion-token",
+        ):
+            nt = NotionToken(_cloud_config("uuid-abc"), _make_logger())
+            with self.assertRaises(SettingError):
+                nt.assert_current_binding()
+
 
 
 class TestNotionTokenUnknownMode(unittest.TestCase):
