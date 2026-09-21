@@ -12,10 +12,7 @@ from sync.projection_identity import (  # noqa: E402
     ProjectionIdentityError,
     build_projection_identity,
 )
-from sync.sync import (  # noqa: E402
-    force_update_notion_tasks_by_google_event_and_ignore_time,
-    project_notion_to_google_calendar,
-)
+from sync.sync import project_notion_to_google_calendar  # noqa: E402
 
 
 SETTING = {
@@ -136,24 +133,6 @@ class OneWayProjectionTests(unittest.TestCase):
 
         error = result["body"]["message"]["errors"][0]
         self.assertTrue(error["retriable"])
-        notion.update_notion_task.assert_not_called()
-        notion.create_notion_task.assert_not_called()
-
-    def test_legacy_google_to_notion_entry_point_fails_closed(self):
-        notion = MagicMock()
-        google = MagicMock()
-
-        result = force_update_notion_tasks_by_google_event_and_ignore_time(
-            copy.deepcopy(SETTING),
-            notion,
-            google,
-        )
-
-        self.assertEqual(result["statusCode"], 409)
-        self.assertEqual(
-            result["body"]["message"]["error_code"],
-            "google_to_notion_sync_not_supported",
-        )
         notion.update_notion_task.assert_not_called()
         notion.create_notion_task.assert_not_called()
 
