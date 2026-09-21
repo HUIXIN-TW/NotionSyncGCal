@@ -14,7 +14,10 @@ from config.mapping_domain_config import (  # noqa: E402
     apply_date_range,
 )
 from notion.notion_service import NotionService  # noqa: E402
-from notion.notion_token import NotionToken  # noqa: E402
+from notion.notion_token import (  # noqa: E402
+    NotionToken,
+    SettingError as NotionTokenSettingError,
+)
 from gcal.gcal_token import (  # noqa: E402
     GoogleToken,
     SettingError as GoogleTokenSettingError,
@@ -167,12 +170,13 @@ def main(uuid: str | None = None, execution: dict | None = None) -> dict:
             execution_fence=execution,
         )
         source_settings = mapping_config.get()
-        notion_token = NotionToken(config, logger).get()
+        notion_binding = NotionToken(config, logger)
+        notion_token = notion_binding.get()
         google_token = GoogleToken(config, logger)
         if execution is not None:
-            google_token.assert_admission_binding(
-                source_settings[0]["admission_started_at_ms"]
-            )
+            admission_started_at_ms = source_settings[0]["admission_started_at_ms"]
+            notion_binding.assert_admission_binding(admission_started_at_ms)
+            google_token.assert_admission_binding(admission_started_at_ms)
     except RefreshError as e:
         logger.error(f"Google RefreshError during initialization: {e}", exc_info=True)
         return build_sync_result(
@@ -187,8 +191,8 @@ def main(uuid: str | None = None, execution: dict | None = None) -> dict:
             "sync_error",
             {"error_code": "sync_configuration_invalid", "retriable": False},
         )
-    except GoogleTokenSettingError:
-        logger.exception("Google provider binding is not valid for this sync execution")
+    except (NotionTokenSettingError, GoogleTokenSettingError):
+        logger.exception("Provider binding is not valid for this sync execution")
         return build_sync_result(
             409,
             "sync_error",
@@ -216,8 +220,13 @@ def main(uuid: str | None = None, execution: dict | None = None) -> dict:
             def mutation_guard(setting=source_setting):
                 try:
                     mapping_config.revalidate_source(setting)
+                    notion_binding.assert_current_binding()
                     google_token.assert_current_binding()
-                except (MappingDomainSettingError, GoogleTokenSettingError) as exc:
+                except (
+                    MappingDomainSettingError,
+                    NotionTokenSettingError,
+                    GoogleTokenSettingError,
+                ) as exc:
                     raise StaleExecutionError(
                         "Sync execution is no longer authoritative."
                     ) from exc
