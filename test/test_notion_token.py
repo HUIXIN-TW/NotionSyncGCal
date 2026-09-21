@@ -134,7 +134,7 @@ class TestNotionTokenCloudMode(unittest.TestCase):
 
     def test_cloud_encrypted_token_missing_key_raises_setting_error(self):
         encrypted_token = "enc:v1:encrypted-cloud-notion-token"
-        mock_response = {"accessToken": encrypted_token}
+        mock_response = self._row(accessToken=encrypted_token)
         with patch("utils.dynamodb_utils.get_notion_token_by_uuid", return_value=mock_response):
             with patch(
                 "notion.notion_token.decrypt_token",
@@ -153,7 +153,6 @@ class TestNotionTokenCloudMode(unittest.TestCase):
             with self.assertRaises(SettingError) as ctx:
                 NotionToken(_cloud_config(), _make_logger())
             self.assertIn("DDB down", str(ctx.exception))
-
 
     def test_cloud_requires_workspace_binding(self):
         with patch(
@@ -264,7 +263,6 @@ class TestNotionTokenCloudMode(unittest.TestCase):
             nt = NotionToken(_cloud_config("uuid-abc"), _make_logger())
             with self.assertRaises(SettingError):
                 nt.assert_current_binding()
-
 
 
 class TestNotionTokenUnknownMode(unittest.TestCase):
