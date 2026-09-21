@@ -126,6 +126,116 @@ class MainCliOverrideTests(unittest.TestCase):
         self.assertIs(mock_sync.call_args.kwargs["user_setting"], setting)
 
 
+class MainProviderBindingFenceTests(unittest.TestCase):
+    def _run_execution(self, run_source_side_effect=None):
+        setting = copy.deepcopy(BASE_SETTING)
+        setting["source_id"] = "source-1"
+        setting["admission_started_at_ms"] = 1_000
+
+        mapping_config = MagicMock()
+        mapping_config.get.return_value = [setting]
+        notion_binding = MagicMock()
+        notion_binding.get.return_value = "notion-token"
+        google_binding = MagicMock()
+
+        run_result = {
+            "statusCode": 200,
+            "body": {"status": "sync_success", "message": {"errors": []}},
+        }
+        with (
+            patch.object(sys, "argv", ["src/main.py"]),
+            patch.object(
+                main_module,
+                "generate_config",
+                return_value={"mode": "cloud", "uuid": "user-1"},
+            ),
+            patch.object(
+                main_module,
+                "MappingDomainConfig",
+                return_value=mapping_config,
+            ),
+            patch.object(
+                main_module,
+                "NotionToken",
+                return_value=notion_binding,
+            ),
+            patch.object(
+                main_module,
+                "GoogleToken",
+                return_value=google_binding,
+            ),
+            patch.object(
+                main_module,
+                "_run_source",
+                side_effect=run_source_side_effect,
+                return_value=None if run_source_side_effect else run_result,
+            ) as run_source,
+        ):
+            result = main_module.main("user-1", execution={"contractVersion": 2})
+
+        return (
+            result,
+            setting,
+            mapping_config,
+            notion_binding,
+            google_binding,
+            run_source,
+            run_result,
+        )
+
+    def test_execution_fences_both_provider_bindings_at_admission(self):
+        (
+            result,
+            _setting,
+            _mapping_config,
+            notion_binding,
+            google_binding,
+            _run_source,
+            _run_result,
+        ) = self._run_execution()
+
+        self.assertEqual(result["statusCode"], 200)
+        notion_binding.assert_admission_binding.assert_called_once_with(1_000)
+        google_binding.assert_admission_binding.assert_called_once_with(1_000)
+
+    def test_mutation_guard_revalidates_mapping_and_provider_bindings(self):
+        observed = {}
+
+        def run_source(
+            args,
+            source_setting,
+            notion_token,
+            google_token,
+            logger,
+            mutation_guard,
+        ):
+            observed["source_setting"] = source_setting
+            observed["notion_token"] = notion_token
+            observed["google_token"] = google_token
+            mutation_guard()
+            return {
+                "statusCode": 200,
+                "body": {"status": "sync_success", "message": {"errors": []}},
+            }
+
+        (
+            result,
+            setting,
+            mapping_config,
+            notion_binding,
+            google_binding,
+            _run_source,
+            _run_result,
+        ) = self._run_execution(run_source)
+
+        self.assertEqual(result["statusCode"], 200)
+        mapping_config.revalidate_source.assert_called_once_with(setting)
+        notion_binding.assert_current_binding.assert_called_once_with()
+        google_binding.assert_current_binding.assert_called_once_with()
+        self.assertEqual(observed["notion_token"], "notion-token")
+        self.assertIs(observed["google_token"], google_binding)
+
+
 class MainAggregateSourceTests(unittest.TestCase):
     def test_aggregates_multiple_source_results(self):
         result = main_module._aggregate_source_results(
