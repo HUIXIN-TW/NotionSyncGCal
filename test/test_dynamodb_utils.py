@@ -14,6 +14,7 @@ sys.modules.setdefault("boto3", boto3_module)
 from utils.dynamodb_utils import (  # noqa: E402
     GoogleTokenWriteConflictError,
     get_google_token_by_uuid,
+    get_notion_token_by_uuid,
     get_mapping_domain_calendar_mapping,
     get_mapping_domain_settings,
     get_mapping_domain_task_source,
@@ -23,6 +24,46 @@ from utils.dynamodb_utils import (  # noqa: E402
     update_google_token_by_uuid,
 )
 from utils.token_crypto import TokenCryptoError  # noqa: E402
+
+
+class DynamoDbNotionTokenTests(unittest.TestCase):
+    def test_get_notion_token_defaults_to_eventual_read(self):
+        table = MagicMock()
+        table.get_item.return_value = {
+            "Item": {
+                "uuid": "u-1",
+                "accessToken": "enc:v1:notion",
+                "workspaceId": "workspace-1",
+                "updatedAt": 1000,
+            }
+        }
+        with patch("utils.dynamodb_utils._get_notion_tables", return_value=table):
+            item = get_notion_token_by_uuid("u-1")
+
+        self.assertEqual(item["workspaceId"], "workspace-1")
+        table.get_item.assert_called_once_with(
+            Key={"uuid": "u-1"},
+            ConsistentRead=False,
+        )
+
+    def test_get_notion_token_supports_consistent_read(self):
+        table = MagicMock()
+        table.get_item.return_value = {
+            "Item": {
+                "uuid": "u-1",
+                "accessToken": "enc:v1:notion",
+                "workspaceId": "workspace-1",
+                "updatedAt": 1000,
+            }
+        }
+        with patch("utils.dynamodb_utils._get_notion_tables", return_value=table):
+            item = get_notion_token_by_uuid("u-1", consistent_read=True)
+
+        self.assertEqual(item["updatedAt"], 1000)
+        table.get_item.assert_called_once_with(
+            Key={"uuid": "u-1"},
+            ConsistentRead=True,
+        )
 
 
 class DynamoDbGoogleTokenTests(unittest.TestCase):
