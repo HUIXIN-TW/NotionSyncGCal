@@ -301,5 +301,3 @@ class GoogleService:
             start_date_str = start_date.strftime("%Y-%m-%d")
             end_date_str = end_date.strftime("%Y-%m-%d")
         return start_date_str, end_date_str
-
-
