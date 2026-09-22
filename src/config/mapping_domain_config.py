@@ -102,7 +102,7 @@ def apply_date_range(setting, goback_days, goforward_days):
 
 
 class MappingDomainConfig:
-    """Load normalized mapping-domain rows and expand legacy-equivalent source settings."""
+    """Load normalized mapping-domain rows into the worker runtime setting."""
 
     def __init__(self, config, logger):
         self.config = _require_dict(config, "configuration")
@@ -272,8 +272,8 @@ class MappingDomainConfig:
                     f"propertyMappings.{semantic_key} must be {expected_type}, got {property_type}."
                 )
             page_property[runtime_key] = _require_string(
-                property_mapping.get("propertyName"),
-                f"propertyMappings.{semantic_key}.propertyName",
+                property_mapping.get("propertyId"),
+                f"propertyMappings.{semantic_key}.propertyId",
             )
 
         calendar_by_name = {}
