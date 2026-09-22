@@ -161,8 +161,8 @@ class MappingDomainRefactorIntegrationTests(unittest.TestCase):
             list(setting["gcal_name_dict"]),
             ["Learning", "Job", "Life", "Mission", "Other", "Registered Event", "School"],
         )
-        self.assertEqual(setting["page_property"]["GCal_EventId_Notion_Name"], "GCal Event Id")
-        self.assertEqual(setting["page_property"]["GCal_Sync_Time_Notion_Name"], "GCal Sync Time")
+        self.assertEqual(setting["page_property"]["GCal_EventId_Notion_Name"], "event-id")
+        self.assertEqual(setting["page_property"]["GCal_Sync_Time_Notion_Name"], "sync-id")
 
         sync_fn.assert_called_once()
         self.assertIs(sync_fn.call_args.kwargs["user_setting"], setting)
@@ -185,12 +185,7 @@ class LambdaToMainIntegrationTests(unittest.TestCase):
             "Records": [
                 {
                     "messageId": "msg-1",
-                    "body": json.dumps(
-                        {
-                            "uuid": "user-1",
-                            "execution": {"obsolete": "must-not-be-forwarded"},
-                        }
-                    ),
+                    "body": json.dumps({"uuid": "user-1"}),
                     "eventSource": "aws:sqs",
                 }
             ]
