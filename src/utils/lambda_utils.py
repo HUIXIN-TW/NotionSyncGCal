@@ -168,7 +168,13 @@ def process_sqs_records(
         provided_uuid = None
         try:
             body = json.loads(record.get("body", "{}"))
+            if not isinstance(body, dict):
+                raise ValueError("SQS body must be a JSON object.")
+            if "execution" in body:
+                raise ValueError("Legacy execution payload is not supported.")
             provided_uuid = body.get("uuid")
+            if not isinstance(provided_uuid, str) or not provided_uuid.strip():
+                raise ValueError("SQS body must contain a non-empty uuid.")
             sync_result = run_sync(provided_uuid)
             processed_result = process_and_log_sync_result(
                 logger_obj=logger_obj,
@@ -254,7 +260,13 @@ def process_eventbridge_event(
     event_time = event.get("time", "unknown")
     detail = event.get("detail", {})
     try:
+        if not isinstance(detail, dict):
+            raise ValueError("EventBridge detail must be an object.")
+        if "execution" in detail:
+            raise ValueError("Legacy execution payload is not supported.")
         provided_uuid = detail.get("uuid")
+        if not isinstance(provided_uuid, str) or not provided_uuid.strip():
+            raise ValueError("EventBridge detail must contain a non-empty uuid.")
         sync_result = run_sync(provided_uuid)
         result = process_and_log_sync_result(
             logger_obj=logger_obj,
