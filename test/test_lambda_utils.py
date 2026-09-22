@@ -187,16 +187,12 @@ class TestProcessSqsRecords(unittest.TestCase):
         saved_uuids = [c[0][0] for c in mock_save.call_args_list]
         self.assertEqual(saved_uuids, uuids)
 
-    def test_sqs_calls_sync_with_uuid_only_and_ignores_unknown_payload_fields(self):
+    def test_sqs_rejects_legacy_execution_payload(self):
         event = _make_sqs_event(["uuid-001"])
         body = json.loads(event["Records"][0]["body"])
-        body["execution"] = {"obsolete": "must-not-be-forwarded"}
+        body["execution"] = {"obsolete": "must-fail"}
         event["Records"][0]["body"] = json.dumps(body)
-        seen = []
-
-        def run_sync(uuid):
-            seen.append(uuid)
-            return _ok_sync_result()
+        run_sync = MagicMock(return_value=_ok_sync_result())
 
         with patch.object(lambda_utils, "_save_sync_logs"):
             result = lambda_utils.process_sqs_records(
@@ -207,8 +203,8 @@ class TestProcessSqsRecords(unittest.TestCase):
                 lambda_start_time=self.start,
             )
 
-        self.assertEqual(seen, ["uuid-001"])
-        self.assertEqual(result["batchItemFailures"], [])
+        run_sync.assert_not_called()
+        self.assertEqual(result["batchItemFailures"], [{"itemIdentifier": "msg-0"}])
 
     def test_save_sync_logs_never_called_with_batch_sentinel(self):
         with patch.object(lambda_utils, "_save_sync_logs") as mock_save:
