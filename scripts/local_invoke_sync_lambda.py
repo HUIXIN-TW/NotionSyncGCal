@@ -138,6 +138,7 @@ def _check_cloud_config(uuid: str, logger: logging.Logger):
     source_settings = MappingDomainConfig(generate_config(uuid), logger).get()
     return _build_safe_config_summary(uuid, source_settings)
 
+
 def _invoke_cloud(uuid: str, logger: logging.Logger):
     if not uuid:
         print("ERROR: --uuid is required in cloud mode.", file=sys.stderr)
