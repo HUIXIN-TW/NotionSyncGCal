@@ -25,6 +25,11 @@ def _parse_args():
     parser = argparse.ArgumentParser(description="Invoke Notion-GCal sync locally with explicit APP_MODE.")
     parser.add_argument("--mode", required=True, choices=("cloud", "local"), help="Invocation mode")
     parser.add_argument("--uuid", help="User UUID to sync. Required in cloud mode.")
+    parser.add_argument(
+        "--check-config",
+        action="store_true",
+        help="Read and validate cloud mapping-domain configuration without loading provider tokens or running sync.",
+    )
     parser.add_argument("--verbose", action="store_true", help="Enable DEBUG-level logging")
     return parser.parse_args()
 
@@ -83,6 +88,55 @@ def _call_with_isolated_argv(fn, *args, **kwargs):
     finally:
         sys.argv = original_argv
 
+
+
+def _build_safe_config_summary(uuid: str, source_settings: list[dict]) -> dict:
+    """Return a secret-free summary of expanded mapping-domain configuration."""
+    sources = []
+    for setting in source_settings:
+        sources.append(
+            {
+                "source_id": setting["source_id"],
+                "database_id": setting["database_id"],
+                "timezone": setting["timezone"],
+                "timecode": setting["timecode"],
+                "go_back_days": setting["goback_days"],
+                "go_forward_days": setting["goforward_days"],
+                "default_calendar_name": setting["gcal_default_name"],
+                "calendar_names": list(setting["gcal_name_dict"].keys()),
+                "property_bindings": sorted(setting["page_property"].keys()),
+            }
+        )
+    return {
+        "statusCode": 200,
+        "body": {
+            "status": "config_valid",
+            "message": {
+                "read_only": True,
+                "uuid": uuid,
+                "source_count": len(sources),
+                "sources": sources,
+            },
+        },
+    }
+
+
+def _check_cloud_config(uuid: str, logger: logging.Logger):
+    """Read/validate mapping-domain config only; never load provider tokens or run sync."""
+    if not uuid:
+        print("ERROR: --uuid is required in cloud mode.", file=sys.stderr)
+        sys.exit(1)
+
+    _set_and_validate_mode("cloud")
+    _require_env(["DYNAMODB_MAPPING_DOMAIN_TABLE", "APP_REGION"])
+
+    from config.config import generate_config
+    from config.mapping_domain_config import MappingDomainConfig
+
+    logger.info("Mode: cloud read-only configuration check")
+    logger.info("UUID: %s", uuid)
+    source_settings = MappingDomainConfig(generate_config(uuid), logger).get()
+    return _build_safe_config_summary(uuid, source_settings)
 
 def _invoke_cloud(uuid: str, logger: logging.Logger):
     if not uuid:
@@ -159,6 +213,9 @@ def main():
     if args.mode == "local" and args.uuid:
         print("ERROR: --uuid is only supported in cloud mode.", file=sys.stderr)
         sys.exit(1)
+    if args.check_config and args.mode != "cloud":
+        print("ERROR: --check-config is supported only in cloud mode.", file=sys.stderr)
+        sys.exit(1)
 
     log_level = logging.DEBUG if args.verbose else logging.INFO
     logging.basicConfig(
@@ -170,7 +227,7 @@ def main():
 
     try:
         if args.mode == "cloud":
-            result = _invoke_cloud(args.uuid, logger)
+            result = _check_cloud_config(args.uuid, logger) if args.check_config else _invoke_cloud(args.uuid, logger)
         else:
             result = _invoke_local(logger)
     except Exception as exc:
@@ -178,14 +235,18 @@ def main():
         print(f"\n[FAILURE] Sync invocation raised {exc.__class__.__name__}.", file=sys.stderr)
         sys.exit(1)
 
-    print("\n=== Sync Result ===")
+    print("\n=== Configuration Check Result ===" if args.check_config else "\n=== Sync Result ===")
     print(json.dumps(result, indent=2, default=str))
 
     if _result_failed(result):
         print("\n[FAILURE] Sync returned an error result.", file=sys.stderr)
         sys.exit(1)
 
-    print("\n[SUCCESS] Sync completed.")
+    print(
+        "\n[SUCCESS] Configuration is valid and no provider sync was run."
+        if args.check_config
+        else "\n[SUCCESS] Sync completed."
+    )
 
 
 if __name__ == "__main__":
