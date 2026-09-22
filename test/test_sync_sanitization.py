@@ -7,7 +7,7 @@ from unittest.mock import MagicMock, patch
 SRC_ROOT = Path(__file__).resolve().parents[1] / "src"
 sys.path.insert(0, str(SRC_ROOT))
 
-from sync.sync import synchronize_notion_and_google_calendar  # noqa: E402
+from sync.sync import project_notion_to_google_calendar  # noqa: E402
 
 USER_SETTING = {
     "owner_user_uuid": "11111111-1111-4111-8111-111111111111",
@@ -58,13 +58,10 @@ class SyncSanitizationTests(unittest.TestCase):
             "private provider payload: secret summary and customer data"
         )
 
-        result = synchronize_notion_and_google_calendar(
+        result = project_notion_to_google_calendar(
             user_setting=copy.deepcopy(USER_SETTING),
             notion_service=notion_service,
             google_service=google_service,
-            compare_time=True,
-            should_update_notion_tasks=True,
-            should_update_google_events=True,
         )
 
         self.assertEqual(result["statusCode"], 200)
