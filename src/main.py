@@ -46,14 +46,14 @@ def _parse_args(argv: list[str] | None = None):
         "--timestamp",
         nargs=2,
         type=int,
-        help="Update Notion Task and Google Calendar by timestamp [start end]",
+        help="Override the projection date range [start end]",
     )
     parser.add_argument(
         "-n",
         "--notion",
         nargs=2,
         type=int,
-        help="Force: Update Google Calendar from Notion Task [start end]",
+        help="Project Notion tasks to Google Calendar for date range [start end]",
     )
     return parser.parse_args(argv)
 

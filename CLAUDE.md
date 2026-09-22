@@ -45,7 +45,7 @@ Local configuration/credentials live in `.env.local`: `NOTION_TOKEN`, `GOOGLE_CA
 
 Tokens may be plaintext or `enc:v1:` encrypted. Use `src/utils/token_crypto.py:decrypt_token_if_encrypted()` at token read boundaries; `decrypt_token()` stays strict. In cloud mode, token encryption keys are resolved from SSM via `TOKEN_ENCRYPTION_KEY_SSM_PATH`; local mode may still use plaintext `TOKEN_ENCRYPTION_KEY`.
 
-`MappingDomainConfig` is the only configuration boundary. It returns one isolated runtime setting per active Task source with exactly one active Calendar mapping in the current topology. It must never read `Users.notionConfig` or add fallback behavior.
+`MappingDomainConfig` is the only configuration boundary. It returns one isolated runtime setting per active Task source with exactly one active Calendar mapping and fails closed on missing, malformed, stale, or ambiguous state.
 
 ### Request flow
 
@@ -71,7 +71,7 @@ Lambda trigger (SQS / EventBridge)
 4. Inventory only mapping-tagged Google events in the configured target and retire owned projections whose Notion task is no longer present.
 5. Never create/update/delete Notion tasks from Google Calendar state.
 6. Before every Google mutation, revalidate mapping-domain state plus current Notion and Google OAuth bindings.
-7. Legacy/untagged/wrongly tagged provider events are not silently adopted.
+7. Untagged, incompletely tagged, or wrongly tagged provider events are not silently adopted.
 8. Hard cap: skip a source run if authoritative Notion task input exceeds `SYNC_TASK_LIMIT`.
 
 ### DynamoDB tables
