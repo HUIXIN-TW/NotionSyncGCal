@@ -143,7 +143,6 @@ def _check_cloud_config(uuid: str, logger: logging.Logger):
     return _build_safe_config_summary(uuid, source_settings)
 
 
-
 def _check_cloud_provider_match(uuid: str, logger: logging.Logger):
     """Verify existing Notion GCal Event Id values resolve to provider events without sync mutations."""
     if not uuid:
@@ -260,6 +259,7 @@ def _check_cloud_provider_match(uuid: str, logger: logging.Logger):
             },
         },
     }
+
 
 def _invoke_cloud(uuid: str, logger: logging.Logger):
     if not uuid:
