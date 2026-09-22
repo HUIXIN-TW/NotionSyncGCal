@@ -103,5 +103,94 @@ class ReadOnlyCloudConfigCheckTests(unittest.TestCase):
         self.assertNotIn("secret-calendar-id", str(message))
 
 
+class ReadOnlyProviderMatchTests(unittest.TestCase):
+    def test_provider_match_counts_existing_event_ids_without_sync_mutations(self):
+        logger = MagicMock()
+        source_setting = {
+            "source_id": "source-1",
+            "page_property": {"GCal_EventId_Notion_Name": "event-id-property"},
+        }
+        notion_tasks = [
+            {
+                "properties": {
+                    "GCal Event Id": {
+                        "id": "event-id-property",
+                        "rich_text": [{"plain_text": "event-1"}],
+                    }
+                }
+            },
+            {
+                "properties": {
+                    "GCal Event Id": {
+                        "id": "event-id-property",
+                        "rich_text": [{"plain_text": "event-2"}],
+                    }
+                }
+            },
+        ]
+        google_events = [{"id": "event-1"}, {"id": "event-2"}]
+
+        with patch.dict(os.environ, {"APP_MODE": "cloud"}, clear=True):
+            with patch.object(local_invoke, "_require_env"):
+                with patch("config.mapping_domain_config.MappingDomainConfig") as mapping_config:
+                    mapping_config.return_value.get.return_value = [source_setting]
+                    with patch("notion.notion_token.NotionToken") as notion_token:
+                        notion_token.return_value.get.return_value = "notion-token"
+                        with patch("gcal.gcal_token.GoogleToken") as google_token:
+                            with patch("notion.notion_service.NotionService") as notion_service:
+                                notion_service.return_value.get_notion_task.return_value = ({}, notion_tasks)
+                                with patch("gcal.gcal_service.GoogleService") as google_service:
+                                    google_service.return_value.get_gcal_event.return_value = google_events
+                                    result = local_invoke._check_cloud_provider_match("user-1", logger)
+
+        self.assertEqual(result["statusCode"], 200)
+        message = result["body"]["message"]
+        self.assertTrue(message["read_only_provider_data"])
+        self.assertEqual(message["notion_tasks_with_event_id"], 2)
+        self.assertEqual(message["matched_event_ids"], 2)
+        self.assertEqual(message["missing_event_ids"], 0)
+        self.assertEqual(message["duplicate_notion_event_ids"], 0)
+        notion_service.return_value.update_notion_task.assert_not_called()
+        notion_service.return_value.create_notion_task.assert_not_called()
+        notion_service.return_value.delete_notion_task.assert_not_called()
+        google_service.return_value.update_gcal_event.assert_not_called()
+        google_service.return_value.create_gcal_event.assert_not_called()
+        google_service.return_value.delete_gcal_event.assert_not_called()
+        google_token.assert_called_once()
+
+    def test_provider_match_fails_when_existing_event_id_is_missing(self):
+        logger = MagicMock()
+        source_setting = {
+            "source_id": "source-1",
+            "page_property": {"GCal_EventId_Notion_Name": "event-id-property"},
+        }
+        notion_tasks = [
+            {
+                "properties": {
+                    "GCal Event Id": {
+                        "id": "event-id-property",
+                        "rich_text": [{"plain_text": "event-missing"}],
+                    }
+                }
+            }
+        ]
+
+        with patch.dict(os.environ, {"APP_MODE": "cloud"}, clear=True):
+            with patch.object(local_invoke, "_require_env"):
+                with patch("config.mapping_domain_config.MappingDomainConfig") as mapping_config:
+                    mapping_config.return_value.get.return_value = [source_setting]
+                    with patch("notion.notion_token.NotionToken") as notion_token:
+                        notion_token.return_value.get.return_value = "notion-token"
+                        with patch("gcal.gcal_token.GoogleToken"):
+                            with patch("notion.notion_service.NotionService") as notion_service:
+                                notion_service.return_value.get_notion_task.return_value = ({}, notion_tasks)
+                                with patch("gcal.gcal_service.GoogleService") as google_service:
+                                    google_service.return_value.get_gcal_event.return_value = []
+                                    result = local_invoke._check_cloud_provider_match("user-1", logger)
+
+        self.assertEqual(result["statusCode"], 409)
+        self.assertEqual(result["body"]["message"]["missing_event_ids"], 1)
+
+
 if __name__ == "__main__":
     unittest.main()
