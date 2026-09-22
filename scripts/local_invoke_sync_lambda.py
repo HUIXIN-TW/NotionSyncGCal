@@ -89,7 +89,6 @@ def _call_with_isolated_argv(fn, *args, **kwargs):
         sys.argv = original_argv
 
 
-
 def _build_safe_config_summary(uuid: str, source_settings: list[dict]) -> dict:
     """Return a secret-free summary of expanded mapping-domain configuration."""
     sources = []
