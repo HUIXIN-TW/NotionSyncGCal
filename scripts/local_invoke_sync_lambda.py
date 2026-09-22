@@ -119,7 +119,7 @@ def _build_safe_config_summary(uuid: str, source_settings: list[dict]) -> dict:
                 "go_forward_days": setting["goforward_days"],
                 "default_calendar_name": setting["gcal_default_name"],
                 "calendar_names": list(setting["gcal_name_dict"].keys()),
-                "property_bindings": sorted(setting["page_property"].keys()),
+                "property_ids": dict(sorted(setting["page_property"].items())),
             }
         )
     return {
