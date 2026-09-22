@@ -4,10 +4,6 @@ from typing import Any, TypedDict
 SYNC_CAPACITY_LIMIT_ERROR_CODE = "sync_capacity_limit_exceeded"
 
 
-class StaleExecutionError(RuntimeError):
-    """Raised when a queued/current execution snapshot is no longer authoritative."""
-
-
 class SyncErrorPayload(TypedDict, total=False):
     source_id: str | None
     action: str | None
@@ -162,7 +158,6 @@ def is_successful_result(sync_result: dict[str, Any] | None) -> bool:
 
 __all__ = [
     "SYNC_CAPACITY_LIMIT_ERROR_CODE",
-    "StaleExecutionError",
     "SyncErrorPayload",
     "SyncResult",
     "SyncResultBody",
