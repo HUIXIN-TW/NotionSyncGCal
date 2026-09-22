@@ -20,6 +20,8 @@ UUID=""
 DRY_RUN=0
 CHECK_CONFIG=0
 CHECK_PROVIDER_MATCH=0
+CANARY_PAGE_ID=""
+CONFIRM_CANARY_PAGE_ID=""
 VERBOSE=0
 
 usage() {
@@ -27,6 +29,7 @@ usage() {
 Usage:
   $(basename "$0") --mode local [--dry-run] [--verbose]
   $(basename "$0") --mode cloud --uuid UUID [--check-config | --check-provider-match] [--dry-run] [--verbose]
+  $(basename "$0") --mode cloud --uuid UUID --canary-page-id PAGE_ID --confirm-canary-page-id PAGE_ID [--verbose]
 
 Runs the Notion-GCal sync locally using the explicit APP_MODE flow.
 
@@ -40,6 +43,10 @@ Options:
   --check-config   Cloud only: validate mapping-domain config without loading provider tokens or running sync.
   --check-provider-match
                    Cloud only: read provider data and verify existing GCal Event Id matches without sync mutations.
+  --canary-page-id PAGE_ID
+                   Cloud only: run one existing Notion -> Google pair through the sync update path.
+  --confirm-canary-page-id PAGE_ID
+                   Must exactly match --canary-page-id; prevents accidental provider mutation.
   --dry-run        Validate prerequisites without reading config or running the sync.
   --verbose        Enable DEBUG-level logging in the Python helper.
   -h, --help       Show this message.
@@ -129,6 +136,16 @@ parse_args() {
         CHECK_PROVIDER_MATCH=1
         shift
         ;;
+      --canary-page-id)
+        [[ $# -ge 2 ]] || fail "--canary-page-id requires a value."
+        CANARY_PAGE_ID="$2"
+        shift 2
+        ;;
+      --confirm-canary-page-id)
+        [[ $# -ge 2 ]] || fail "--confirm-canary-page-id requires a value."
+        CONFIRM_CANARY_PAGE_ID="$2"
+        shift 2
+        ;;
       --dry-run)
         DRY_RUN=1
         shift
@@ -156,6 +173,12 @@ parse_args() {
   fi
   if [[ "${CHECK_CONFIG}" -eq 1 && "${CHECK_PROVIDER_MATCH}" -eq 1 ]]; then
     fail "--check-config and --check-provider-match are mutually exclusive."
+  fi
+  if [[ -n "${CANARY_PAGE_ID}" || -n "${CONFIRM_CANARY_PAGE_ID}" ]]; then
+    [[ "${MODE}" == "cloud" ]] || fail "provider canary is supported only in cloud mode."
+    [[ -n "${CANARY_PAGE_ID}" && -n "${CONFIRM_CANARY_PAGE_ID}" ]] || fail "both canary page-id flags are required."
+    [[ "${CANARY_PAGE_ID}" == "${CONFIRM_CANARY_PAGE_ID}" ]] || fail "canary page-id confirmation does not match."
+    [[ "${CHECK_CONFIG}" -eq 0 && "${CHECK_PROVIDER_MATCH}" -eq 0 ]] || fail "provider canary cannot be combined with read-only check modes."
   fi
 }
 
@@ -310,6 +333,10 @@ run_helper() {
   fi
   [[ "${CHECK_CONFIG}" -eq 1 ]] && invoke_args+=("--check-config")
   [[ "${CHECK_PROVIDER_MATCH}" -eq 1 ]] && invoke_args+=("--check-provider-match")
+  if [[ -n "${CANARY_PAGE_ID}" ]]; then
+    invoke_args+=("--canary-page-id" "${CANARY_PAGE_ID}")
+    invoke_args+=("--confirm-canary-page-id" "${CONFIRM_CANARY_PAGE_ID}")
+  fi
   [[ "${VERBOSE}" -eq 1 ]] && invoke_args+=("--verbose")
 
   if [[ "${DRY_RUN}" -eq 1 ]]; then
@@ -325,6 +352,8 @@ run_helper() {
     echo "=== Checking Mapping-Domain Configuration (Read-Only) ==="
   elif [[ "${CHECK_PROVIDER_MATCH}" -eq 1 ]]; then
     echo "=== Checking Provider Event-ID Matches (No Sync Mutations) ==="
+  elif [[ -n "${CANARY_PAGE_ID}" ]]; then
+    echo "=== Running One-Pair Provider Canary (Mutates One Existing Pair) ==="
   else
     echo "=== Invoking Sync ==="
   fi
