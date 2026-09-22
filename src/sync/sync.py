@@ -1,6 +1,4 @@
-import sys
 import re
-from pathlib import Path
 from datetime import datetime, timezone
 from dateutil.parser import isoparse
 from sync.contracts import (
@@ -473,5 +471,3 @@ def force_update_google_event_by_notion_task_and_ignore_time(user_setting, notio
         should_update_google_events=True,
     )
     return result
-
-
