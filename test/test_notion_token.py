@@ -154,6 +154,7 @@ class TestNotionTokenCloudMode(unittest.TestCase):
                 NotionToken(_cloud_config(), _make_logger())
             self.assertIn("DDB down", str(ctx.exception))
 
+
 class TestNotionTokenUnknownMode(unittest.TestCase):
     def test_unknown_mode_raises(self):
         config = {"mode": "legacy_local"}
