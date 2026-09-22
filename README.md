@@ -12,9 +12,9 @@ Releases: https://github.com/HUIXIN-TW/NotionSyncGCal/releases
 ## What It Does
 
 - Loads normalized settings, Task sources, and Calendar mappings from the mapping-domain table.
-- Expands one legacy-equivalent runtime setting per active Notion Task source.
+- Expands one current-contract runtime setting per active Notion Task source.
 - Runs the existing Notion/Google synchronization logic independently for each source.
-- Preserves the existing Notion `GCal Event Id` and `GCal Sync Time` fields used for event matching and synchronization.
+- Preserves the existing Notion `GCal Event Id` and `GCal Sync Time` semantics while resolving those properties strictly by persisted Notion property ID.
 - Supports multiple first-class Task sources and normalized Calendar-name → Calendar-ID mappings.
 - Persists cloud sync logs in DynamoDB.
 
@@ -38,12 +38,12 @@ Cloud execution reads the current mapping-domain records:
 - `NOTION_SETTINGS` supplies `timeZone` and `timeCode`;
 - each active `NOTION_TASK_SOURCE#<sourceId>` supplies one Notion database, defaults, and semantic property bindings;
 - each active `CALENDAR_MAPPING#<mappingId>` supplies the persisted Notion Calendar select value (`calendarName`) and Google Calendar ID;
-- each source is expanded into the runtime dictionary historically produced by `NotionConfig`;
+- each source is converted into the current worker runtime setting using persisted Notion property IDs; mutable property names are not a runtime lookup fallback;
 - each source is executed independently and results are aggregated at the user job boundary.
 
 The worker requires the semantic bindings used by the existing synchronization implementation, including task/date, Calendar, location, extra info, `GCal End Date`, `GCal Deleted?`, `GCal Event Id`, `GCal Sync Time`, and `GCal Icon`.
 
-Configuration fails closed when owner identity, lifecycle, required property bindings, Calendar-name uniqueness, default Calendar, or normalized record shape is invalid. The SQS job remains UUID-scoped; the worker loads its own configuration from the mapping-domain table.
+Configuration fails closed when owner identity, lifecycle, required property bindings, Calendar-name uniqueness, default Calendar, or normalized record shape is invalid. Runtime property lookup uses `propertyId` only; there is no property-name fallback. SQS/EventBridge remain UUID-scoped and reject the superseded `execution` payload.
 
 ## Current Architecture
 
