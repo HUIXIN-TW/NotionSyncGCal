@@ -50,7 +50,7 @@ class ReadOnlyCloudConfigCheckTests(unittest.TestCase):
                 "goforward_days": 100,
                 "gcal_default_name": "Learning",
                 "gcal_name_dict": {"Learning": "calendar-id"},
-                "page_property": {"GCal_EventId_Notion_Name": "GCal Event Id"},
+                "page_property": {"GCal_EventId_Notion_Name": "event-id"},
             }
         ]
 
@@ -74,6 +74,10 @@ class ReadOnlyCloudConfigCheckTests(unittest.TestCase):
         self.assertTrue(message["read_only"])
         self.assertEqual(message["source_count"], 1)
         self.assertEqual(message["sources"][0]["default_calendar_name"], "Learning")
+        self.assertEqual(
+            message["sources"][0]["property_ids"]["GCal_EventId_Notion_Name"],
+            "event-id",
+        )
         self.assertNotIn("calendar-id", str(message))
         self.assertNotIn("token", str(message).lower())
 
