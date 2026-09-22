@@ -45,7 +45,7 @@ Local configuration/credentials live in `.env.local`: `NOTION_TOKEN`, `GOOGLE_CA
 
 Tokens may be plaintext or `enc:v1:` encrypted. Use `src/utils/token_crypto.py:decrypt_token_if_encrypted()` at token read boundaries; `decrypt_token()` stays strict. In cloud mode, token encryption keys are resolved from SSM via `TOKEN_ENCRYPTION_KEY_SSM_PATH`; local mode may still use plaintext `TOKEN_ENCRYPTION_KEY`.
 
-`MappingDomainConfig` is the only configuration boundary. It returns one isolated runtime setting per active Task source with exactly one active Calendar mapping and fails closed on missing, malformed, stale, or ambiguous state.
+`MappingDomainConfig` is the only configuration boundary. It returns one legacy-equivalent runtime setting per active Task source, including the normalized Calendar-name mapping, explicit default Calendar, and worker-required Notion property names. It fails closed on missing, malformed, cross-owner, duplicate-Calendar-name, or incomplete configuration.
 
 ### Request flow
 
@@ -84,7 +84,7 @@ Runtime tables (set via env vars):
 - `DYNAMODB_NOTION_OAUTH_TOKEN_TABLE` — Notion API token (encrypted as `enc:v1:…`)
 - `DYNAMODB_SYNC_LOGS_TABLE` — sync result logs with TTL
 
-The worker consumes provider property IDs, derives offsets from `NotionSettings.timeZone`, and routes by persisted mapping/Calendar identity. Distinct Task sources may share one Calendar because provider materializations are isolated by owner/source/mapping/task/target identity.
+The worker consumes normalized mapping-domain records, expands provider property bindings back to the property names used by the existing sync implementation, and preserves `GCal Event Id` / `GCal Sync Time` semantics. Distinct Task sources may share a Google Calendar; configuration identity does not redefine provider event identity.
 
 ### Token encryption
 
