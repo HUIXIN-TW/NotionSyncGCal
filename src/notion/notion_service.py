@@ -328,5 +328,3 @@ class NotionService:
 
     def get_page_property(self, key: str) -> str:
         return self.setting["page_property"].get(key)
-
-
