@@ -19,13 +19,14 @@ MODE=""
 UUID=""
 DRY_RUN=0
 CHECK_CONFIG=0
+CHECK_PROVIDER_MATCH=0
 VERBOSE=0
 
 usage() {
   cat <<EOF
 Usage:
   $(basename "$0") --mode local [--dry-run] [--verbose]
-  $(basename "$0") --mode cloud --uuid UUID [--check-config] [--dry-run] [--verbose]
+  $(basename "$0") --mode cloud --uuid UUID [--check-config | --check-provider-match] [--dry-run] [--verbose]
 
 Runs the Notion-GCal sync locally using the explicit APP_MODE flow.
 
@@ -37,6 +38,8 @@ Options:
   --mode MODE      Required. Must be 'local' or 'cloud'.
   --uuid UUID      Required in cloud mode. Not used in local mode.
   --check-config   Cloud only: validate mapping-domain config without loading provider tokens or running sync.
+  --check-provider-match
+                   Cloud only: read provider data and verify existing GCal Event Id matches without sync mutations.
   --dry-run        Validate prerequisites without reading config or running the sync.
   --verbose        Enable DEBUG-level logging in the Python helper.
   -h, --help       Show this message.
@@ -44,6 +47,7 @@ Options:
 Examples:
   ./scripts/local-run-dev-sync.sh --mode local
   ./scripts/local-run-dev-sync.sh --mode cloud --uuid xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx --check-config
+  ./scripts/local-run-dev-sync.sh --mode cloud --uuid xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx --check-provider-match
   ./scripts/local-run-dev-sync.sh --mode cloud --uuid xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
 EOF
   exit 0
@@ -121,6 +125,10 @@ parse_args() {
         CHECK_CONFIG=1
         shift
         ;;
+      --check-provider-match)
+        CHECK_PROVIDER_MATCH=1
+        shift
+        ;;
       --dry-run)
         DRY_RUN=1
         shift
@@ -142,6 +150,12 @@ parse_args() {
   [[ "${MODE}" == "local" || "${MODE}" == "cloud" ]] || fail "--mode must be 'local' or 'cloud'."
   if [[ "${CHECK_CONFIG}" -eq 1 && "${MODE}" != "cloud" ]]; then
     fail "--check-config is supported only in cloud mode."
+  fi
+  if [[ "${CHECK_PROVIDER_MATCH}" -eq 1 && "${MODE}" != "cloud" ]]; then
+    fail "--check-provider-match is supported only in cloud mode."
+  fi
+  if [[ "${CHECK_CONFIG}" -eq 1 && "${CHECK_PROVIDER_MATCH}" -eq 1 ]]; then
+    fail "--check-config and --check-provider-match are mutually exclusive."
   fi
 }
 
@@ -295,6 +309,7 @@ run_helper() {
     invoke_args+=("--uuid" "${UUID}")
   fi
   [[ "${CHECK_CONFIG}" -eq 1 ]] && invoke_args+=("--check-config")
+  [[ "${CHECK_PROVIDER_MATCH}" -eq 1 ]] && invoke_args+=("--check-provider-match")
   [[ "${VERBOSE}" -eq 1 ]] && invoke_args+=("--verbose")
 
   if [[ "${DRY_RUN}" -eq 1 ]]; then
@@ -308,6 +323,8 @@ run_helper() {
   echo ""
   if [[ "${CHECK_CONFIG}" -eq 1 ]]; then
     echo "=== Checking Mapping-Domain Configuration (Read-Only) ==="
+  elif [[ "${CHECK_PROVIDER_MATCH}" -eq 1 ]]; then
+    echo "=== Checking Provider Event-ID Matches (No Sync Mutations) ==="
   else
     echo "=== Invoking Sync ==="
   fi
