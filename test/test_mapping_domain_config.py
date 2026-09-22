@@ -2,6 +2,7 @@ import json
 import sys
 import tempfile
 import unittest
+from copy import deepcopy
 from datetime import datetime
 from decimal import Decimal
 from pathlib import Path
@@ -155,7 +156,7 @@ def execution_for(payload, *, settings_version=1):
                         "mappingId": mapping["id"],
                         "mappingVersion": mapping["version"],
                         "calendarId": mapping["calendarId"],
-                        "routing": mapping["routing"],
+                        "routing": deepcopy(mapping["routing"]),
                     }
                     for mapping in source_mappings
                 ],
