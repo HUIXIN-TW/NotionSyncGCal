@@ -3,49 +3,47 @@
 ![Python](https://img.shields.io/badge/Python-3.11%2B-blue)
 ![Lambda](https://img.shields.io/badge/AWS%20Lambda-Container-orange)
 
-AWS Lambda container and local developer runner for projecting authoritative Notion tasks into Google Calendar.
+AWS Lambda container and local developer runner for synchronizing Notion tasks with Google Calendar.
 
-The worker reads Notion task data and mutates only owned Google Calendar projections. Validate configuration and run against test data first.
+The mapping-domain cutover changes how configuration is stored and loaded. It does not replace the existing event-ID-based synchronization algorithm. Validate configuration and run against test data first.
 
 Releases: https://github.com/HUIXIN-TW/NotionSyncGCal/releases
 
 ## What It Does
 
-- Projects Notion Task sources into explicitly mapped Google Calendars.
-- Supports multiple first-class Task sources and source-to-Calendar mappings.
-- Allows distinct Task sources to share the same Google Calendar while preserving source/mapping/task ownership.
-- Uses stable Notion provider property IDs from the mapping-domain contract.
-- Uses deterministic Google event identity and private ownership metadata so retries converge on the same projection.
-- Revalidates current configuration and provider bindings before Google Calendar mutation.
+- Loads normalized settings, Task sources, and Calendar mappings from the mapping-domain table.
+- Expands one legacy-equivalent runtime setting per active Notion Task source.
+- Runs the existing Notion/Google synchronization logic independently for each source.
+- Preserves the existing Notion `GCal Event Id` and `GCal Sync Time` fields used for event matching and synchronization.
+- Supports multiple first-class Task sources and normalized Calendar-name → Calendar-ID mappings.
 - Persists cloud sync logs in DynamoDB.
 
 ## Sync Behavior
 
-- Notion is authoritative for task content and scheduling.
-- Each runnable Task source uses exactly one routing mode: one `all` mapping or multiple unique `notion_calendar_value` mappings.
-- In routed mode, the bound Notion `calendarName` select value resolves the exact active Calendar mapping for each task.
-- Blank or unknown routes fail closed: no provider mutation and no implicit default Calendar/writeback.
-- Each Notion task maps to a deterministic Google event identity scoped by owner, source, mapping, task, and target Calendar.
-- Existing owned projections are updated in place; retries do not create a second projection.
-- A configured Notion deletion flag removes only the matching owned Google projection.
-- Owned Google projections whose Notion task no longer exists are retired.
-- Untagged, incompletely tagged, or incorrectly owned Google events are not adopted.
-- Google Calendar edits never create, update, or delete Notion tasks.
+The storage migration does not redefine the synchronization algorithm.
+
+- Existing event matching still uses the Notion `GCal Event Id` field.
+- Creating a Google event still writes the provider event ID back to Notion.
+- Existing update/delete/move behavior still uses that provider event ID.
+- Existing timestamp comparison and `GCal Sync Time` behavior remains in `src/sync/sync.py`.
+- The existing Google → Notion and Notion → Google force modes remain available.
+- The existing default-Calendar behavior is preserved through explicit `defaultCalendarName` configuration.
 - CLI date-range flags are in-memory execution overrides only and do not rewrite configuration.
+- Multiple active Task sources are orchestrated by running the same existing sync function once per source.
 
 ## Mapping-Domain Consumer Contract
 
 Cloud execution reads the current mapping-domain records:
 
-- `NOTION_SETTINGS` supplies the IANA time zone and settings version;
-- each active `NOTION_TASK_SOURCE#<sourceId>` supplies one Notion database, defaults, provider property IDs, source identity, and version;
-- each active `CALENDAR_MAPPING#<mappingId>` supplies source identity, target Calendar identity, mapping identity/version, and typed routing policy;
-- authoritative execution checks use strongly consistent base-table reads;
+- `NOTION_SETTINGS` supplies `timeZone` and `timeCode`;
+- each active `NOTION_TASK_SOURCE#<sourceId>` supplies one Notion database, defaults, and semantic property bindings;
+- each active `CALENDAR_MAPPING#<mappingId>` supplies the persisted Notion Calendar select value (`calendarName`) and Google Calendar ID;
+- each source is expanded into the runtime dictionary historically produced by `NotionConfig`;
 - each source is executed independently and results are aggregated at the user job boundary.
 
-The Task source requires the `task` and `date` semantic bindings. The worker additionally requires `googleCalendarEndDate` for its current projection query. `calendarName` is required only for `notion_calendar_value` routing. Other supported Task bindings remain optional.
+The worker requires the semantic bindings used by the existing synchronization implementation, including task/date, Calendar, location, extra info, `GCal End Date`, `GCal Deleted?`, `GCal Event Id`, `GCal Sync Time`, and `GCal Icon`.
 
-Configuration fails closed when owner identity, lifecycle, routing mode/value uniqueness, provider type, version, OAuth binding, or required projection bindings are inconsistent. Queue execution contract v3 carries the complete active mapping set per source and the worker revalidates that complete set before provider mutation.
+Configuration fails closed when owner identity, lifecycle, required property bindings, Calendar-name uniqueness, default Calendar, or normalized record shape is invalid. The SQS job remains UUID-scoped; the worker loads its own configuration from the mapping-domain table.
 
 ## Current Architecture
 
