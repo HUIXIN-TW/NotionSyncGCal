@@ -169,8 +169,7 @@ def process_sqs_records(
         try:
             body = json.loads(record.get("body", "{}"))
             provided_uuid = body.get("uuid")
-            execution = body.get("execution")
-            sync_result = run_sync(provided_uuid, execution=execution)
+            sync_result = run_sync(provided_uuid)
             processed_result = process_and_log_sync_result(
                 logger_obj=logger_obj,
                 sync_result=sync_result,
@@ -178,13 +177,7 @@ def process_sqs_records(
                 uuid=provided_uuid,
                 lambda_start_time=lambda_start_time,
                 trigger_name="sqs",
-                extra={
-                    "job_id": job_id,
-                    "operation_id": execution.get("operationId") if isinstance(execution, dict) else None,
-                    "execution_contract_version": (
-                        execution.get("contractVersion") if isinstance(execution, dict) else None
-                    ),
-                },
+                extra={"job_id": job_id},
             )
             sqs_batch_results.append(processed_result)
             if sync_result_requires_retry(processed_result):
@@ -262,7 +255,7 @@ def process_eventbridge_event(
     detail = event.get("detail", {})
     try:
         provided_uuid = detail.get("uuid")
-        sync_result = run_sync(provided_uuid, execution=None)
+        sync_result = run_sync(provided_uuid)
         result = process_and_log_sync_result(
             logger_obj=logger_obj,
             sync_result=sync_result,
