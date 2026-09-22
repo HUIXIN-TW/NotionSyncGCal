@@ -15,12 +15,6 @@ def get_property(properties: dict, property_id: str | None) -> dict:
     for value in properties.values():
         if isinstance(value, dict) and value.get("id") == property_id:
             return value
-    # Some tests and older cached payloads omit the embedded id. Keep a direct-key
-    # fallback, but only after checking authoritative provider ids to avoid a
-    # mutable property name shadowing another property's id.
-    direct = properties.get(property_id)
-    if isinstance(direct, dict):
-        return direct
     return {}
 
 
