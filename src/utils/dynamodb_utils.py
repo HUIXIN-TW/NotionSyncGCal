@@ -5,6 +5,9 @@ import boto3
 from utils.token_crypto import encrypt_token_if_plaintext
 
 
+SOURCE_MAPPINGS_INDEX_NAME = "SourceMappingsIndex"
+
+
 class GoogleTokenWriteConflictError(RuntimeError):
     """Raised when a Google token update loses a conditional-write race."""
 
@@ -50,6 +53,27 @@ def _get_notion_tables():
     return notion_oauth_token_tbl
 
 
+def _get_mapping_domain_table():
+    mapping_domain_table = os.getenv("DYNAMODB_MAPPING_DOMAIN_TABLE")
+    if not mapping_domain_table:
+        raise ValueError("DYNAMODB_MAPPING_DOMAIN_TABLE env var is not set")
+    return _get_dynamodb().Table(mapping_domain_table)
+
+
+def _query_all(table, **kwargs) -> list[dict]:
+    items = []
+    exclusive_start_key = None
+    while True:
+        request = dict(kwargs)
+        if exclusive_start_key:
+            request["ExclusiveStartKey"] = exclusive_start_key
+        response = table.query(**request)
+        items.extend(response.get("Items", []))
+        exclusive_start_key = response.get("LastEvaluatedKey")
+        if not exclusive_start_key:
+            return items
+
+
 def save_sync_logs(uuid: str, response: dict, ttl_days: int = 7):
     now_iso = datetime.now(timezone.utc).isoformat()
     trigger_by = response.get("trigger_by", "unknown")
@@ -87,9 +111,12 @@ def save_sync_logs(uuid: str, response: dict, ttl_days: int = 7):
 
 
 # get data from notion oauth token tables by uuid
-def get_notion_token_by_uuid(uuid: str) -> str:
+def get_notion_token_by_uuid(uuid: str, consistent_read: bool = False) -> dict:
     notion_tbl = _get_notion_tables()
-    response = notion_tbl.get_item(Key={"uuid": uuid})
+    response = notion_tbl.get_item(
+        Key={"uuid": uuid},
+        ConsistentRead=consistent_read,
+    )
     item = response.get("Item")
     if not item:
         raise ValueError(f"No Notion token found for uuid: {uuid}")
@@ -150,25 +177,84 @@ def update_google_token_by_uuid(
         raise
 
 
-# get notion config in user table by uuid
-def get_notion_config_by_uuid(uuid: str) -> dict:
-    users_tbl = _get_users_table()
-    response = users_tbl.get_item(Key={"uuid": uuid})
+def get_mapping_domain_settings(uuid: str) -> dict:
+    table = _get_mapping_domain_table()
+    response = table.get_item(
+        Key={"pk": f"USER#{uuid}", "sk": "NOTION_SETTINGS"},
+        ConsistentRead=True,
+    )
     item = response.get("Item")
-    if not item or "notionConfig" not in item:
-        raise ValueError(f"No Notion config found for uuid: {uuid}")
-    return item["notionConfig"]
+    if not item:
+        raise ValueError(f"No Notion settings found for uuid: {uuid}")
+    return item
 
 
-# update notion config in user table by uuid
-def update_notion_config_by_uuid(uuid: str, notion_config: dict):
-    users_tbl = _get_users_table()
-    users_tbl.update_item(
-        Key={"uuid": uuid},
-        UpdateExpression="SET notionConfig = :nc",
+def list_mapping_domain_task_sources(uuid: str) -> list[dict]:
+    table = _get_mapping_domain_table()
+    return _query_all(
+        table,
+        KeyConditionExpression="#pk = :pk AND begins_with(#sk, :sourcePrefix)",
+        ExpressionAttributeNames={"#pk": "pk", "#sk": "sk"},
         ExpressionAttributeValues={
-            ":nc": notion_config,
+            ":pk": f"USER#{uuid}",
+            ":sourcePrefix": "NOTION_TASK_SOURCE#",
         },
+        ConsistentRead=True,
+    )
+
+
+def get_mapping_domain_task_source(uuid: str, source_id: str) -> dict:
+    table = _get_mapping_domain_table()
+    response = table.get_item(
+        Key={"pk": f"USER#{uuid}", "sk": f"NOTION_TASK_SOURCE#{source_id}"},
+        ConsistentRead=True,
+    )
+    item = response.get("Item")
+    if not item:
+        raise ValueError(f"No Task source {source_id} found for uuid: {uuid}")
+    return item
+
+
+def get_mapping_domain_calendar_mapping(uuid: str, mapping_id: str) -> dict:
+    table = _get_mapping_domain_table()
+    response = table.get_item(
+        Key={"pk": f"USER#{uuid}", "sk": f"CALENDAR_MAPPING#{mapping_id}"},
+        ConsistentRead=True,
+    )
+    item = response.get("Item")
+    if not item:
+        raise ValueError(f"No Calendar mapping {mapping_id} found for uuid: {uuid}")
+    return item
+
+
+def list_mapping_domain_calendar_mappings(uuid: str, source_id: str) -> list[dict]:
+    table = _get_mapping_domain_table()
+    return _query_all(
+        table,
+        IndexName=SOURCE_MAPPINGS_INDEX_NAME,
+        KeyConditionExpression="#sourceMappingOwnerSourceKey = :sourceMappingOwnerSourceKey",
+        ExpressionAttributeNames={"#sourceMappingOwnerSourceKey": "sourceMappingOwnerSourceKey"},
+        ExpressionAttributeValues={":sourceMappingOwnerSourceKey": f"USER#{uuid}#TASK_SOURCE#{source_id}"},
+    )
+
+
+def list_mapping_domain_calendar_mappings_for_owner(uuid: str) -> list[dict]:
+    """Strongly read all Calendar mappings from the owner's base-table partition.
+
+    The GSI helper above remains available for non-authoritative discovery. Sync
+    execution must not authorize provider writes from an eventually consistent
+    index result.
+    """
+    table = _get_mapping_domain_table()
+    return _query_all(
+        table,
+        KeyConditionExpression="#pk = :pk AND begins_with(#sk, :mappingPrefix)",
+        ExpressionAttributeNames={"#pk": "pk", "#sk": "sk"},
+        ExpressionAttributeValues={
+            ":pk": f"USER#{uuid}",
+            ":mappingPrefix": "CALENDAR_MAPPING#",
+        },
+        ConsistentRead=True,
     )
 
 
@@ -178,6 +264,10 @@ __all__ = [
     "get_google_token_by_uuid",
     "GoogleTokenWriteConflictError",
     "update_google_token_by_uuid",
-    "get_notion_config_by_uuid",
-    "update_notion_config_by_uuid",
+    "get_mapping_domain_settings",
+    "get_mapping_domain_task_source",
+    "get_mapping_domain_calendar_mapping",
+    "list_mapping_domain_task_sources",
+    "list_mapping_domain_calendar_mappings",
+    "list_mapping_domain_calendar_mappings_for_owner",
 ]

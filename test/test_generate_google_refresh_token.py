@@ -30,9 +30,9 @@ class GenerateGoogleRefreshTokenTests(unittest.TestCase):
             "client-secret",
             "refresh-token",
         )
-        self.assertIn("GOOGLE_CLIENT_ID=client-id", snippet)
-        self.assertIn("GOOGLE_CLIENT_SECRET=client-secret", snippet)
-        self.assertIn("GOOGLE_REFRESH_TOKEN=refresh-token", snippet)
+        self.assertIn("GOOGLE_CALENDAR_CLIENT_ID=client-id", snippet)
+        self.assertIn("GOOGLE_CALENDAR_CLIENT_SECRET=client-secret", snippet)
+        self.assertIn("GOOGLE_CALENDAR_REFRESH_TOKEN=refresh-token", snippet)
         self.assertNotIn("access", snippet.lower())
         self.assertNotIn("expiry", snippet.lower())
 

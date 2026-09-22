@@ -8,20 +8,30 @@ Notion API shapes by type:
 """
 
 
-def get_rich_text(properties: dict, column_name: str) -> str | None:
-    items = properties.get(column_name, {}).get("rich_text", [])
+def get_property(properties: dict, property_id: str | None) -> dict:
+    """Resolve a page property by stable provider ID, not its mutable name."""
+    if not property_id:
+        return {}
+    for value in properties.values():
+        if isinstance(value, dict) and value.get("id") == property_id:
+            return value
+    return {}
+
+
+def get_rich_text(properties: dict, property_id: str | None) -> str | None:
+    items = get_property(properties, property_id).get("rich_text", [])
     return items[0].get("plain_text") if items else None
 
 
-def get_title(properties: dict, column_name: str) -> str | None:
-    items = properties.get(column_name, {}).get("title", [])
+def get_title(properties: dict, property_id: str | None) -> str | None:
+    items = get_property(properties, property_id).get("title", [])
     return items[0].get("plain_text") if items else None
 
 
-def get_select(properties: dict, column_name: str) -> str | None:
-    select = (properties.get(column_name) or {}).get("select") or {}
+def get_select(properties: dict, property_id: str | None) -> str | None:
+    select = get_property(properties, property_id).get("select") or {}
     return select.get("name")
 
 
-def get_checkbox(properties: dict, column_name: str) -> bool:
-    return properties.get(column_name, {}).get("checkbox", False)
+def get_checkbox(properties: dict, property_id: str | None) -> bool:
+    return get_property(properties, property_id).get("checkbox", False)

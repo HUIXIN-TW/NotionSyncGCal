@@ -1,6 +1,4 @@
-import sys
 import re
-from pathlib import Path
 from datetime import datetime, timezone
 from dateutil.parser import isoparse
 from sync.contracts import (
@@ -473,42 +471,3 @@ def force_update_google_event_by_notion_task_and_ignore_time(user_setting, notio
         should_update_google_events=True,
     )
     return result
-
-
-if __name__ == "__main__":
-    # python -m src.sync.sync
-    from rich.pretty import pprint
-
-    sys.path.append(str(Path(__file__).resolve().parent.parent))
-    from config.config import generate_uuid_config  # noqa: E402
-    from notion.notion_service import NotionService  # noqa: E402
-    from notion.notion_config import NotionConfig  # noqa: E402
-    from gcal.gcal_token import GoogleToken  # noqa: E402
-    from gcal.gcal_service import GoogleService  # noqa: E402
-
-    config = generate_uuid_config("huixinyang")
-    notion_config = NotionConfig(config, logger)
-    notion_token = notion_config.token
-    notion_user_setting = notion_config.user_setting
-    notion_service = NotionService(notion_token, notion_user_setting, logger)
-    google_token = GoogleToken(config, logger)
-    google_service = GoogleService(notion_user_setting, google_token, logger)
-    pprint(notion_config.user_setting)
-    synchronize_notion_and_google_calendar(
-        user_setting=notion_config.user_setting,
-        notion_service=notion_service,
-        google_service=google_service,
-        compare_time=True,
-        should_update_notion_tasks=True,
-        should_update_google_events=True,
-    )
-    # force_update_notion_tasks_by_google_event_and_ignore_time(
-    #     user_setting=notion_config.user_setting,
-    #     notion_service=notion_service,
-    #     google_service=google_service,
-    # )
-    # force_update_google_event_by_notion_task_and_ignore_time(
-    #     user_setting=notion_config.user_setting,
-    #     notion_service=notion_service,
-    #     google_service=google_service,
-    # )

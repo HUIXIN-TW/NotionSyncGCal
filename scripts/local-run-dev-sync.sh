@@ -13,34 +13,48 @@ readonly DEV_FUNCTION_NAME="dev-fn-notion-sync-gcal"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 LOCAL_ENV_FILE="${REPO_ROOT}/.env.local"
-LOCAL_NOTION_CONFIG="${REPO_ROOT}/config/local.notion-setting.json"
+LOCAL_MAPPING_DOMAIN_CONFIG="${REPO_ROOT}/config/local.mapping-domain.json"
 
 MODE=""
 UUID=""
 DRY_RUN=0
+CHECK_CONFIG=0
+CHECK_PROVIDER_MATCH=0
+CANARY_PAGE_ID=""
+CONFIRM_CANARY_PAGE_ID=""
 VERBOSE=0
 
 usage() {
   cat <<EOF
 Usage:
   $(basename "$0") --mode local [--dry-run] [--verbose]
-  $(basename "$0") --mode cloud --uuid UUID [--dry-run] [--verbose]
+  $(basename "$0") --mode cloud --uuid UUID [--check-config | --check-provider-match] [--dry-run] [--verbose]
+  $(basename "$0") --mode cloud --uuid UUID --canary-page-id PAGE_ID --confirm-canary-page-id PAGE_ID [--verbose]
 
 Runs the Notion-GCal sync locally using the explicit APP_MODE flow.
 
 Modes:
-  local   Uses .env.local and config/local.notion-setting.json only. AWS credentials are not required.
+  local   Uses .env.local and config/local.mapping-domain.json only. AWS credentials are not required.
   cloud   Uses local code with dev AWS-backed config for the supplied user UUID.
 
 Options:
   --mode MODE      Required. Must be 'local' or 'cloud'.
   --uuid UUID      Required in cloud mode. Not used in local mode.
-  --dry-run        Validate prerequisites without running the sync.
+  --check-config   Cloud only: validate mapping-domain config without loading provider tokens or running sync.
+  --check-provider-match
+                   Cloud only: read provider data and verify existing GCal Event Id matches without sync mutations.
+  --canary-page-id PAGE_ID
+                   Cloud only: run one existing Notion -> Google pair through the sync update path.
+  --confirm-canary-page-id PAGE_ID
+                   Must exactly match --canary-page-id; prevents accidental provider mutation.
+  --dry-run        Validate prerequisites without reading config or running the sync.
   --verbose        Enable DEBUG-level logging in the Python helper.
   -h, --help       Show this message.
 
 Examples:
   ./scripts/local-run-dev-sync.sh --mode local
+  ./scripts/local-run-dev-sync.sh --mode cloud --uuid xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx --check-config
+  ./scripts/local-run-dev-sync.sh --mode cloud --uuid xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx --check-provider-match
   ./scripts/local-run-dev-sync.sh --mode cloud --uuid xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
 EOF
   exit 0
@@ -114,6 +128,24 @@ parse_args() {
         UUID="$2"
         shift 2
         ;;
+      --check-config)
+        CHECK_CONFIG=1
+        shift
+        ;;
+      --check-provider-match)
+        CHECK_PROVIDER_MATCH=1
+        shift
+        ;;
+      --canary-page-id)
+        [[ $# -ge 2 ]] || fail "--canary-page-id requires a value."
+        CANARY_PAGE_ID="$2"
+        shift 2
+        ;;
+      --confirm-canary-page-id)
+        [[ $# -ge 2 ]] || fail "--confirm-canary-page-id requires a value."
+        CONFIRM_CANARY_PAGE_ID="$2"
+        shift 2
+        ;;
       --dry-run)
         DRY_RUN=1
         shift
@@ -133,6 +165,21 @@ parse_args() {
 
   [[ -n "${MODE}" ]] || fail "--mode is required. Use --mode local or --mode cloud."
   [[ "${MODE}" == "local" || "${MODE}" == "cloud" ]] || fail "--mode must be 'local' or 'cloud'."
+  if [[ "${CHECK_CONFIG}" -eq 1 && "${MODE}" != "cloud" ]]; then
+    fail "--check-config is supported only in cloud mode."
+  fi
+  if [[ "${CHECK_PROVIDER_MATCH}" -eq 1 && "${MODE}" != "cloud" ]]; then
+    fail "--check-provider-match is supported only in cloud mode."
+  fi
+  if [[ "${CHECK_CONFIG}" -eq 1 && "${CHECK_PROVIDER_MATCH}" -eq 1 ]]; then
+    fail "--check-config and --check-provider-match are mutually exclusive."
+  fi
+  if [[ -n "${CANARY_PAGE_ID}" || -n "${CONFIRM_CANARY_PAGE_ID}" ]]; then
+    [[ "${MODE}" == "cloud" ]] || fail "provider canary is supported only in cloud mode."
+    [[ -n "${CANARY_PAGE_ID}" && -n "${CONFIRM_CANARY_PAGE_ID}" ]] || fail "both canary page-id flags are required."
+    [[ "${CANARY_PAGE_ID}" == "${CONFIRM_CANARY_PAGE_ID}" ]] || fail "canary page-id confirmation does not match."
+    [[ "${CHECK_CONFIG}" -eq 0 && "${CHECK_PROVIDER_MATCH}" -eq 0 ]] || fail "provider canary cannot be combined with read-only check modes."
+  fi
 }
 
 validate_local_mode() {
@@ -147,16 +194,16 @@ validate_local_mode() {
 
   [[ "${APP_MODE:-}" == "local" ]] || fail ".env.local must set APP_MODE=local."
   require_env NOTION_TOKEN
-  require_env GOOGLE_CLIENT_ID
-  require_env GOOGLE_CLIENT_SECRET
-  require_env GOOGLE_REFRESH_TOKEN
-  [[ -f "${LOCAL_NOTION_CONFIG}" ]] || fail "${LOCAL_NOTION_CONFIG} does not exist. Create it from config/local.notion-setting.example.json."
+  require_env GOOGLE_CALENDAR_CLIENT_ID
+  require_env GOOGLE_CALENDAR_CLIENT_SECRET
+  require_env GOOGLE_CALENDAR_REFRESH_TOKEN
+  [[ -f "${LOCAL_MAPPING_DOMAIN_CONFIG}" ]] || fail "${LOCAL_MAPPING_DOMAIN_CONFIG} does not exist. Create it from config/local.mapping-domain.example.json."
 
   export APP_MODE=local
 
   echo "Local prerequisites passed."
   echo "  .env.local: present"
-  echo "  config/local.notion-setting.json: present"
+  echo "  config/local.mapping-domain.json: present"
   echo "  APP_MODE: local"
 }
 
@@ -227,6 +274,7 @@ validate_cloud_mode() {
 
   for name in \
     DYNAMODB_USER_TABLE \
+    DYNAMODB_MAPPING_DOMAIN_TABLE \
     DYNAMODB_SYNC_LOGS_TABLE \
     DYNAMODB_GOOGLE_OAUTH_TOKEN_TABLE \
     DYNAMODB_NOTION_OAUTH_TOKEN_TABLE \
@@ -244,23 +292,30 @@ validate_cloud_mode() {
   export APP_REGION="${region}"
   export AWS_REGION="${region}"
 
-  for name in \
-    DYNAMODB_USER_TABLE \
-    DYNAMODB_SYNC_LOGS_TABLE \
-    DYNAMODB_GOOGLE_OAUTH_TOKEN_TABLE \
-    DYNAMODB_NOTION_OAUTH_TOKEN_TABLE \
-    TOKEN_ENCRYPTION_KEY_SSM_PATH \
-    GOOGLE_CALENDAR_CLIENT_ID \
-    GOOGLE_CALENDAR_CLIENT_SECRET_SSM_PATH \
-    APP_REGION; do
-    require_env "${name}"
-  done
-  unset name
+  if [[ "${CHECK_CONFIG}" -eq 1 ]]; then
+    require_env DYNAMODB_MAPPING_DOMAIN_TABLE
+    require_env APP_REGION
+  else
+    for name in \
+      DYNAMODB_USER_TABLE \
+      DYNAMODB_MAPPING_DOMAIN_TABLE \
+      DYNAMODB_SYNC_LOGS_TABLE \
+      DYNAMODB_GOOGLE_OAUTH_TOKEN_TABLE \
+      DYNAMODB_NOTION_OAUTH_TOKEN_TABLE \
+      TOKEN_ENCRYPTION_KEY_SSM_PATH \
+      GOOGLE_CALENDAR_CLIENT_ID \
+      GOOGLE_CALENDAR_CLIENT_SECRET_SSM_PATH \
+      APP_REGION; do
+      require_env "${name}"
+    done
+    unset name
+  fi
 
   echo "Cloud prerequisites passed."
   echo "  APP_MODE: cloud"
   echo "  UUID: ${UUID}"
   echo "  DYNAMODB_USER_TABLE: [set, not printed]"
+  echo "  DYNAMODB_MAPPING_DOMAIN_TABLE: [set, not printed]"
   echo "  DYNAMODB_SYNC_LOGS_TABLE: [set, not printed]"
   echo "  DYNAMODB_GOOGLE_OAUTH_TOKEN_TABLE: [set, not printed]"
   echo "  DYNAMODB_NOTION_OAUTH_TOKEN_TABLE: [set, not printed]"
@@ -276,6 +331,12 @@ run_helper() {
   if [[ "${MODE}" == "cloud" ]]; then
     invoke_args+=("--uuid" "${UUID}")
   fi
+  [[ "${CHECK_CONFIG}" -eq 1 ]] && invoke_args+=("--check-config")
+  [[ "${CHECK_PROVIDER_MATCH}" -eq 1 ]] && invoke_args+=("--check-provider-match")
+  if [[ -n "${CANARY_PAGE_ID}" ]]; then
+    invoke_args+=("--canary-page-id" "${CANARY_PAGE_ID}")
+    invoke_args+=("--confirm-canary-page-id" "${CONFIRM_CANARY_PAGE_ID}")
+  fi
   [[ "${VERBOSE}" -eq 1 ]] && invoke_args+=("--verbose")
 
   if [[ "${DRY_RUN}" -eq 1 ]]; then
@@ -287,7 +348,15 @@ run_helper() {
   fi
 
   echo ""
-  echo "=== Invoking Sync ==="
+  if [[ "${CHECK_CONFIG}" -eq 1 ]]; then
+    echo "=== Checking Mapping-Domain Configuration (Read-Only) ==="
+  elif [[ "${CHECK_PROVIDER_MATCH}" -eq 1 ]]; then
+    echo "=== Checking Provider Event-ID Matches (No Sync Mutations) ==="
+  elif [[ -n "${CANARY_PAGE_ID}" ]]; then
+    echo "=== Running One-Pair Provider Canary (Mutates One Existing Pair) ==="
+  else
+    echo "=== Invoking Sync ==="
+  fi
   cd "${REPO_ROOT}"
   uv run python scripts/local_invoke_sync_lambda.py "${invoke_args[@]}"
 }

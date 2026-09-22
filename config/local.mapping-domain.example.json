@@ -1,0 +1,104 @@
+{
+  "settings": {
+    "ownerUserUuid": "local-user",
+    "timeZone": "Australia/Perth",
+    "timeCode": "+08:00",
+    "version": 1,
+    "updatedAtMs": 0
+  },
+  "taskSources": [
+    {
+      "id": "local-task-source",
+      "ownerUserUuid": "local-user",
+      "lifecycle": "active",
+      "version": 1,
+      "database": {
+        "externalId": "replace_with_your_notion_database_id",
+        "url": "https://www.notion.so/replace_with_your_notion_database_id",
+        "name": "Tasks"
+      },
+      "defaults": {
+        "goBackDays": 1,
+        "goForwardDays": 2,
+        "defaultEventLengthMinutes": 60,
+        "defaultStartHour": 8,
+        "defaultCalendarName": "Learning"
+      },
+      "propertyMappings": {
+        "task": {
+          "propertyId": "title-property-id",
+          "propertyName": "Task Name",
+          "propertyType": "title"
+        },
+        "date": {
+          "propertyId": "date-property-id",
+          "propertyName": "Date",
+          "propertyType": "date"
+        },
+        "location": {
+          "propertyId": "location-property-id",
+          "propertyName": "Location",
+          "propertyType": "place"
+        },
+        "extraInfo": {
+          "propertyId": "extra-info-property-id",
+          "propertyName": "Extra Info",
+          "propertyType": "rich_text"
+        },
+        "calendarName": {
+          "propertyId": "calendar-property-id",
+          "propertyName": "Calendar",
+          "propertyType": "select"
+        },
+        "googleCalendarEndDate": {
+          "propertyId": "end-date-property-id",
+          "propertyName": "GCal End Date",
+          "propertyType": "formula"
+        },
+        "googleCalendarDeleted": {
+          "propertyId": "deleted-property-id",
+          "propertyName": "GCal Deleted?",
+          "propertyType": "checkbox"
+        },
+        "googleCalendarEventId": {
+          "propertyId": "event-id-property-id",
+          "propertyName": "GCal Event Id",
+          "propertyType": "rich_text"
+        },
+        "googleCalendarSyncTime": {
+          "propertyId": "sync-time-property-id",
+          "propertyName": "GCal Sync Time",
+          "propertyType": "rich_text"
+        },
+        "googleCalendarIcon": {
+          "propertyId": "icon-property-id",
+          "propertyName": "GCal Icon",
+          "propertyType": "formula"
+        }
+      },
+      "updatedAtMs": 0
+    }
+  ],
+  "calendarMappings": [
+    {
+      "id": "local-calendar-learning",
+      "ownerUserUuid": "local-user",
+      "sourceId": "local-task-source",
+      "calendarName": "Learning",
+      "calendarId": "learning_calendar_id@group.calendar.google.com",
+      "lifecycle": "active",
+      "version": 1,
+      "updatedAtMs": 0
+    },
+    {
+      "id": "local-calendar-job",
+      "ownerUserUuid": "local-user",
+      "sourceId": "local-task-source",
+      "calendarName": "Job",
+      "calendarId": "job_calendar_id@group.calendar.google.com",
+      "lifecycle": "active",
+      "version": 1,
+      "updatedAtMs": 0
+    }
+  ]
+}

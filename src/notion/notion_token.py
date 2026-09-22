@@ -14,7 +14,7 @@ class SettingError(Exception):
 
 
 class NotionToken:
-    """Handles Notion API token"""
+    """Loads the Notion token for the selected runtime mode."""
 
     def __init__(self, config, logger):
         self.logger = logger
@@ -30,7 +30,7 @@ class NotionToken:
             try:
                 from utils.dynamodb_utils import get_notion_token_by_uuid
 
-                response = get_notion_token_by_uuid(uuid)
+                response = get_notion_token_by_uuid(uuid, consistent_read=True)
                 try:
                     return decrypt_token(response.get("accessToken"))
                 except TokenCryptoError as e:

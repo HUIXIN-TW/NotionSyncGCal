@@ -3,36 +3,54 @@
 ![Python](https://img.shields.io/badge/Python-3.11%2B-blue)
 ![Lambda](https://img.shields.io/badge/AWS%20Lambda-Container-orange)
 
-AWS Lambda container and local developer runner for synchronizing Notion task databases with Google Calendar events.
+AWS Lambda container and local developer runner for synchronizing Notion tasks with Google Calendar.
 
-This tool mutates both Notion and Google Calendar data. Validate configuration and run against test data first.
+The mapping-domain cutover changes how configuration is stored and loaded. It does not replace the existing event-ID-based synchronization algorithm. Validate configuration and run against test data first.
 
 Releases: https://github.com/HUIXIN-TW/NotionSyncGCal/releases
 
 ## What It Does
 
-- Bidirectional sync between Notion tasks and Google Calendar events.
-- Supports multiple Google calendars via `gcal_dic`.
-- Supports custom Notion property mapping via `page_property`.
-- Supports force-sync modes via CLI (`-g`, `-n`).
-- Handles cancelled Google Calendar events during sync filtering.
-- Expands recurring Google Calendar events and uses each expanded event instance ID for matching/sync.
+- Loads normalized settings, Task sources, and Calendar mappings from the mapping-domain table.
+- Expands one current-contract runtime setting per active Notion Task source.
+- Runs the existing Notion/Google synchronization logic independently for each source.
+- Preserves the existing Notion `GCal Event Id` and `GCal Sync Time` semantics while resolving those properties strictly by persisted Notion property ID.
+- Supports multiple first-class Task sources and normalized Calendar-name → Calendar-ID mappings.
 - Persists cloud sync logs in DynamoDB.
 
 ## Sync Behavior
 
-- A Notion task without a linked GCal event ID creates a Google Calendar event.
-- An unmatched Google Calendar event creates a Notion task.
-- Matched Notion/GCal records are updated based on last-modified timestamps.
-- A Notion deletion flag deletes the linked Google Calendar event and the Notion task.
-- CLI date flags are runtime in-memory overrides only and do not rewrite local JSON config.
+The storage migration does not redefine the synchronization algorithm.
+
+- Existing event matching still uses the Notion `GCal Event Id` field.
+- Creating a Google event still writes the provider event ID back to Notion.
+- Existing update/delete/move behavior still uses that provider event ID.
+- Existing timestamp comparison and `GCal Sync Time` behavior remains in `src/sync/sync.py`.
+- The existing Google → Notion and Notion → Google force modes remain available.
+- The existing default-Calendar behavior is preserved through explicit `defaultCalendarName` configuration.
+- CLI date-range flags are in-memory execution overrides only and do not rewrite configuration.
+- Multiple active Task sources are orchestrated by running the same existing sync function once per source.
+
+## Mapping-Domain Consumer Contract
+
+Cloud execution reads the current mapping-domain records:
+
+- `NOTION_SETTINGS` supplies `timeZone` and `timeCode`;
+- each active `NOTION_TASK_SOURCE#<sourceId>` supplies one Notion database, defaults, and semantic property bindings;
+- each active `CALENDAR_MAPPING#<mappingId>` supplies the persisted Notion Calendar select value (`calendarName`) and Google Calendar ID;
+- each source is converted into the current worker runtime setting using persisted Notion property IDs; mutable property names are not a runtime lookup fallback;
+- each source is executed independently and results are aggregated at the user job boundary.
+
+The worker requires the semantic bindings used by the existing synchronization implementation, including task/date, Calendar, location, extra info, `GCal End Date`, `GCal Deleted?`, `GCal Event Id`, `GCal Sync Time`, and `GCal Icon`.
+
+Configuration fails closed when owner identity, lifecycle, required property bindings, Calendar-name uniqueness, default Calendar, or normalized record shape is invalid. Runtime property lookup uses `propertyId` only; there is no property-name fallback. SQS/EventBridge remain UUID-scoped and reject the superseded `execution` payload.
 
 ## Current Architecture
 
 The runtime uses an explicit mode switch via `APP_MODE`:
 
-- `APP_MODE=local`: uses `.env.local` secrets and `config/local.notion-setting.json` for local development.
-- `APP_MODE=cloud`: uses DynamoDB records keyed by `uuid` and resolves cloud secrets from SSM SecureString paths at runtime.
+- `APP_MODE=local`: uses `.env.local` secrets and `config/local.mapping-domain.json` for local development.
+- `APP_MODE=cloud`: uses first-class mapping-domain records, UUID-keyed OAuth records, and SSM SecureString paths.
 
 Current cloud/runtime notes:
 
@@ -80,24 +98,25 @@ Coverage enforcement is configured in `.coveragerc` (`fail_under = 50`).
 
 No AWS dependency for runtime.
 
-- Secrets are read from `.env.local`:
+- Local configuration/credentials are read from `.env.local`:
   - `NOTION_TOKEN`
-  - `GOOGLE_CLIENT_ID`
-  - `GOOGLE_CLIENT_SECRET`
-  - `GOOGLE_REFRESH_TOKEN`
+  - `GOOGLE_CALENDAR_CLIENT_ID`
+  - `GOOGLE_CALENDAR_CLIENT_SECRET`
+  - `GOOGLE_CALENDAR_REFRESH_TOKEN`
   - `TOKEN_ENCRYPTION_KEY` only when local token values are stored as `enc:v1:` payloads
 - Structured local sync config is read from:
-  - `config/local.notion-setting.json`
+  - `config/local.mapping-domain.json`
 
 ### `APP_MODE=cloud`
 
 Requires a `uuid` and AWS access.
 
-- Loads user config and tokens from DynamoDB tables (UUID-keyed):
-  - user config table
+- Loads configuration and tokens from DynamoDB:
+  - mapping-domain table (`USER#<uuid>` partition and `SourceMappingsIndex`)
   - Google OAuth token table
   - Notion OAuth token table
   - sync logs table
+- The Users table remains only for the existing `lastSyncLog` write; it is not a configuration source.
 - Lambda environment includes SSM parameter paths:
   - `GOOGLE_CALENDAR_CLIENT_SECRET_SSM_PATH`
   - `TOKEN_ENCRYPTION_KEY_SSM_PATH`
@@ -111,7 +130,7 @@ Create local files from examples:
 
 ```bash
 cp .env.local.example .env.local
-cp config/local.notion-setting.example.json config/local.notion-setting.json
+cp config/local.mapping-domain.example.json config/local.mapping-domain.json
 ```
 
 Run sync locally with explicit mode:
@@ -119,13 +138,12 @@ Run sync locally with explicit mode:
 ```bash
 APP_MODE=local uv run python src/main.py
 APP_MODE=local uv run python src/main.py -t <goback_days> <goforward_days>
-APP_MODE=local uv run python src/main.py -g <goback_days> <goforward_days>
 APP_MODE=local uv run python src/main.py -n <goback_days> <goforward_days>
 ```
 
-CLI date range flags (`-t`, `-g`, `-n`) are runtime in-memory overrides only. They do not modify `config/local.notion-setting.json`.
+CLI date range flags (`-t`, `-n`) are runtime in-memory overrides only. They do not modify `config/local.mapping-domain.json`.
 
-Generate a local `GOOGLE_REFRESH_TOKEN` with:
+Generate a local `GOOGLE_CALENDAR_REFRESH_TOKEN` with:
 
 ```bash
 uv run python scripts/generate-google-refresh-token.py --client-id <client_id> --client-secret <client_secret>
@@ -142,6 +160,7 @@ APP_MODE=cloud
 APP_STAGE=dev
 APP_REGION=ap-southeast-2
 DYNAMODB_USER_TABLE=...
+DYNAMODB_MAPPING_DOMAIN_TABLE=...
 DYNAMODB_SYNC_LOGS_TABLE=...
 DYNAMODB_GOOGLE_OAUTH_TOKEN_TABLE=...
 DYNAMODB_NOTION_OAUTH_TOKEN_TABLE=...
@@ -190,7 +209,7 @@ Notes:
 ├── .coveragerc
 ├── .env.local.example
 ├── config/
-│   └── local.notion-setting.example.json
+│   └── local.mapping-domain.example.json
 ├── docs/
 │   ├── deployment.md
 │   └── local-dev-sync-runner.md
@@ -214,7 +233,7 @@ Notes:
 ## Security and Config Handling
 
 - Local secrets (`.env.local`) are gitignored.
-- `config/local.notion-setting.json` is gitignored.
+- `config/local.mapping-domain.json` is gitignored.
 - `token/` is deprecated and ignored.
 - Cloud secret inputs are SSM path env vars, not plaintext secret env values.
 - Cloud token payloads in DynamoDB should stay `enc:v1:` encrypted at rest.

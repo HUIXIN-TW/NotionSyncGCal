@@ -5,6 +5,7 @@ from typing import Any, Dict, Optional
 from sync.contracts import (
     SyncErrorPayload,
     is_retryable_result,
+    is_successful_result,
 )
 
 MAX_SYNC_LOG_ERRORS = 3
@@ -42,6 +43,7 @@ def sanitize_sync_error(error: Any) -> SyncErrorPayload:
         error_message = SAFE_SYNC_FAILURE_MESSAGE
 
     return {
+        "source_id": error.get("source_id"),
         "action": error.get("action"),
         "error_code": error.get("error_code") or "unknown_sync_error",
         "error_message": error_message,
@@ -166,7 +168,13 @@ def process_sqs_records(
         provided_uuid = None
         try:
             body = json.loads(record.get("body", "{}"))
+            if not isinstance(body, dict):
+                raise ValueError("SQS body must be a JSON object.")
+            if "execution" in body:
+                raise ValueError("Legacy execution payload is not supported.")
             provided_uuid = body.get("uuid")
+            if not isinstance(provided_uuid, str) or not provided_uuid.strip():
+                raise ValueError("SQS body must contain a non-empty uuid.")
             sync_result = run_sync(provided_uuid)
             processed_result = process_and_log_sync_result(
                 logger_obj=logger_obj,
@@ -193,14 +201,14 @@ def process_sqs_records(
             batch_item_failures.append({"itemIdentifier": job_id})
 
     # Summarize results for batch logging
-    success_count = sum(1 for s in sqs_batch_results if not sync_result_requires_retry(s))
+    success_count = sum(1 for s in sqs_batch_results if is_successful_result(s))
     retryable_failure_count = sum(1 for s in sqs_batch_results if sync_result_requires_retry(s))
     non_retriable_failure_count = len(sqs_batch_results) - success_count - retryable_failure_count
     failure_count = retryable_failure_count + non_retriable_failure_count
 
     # Emit a final batch summary log
     # Build enhanced batch summary avoiding duplicate 'results' key collisions
-    success_uuids = [s.get("uuid") for s in sqs_batch_results if not sync_result_requires_retry(s)]
+    success_uuids = [s.get("uuid") for s in sqs_batch_results if is_successful_result(s)]
     failure_uuids = [s.get("uuid") for s in sqs_batch_results if s.get("uuid") not in success_uuids]
     batch_sync_result = {
         # Provide an explicit statusCode for downstream handler uniformity
@@ -252,7 +260,13 @@ def process_eventbridge_event(
     event_time = event.get("time", "unknown")
     detail = event.get("detail", {})
     try:
+        if not isinstance(detail, dict):
+            raise ValueError("EventBridge detail must be an object.")
+        if "execution" in detail:
+            raise ValueError("Legacy execution payload is not supported.")
         provided_uuid = detail.get("uuid")
+        if not isinstance(provided_uuid, str) or not provided_uuid.strip():
+            raise ValueError("EventBridge detail must contain a non-empty uuid.")
         sync_result = run_sync(provided_uuid)
         result = process_and_log_sync_result(
             logger_obj=logger_obj,

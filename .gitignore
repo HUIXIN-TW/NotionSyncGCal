@@ -9,7 +9,9 @@
 
 # Local config files (real files are ignored; example templates are tracked)
 config/local.notion-setting.json
+config/local.mapping-domain.json
 src/config/local.notion-setting.json
+src/config/local.mapping-domain.json
 
 # Generated/local JSON output files
 settings.json

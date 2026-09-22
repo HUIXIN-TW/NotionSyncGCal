@@ -101,9 +101,7 @@ from utils.token_crypto import TokenCryptoError  # noqa: E402
 import utils.dynamodb_utils  # noqa: E402,F401
 
 # A far-future expiry in ms — prevents credentials.expired from being True in cloud tests
-_FUTURE_EXPIRY_MS = str(
-    int(datetime(2030, 1, 1, tzinfo=timezone.utc).timestamp() * 1000)
-)
+_FUTURE_EXPIRY_MS = str(int(datetime(2030, 1, 1, tzinfo=timezone.utc).timestamp() * 1000))
 
 _CLOUD_DYNAMO_RESPONSE = {
     "accessToken": "enc:v1:encrypted-cloud-access-token",
@@ -117,13 +115,11 @@ _CLOUD_ENV = {
     "APP_REGION": "ap-southeast-2",
 }
 _BASE_LOCAL_ENV = {
-    "GOOGLE_CLIENT_ID": "test-client-id",
-    "GOOGLE_CLIENT_SECRET": "test-client-secret",
-    "GOOGLE_REFRESH_TOKEN": "test-refresh-token",
+    "GOOGLE_CALENDAR_CLIENT_ID": "test-client-id",
+    "GOOGLE_CALENDAR_CLIENT_SECRET": "test-client-secret",
+    "GOOGLE_CALENDAR_REFRESH_TOKEN": "test-refresh-token",
 }
-_TOKEN_ENCRYPTION_KEY = (
-    "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
-)
+_TOKEN_ENCRYPTION_KEY = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
 
 
 def _make_logger():
@@ -163,13 +159,13 @@ class TestGoogleTokenLocalModeCredentialConstruction(unittest.TestCase):
             creds = self._load(_local_env())
         self.assertIsInstance(creds, Credentials)
         self.assertIsNone(creds.token)
-        self.assertEqual(creds.refresh_token, _BASE_LOCAL_ENV["GOOGLE_REFRESH_TOKEN"])
+        self.assertEqual(creds.refresh_token, _BASE_LOCAL_ENV["GOOGLE_CALENDAR_REFRESH_TOKEN"])
 
     def test_plaintext_local_refresh_token_works_without_encryption_key(self):
         env = _local_env()
         env.pop("TOKEN_ENCRYPTION_KEY", None)
         creds = self._load(env)
-        self.assertEqual(creds.refresh_token, _BASE_LOCAL_ENV["GOOGLE_REFRESH_TOKEN"])
+        self.assertEqual(creds.refresh_token, _BASE_LOCAL_ENV["GOOGLE_CALENDAR_REFRESH_TOKEN"])
 
     def test_encrypted_local_refresh_token_calls_decrypt_token(self):
         encrypted_token = "enc:v1:encrypted-refresh-token"
@@ -177,7 +173,7 @@ class TestGoogleTokenLocalModeCredentialConstruction(unittest.TestCase):
             "gcal.gcal_token.decrypt_token_if_encrypted",
             return_value="plain-refresh-token",
         ) as mock_decrypt:
-            creds = self._load(_local_env(GOOGLE_REFRESH_TOKEN=encrypted_token))
+            creds = self._load(_local_env(GOOGLE_CALENDAR_REFRESH_TOKEN=encrypted_token))
         mock_decrypt.assert_called_once_with(encrypted_token)
         self.assertEqual(creds.refresh_token, "plain-refresh-token")
 
@@ -188,23 +184,21 @@ class TestGoogleTokenLocalModeCredentialConstruction(unittest.TestCase):
             side_effect=TokenCryptoError("TOKEN_ENCRYPTION_KEY missing"),
         ):
             with self.assertRaises(SettingError) as ctx:
-                self._load(_local_env(GOOGLE_REFRESH_TOKEN=encrypted_token))
-        self.assertIn(
-            "Failed to decrypt encrypted Google OAuth token", str(ctx.exception)
-        )
+                self._load(_local_env(GOOGLE_CALENDAR_REFRESH_TOKEN=encrypted_token))
+        self.assertIn("Failed to decrypt encrypted Google OAuth token", str(ctx.exception))
         self.assertIn("TOKEN_ENCRYPTION_KEY", str(ctx.exception))
 
     def test_token_is_none_before_refresh(self):
         creds = self._load(_local_env())
         self.assertIsNone(creds.token)
 
-    def test_defaults_token_uri_when_google_token_uri_missing(self):
-        creds = self._load(_local_env_without("GOOGLE_TOKEN_URI"))
+    def test_defaults_token_uri_when_google_calendar_token_uri_missing(self):
+        creds = self._load(_local_env_without("GOOGLE_CALENDAR_TOKEN_URI"))
         self.assertEqual(creds.token_uri, _DEFAULT_TOKEN_URI)
 
     def test_uses_custom_token_uri_when_provided(self):
         custom_uri = "https://custom.example.com/token"
-        creds = self._load(_local_env(GOOGLE_TOKEN_URI=custom_uri))
+        creds = self._load(_local_env(GOOGLE_CALENDAR_TOKEN_URI=custom_uri))
         self.assertEqual(creds.token_uri, custom_uri)
 
     def test_uses_default_scopes_when_google_scopes_missing(self):
@@ -223,24 +217,24 @@ class TestGoogleTokenLocalModeCredentialConstruction(unittest.TestCase):
             },
         )
 
-    def test_missing_google_client_id_raises(self):
+    def test_missing_google_calendar_client_id_raises(self):
         with self.assertRaises(SettingError) as ctx:
-            self._load(_local_env_without("GOOGLE_CLIENT_ID"))
-        self.assertIn("GOOGLE_CLIENT_ID", str(ctx.exception))
+            self._load(_local_env_without("GOOGLE_CALENDAR_CLIENT_ID"))
+        self.assertIn("GOOGLE_CALENDAR_CLIENT_ID", str(ctx.exception))
 
-    def test_missing_google_client_secret_raises(self):
+    def test_missing_google_calendar_client_secret_raises(self):
         with self.assertRaises(SettingError) as ctx:
-            self._load(_local_env_without("GOOGLE_CLIENT_SECRET"))
-        self.assertIn("GOOGLE_CLIENT_SECRET", str(ctx.exception))
+            self._load(_local_env_without("GOOGLE_CALENDAR_CLIENT_SECRET"))
+        self.assertIn("GOOGLE_CALENDAR_CLIENT_SECRET", str(ctx.exception))
 
-    def test_missing_google_refresh_token_raises(self):
+    def test_missing_google_calendar_refresh_token_raises(self):
         with self.assertRaises(SettingError) as ctx:
-            self._load(_local_env_without("GOOGLE_REFRESH_TOKEN"))
-        self.assertIn("GOOGLE_REFRESH_TOKEN", str(ctx.exception))
+            self._load(_local_env_without("GOOGLE_CALENDAR_REFRESH_TOKEN"))
+        self.assertIn("GOOGLE_CALENDAR_REFRESH_TOKEN", str(ctx.exception))
 
-    def test_empty_google_client_id_raises(self):
+    def test_empty_google_calendar_client_id_raises(self):
         with self.assertRaises(SettingError):
-            self._load(_local_env(GOOGLE_CLIENT_ID="   "))
+            self._load(_local_env(GOOGLE_CALENDAR_CLIENT_ID="   "))
 
     def test_empty_google_scopes_raises(self):
         with self.assertRaises(SettingError) as ctx:
@@ -281,9 +275,7 @@ class TestGoogleTokenLocalModeActivation(unittest.TestCase):
         env = _local_env()
         with patch.dict(os.environ, env, clear=True):
             with patch("google.oauth2.credentials.Credentials.refresh"):
-                with patch(
-                    "utils.dynamodb_utils.get_google_token_by_uuid"
-                ) as mock_loader:
+                with patch("utils.dynamodb_utils.get_google_token_by_uuid") as mock_loader:
                     GoogleToken({"mode": "local"}, _make_logger())
                     mock_loader.assert_not_called()
 
@@ -291,9 +283,7 @@ class TestGoogleTokenLocalModeActivation(unittest.TestCase):
         env = _local_env()
         with patch.dict(os.environ, env, clear=True):
             with patch("google.oauth2.credentials.Credentials.refresh"):
-                with patch(
-                    "utils.dynamodb_utils.update_google_token_by_uuid"
-                ) as mock_updater:
+                with patch("utils.dynamodb_utils.update_google_token_by_uuid") as mock_updater:
                     GoogleToken({"mode": "local"}, _make_logger())
                     mock_updater.assert_not_called()
 
@@ -304,8 +294,8 @@ class TestGoogleTokenLocalModeActivation(unittest.TestCase):
             with patch("google.oauth2.credentials.Credentials.refresh"):
                 GoogleToken({"mode": "local"}, logger)
         log_calls = str(logger.mock_calls)
-        self.assertNotIn(_BASE_LOCAL_ENV["GOOGLE_CLIENT_SECRET"], log_calls)
-        self.assertNotIn(_BASE_LOCAL_ENV["GOOGLE_REFRESH_TOKEN"], log_calls)
+        self.assertNotIn(_BASE_LOCAL_ENV["GOOGLE_CALENDAR_CLIENT_SECRET"], log_calls)
+        self.assertNotIn(_BASE_LOCAL_ENV["GOOGLE_CALENDAR_REFRESH_TOKEN"], log_calls)
 
 
 class TestGoogleTokenCloudMode(unittest.TestCase):
@@ -322,8 +312,7 @@ class TestGoogleTokenCloudMode(unittest.TestCase):
         raise AssertionError(f"Unexpected token payload: {value}")
 
     _PLAINTEXT_CLOUD_TOKEN_ERROR = (
-        "Token is not encrypted (expected 'enc:v1:' prefix). "
-        "All tokens in the database must be encrypted."
+        "Token is not encrypted (expected 'enc:v1:' prefix). " "All tokens in the database must be encrypted."
     )
 
     def test_cloud_loads_token_from_dynamodb(self):
@@ -331,9 +320,7 @@ class TestGoogleTokenCloudMode(unittest.TestCase):
             "utils.dynamodb_utils.get_google_token_by_uuid",
             return_value=_CLOUD_DYNAMO_RESPONSE,
         ) as mock_loader:
-            with patch(
-                "gcal.gcal_token.decrypt_token", side_effect=self._mock_cloud_decrypt
-            ):
+            with patch("gcal.gcal_token.decrypt_token", side_effect=self._mock_cloud_decrypt):
                 with patch(
                     "gcal.gcal_token.get_ssm_parameter",
                     return_value="gcal-client-secret",
@@ -341,13 +328,9 @@ class TestGoogleTokenCloudMode(unittest.TestCase):
                     with patch.dict(os.environ, _CLOUD_ENV):
                         gt = GoogleToken(self._cloud_config("my-uuid"), _make_logger())
                     mock_loader.assert_called_once_with("my-uuid", consistent_read=False)
-                    mock_ssm.assert_called_once_with(
-                        "/dev/notica/google_calendar_client_secret"
-                    )
+                    mock_ssm.assert_called_once_with("/dev/notica/google_calendar_client_secret")
                     self.assertEqual(gt.credentials.token, "plain-cloud-access-token")
-                    self.assertEqual(
-                        gt.credentials.refresh_token, "plain-cloud-refresh-token"
-                    )
+                    self.assertEqual(gt.credentials.refresh_token, "plain-cloud-refresh-token")
 
     def test_cloud_mode_requires_client_secret_ssm_path(self):
         env = dict(_CLOUD_ENV)
@@ -356,9 +339,7 @@ class TestGoogleTokenCloudMode(unittest.TestCase):
             "utils.dynamodb_utils.get_google_token_by_uuid",
             return_value=_CLOUD_DYNAMO_RESPONSE,
         ):
-            with patch(
-                "gcal.gcal_token.decrypt_token", side_effect=self._mock_cloud_decrypt
-            ):
+            with patch("gcal.gcal_token.decrypt_token", side_effect=self._mock_cloud_decrypt):
                 with patch.dict(os.environ, env, clear=True):
                     with self.assertRaises(SettingError) as ctx:
                         GoogleToken(self._cloud_config(), _make_logger())
@@ -371,9 +352,7 @@ class TestGoogleTokenCloudMode(unittest.TestCase):
             "utils.dynamodb_utils.get_google_token_by_uuid",
             return_value=_CLOUD_DYNAMO_RESPONSE,
         ):
-            with patch(
-                "gcal.gcal_token.decrypt_token", side_effect=self._mock_cloud_decrypt
-            ):
+            with patch("gcal.gcal_token.decrypt_token", side_effect=self._mock_cloud_decrypt):
                 with patch.dict(os.environ, env, clear=True):
                     with self.assertRaises(SettingError) as ctx:
                         GoogleToken(self._cloud_config(), _make_logger())
@@ -385,9 +364,7 @@ class TestGoogleTokenCloudMode(unittest.TestCase):
             "utils.dynamodb_utils.get_google_token_by_uuid",
             return_value=_CLOUD_DYNAMO_RESPONSE,
         ):
-            with patch(
-                "gcal.gcal_token.decrypt_token", side_effect=self._mock_cloud_decrypt
-            ):
+            with patch("gcal.gcal_token.decrypt_token", side_effect=self._mock_cloud_decrypt):
                 with patch.dict(os.environ, env, clear=True):
                     with self.assertRaises(SettingError) as ctx:
                         GoogleToken(self._cloud_config(), _make_logger())
@@ -398,9 +375,7 @@ class TestGoogleTokenCloudMode(unittest.TestCase):
             "utils.dynamodb_utils.get_google_token_by_uuid",
             return_value=_CLOUD_DYNAMO_RESPONSE,
         ):
-            with patch(
-                "gcal.gcal_token.decrypt_token", side_effect=self._mock_cloud_decrypt
-            ):
+            with patch("gcal.gcal_token.decrypt_token", side_effect=self._mock_cloud_decrypt):
                 with patch(
                     "gcal.gcal_token.get_ssm_parameter",
                     return_value="gcal-client-secret",
@@ -419,12 +394,8 @@ class TestGoogleTokenCloudMode(unittest.TestCase):
             "utils.dynamodb_utils.get_google_token_by_uuid",
             return_value=_CLOUD_DYNAMO_RESPONSE,
         ):
-            with patch(
-                "gcal.gcal_token.decrypt_token", side_effect=self._mock_cloud_decrypt
-            ):
-                with patch(
-                    "gcal.gcal_token.get_ssm_parameter", return_value="ssm-secret-value"
-                ):
+            with patch("gcal.gcal_token.decrypt_token", side_effect=self._mock_cloud_decrypt):
+                with patch("gcal.gcal_token.get_ssm_parameter", return_value="ssm-secret-value"):
                     with patch.dict(os.environ, env, clear=True):
                         gt = GoogleToken(self._cloud_config("my-uuid"), _make_logger())
         self.assertEqual(gt.credentials.client_secret, "ssm-secret-value")
@@ -434,9 +405,7 @@ class TestGoogleTokenCloudMode(unittest.TestCase):
             "utils.dynamodb_utils.get_google_token_by_uuid",
             return_value=_CLOUD_DYNAMO_RESPONSE,
         ):
-            with patch(
-                "gcal.gcal_token.decrypt_token", side_effect=self._mock_cloud_decrypt
-            ):
+            with patch("gcal.gcal_token.decrypt_token", side_effect=self._mock_cloud_decrypt):
                 with patch(
                     "gcal.gcal_token.get_ssm_parameter",
                     return_value="   ",
@@ -451,9 +420,7 @@ class TestGoogleTokenCloudMode(unittest.TestCase):
             **_CLOUD_DYNAMO_RESPONSE,
             "refreshToken": "enc:v1:encrypted-cloud-refresh-token",
         }
-        with patch(
-            "utils.dynamodb_utils.get_google_token_by_uuid", return_value=response
-        ):
+        with patch("utils.dynamodb_utils.get_google_token_by_uuid", return_value=response):
             with patch(
                 "gcal.gcal_token.decrypt_token",
                 return_value="plain-cloud-refresh-token",
@@ -472,12 +439,8 @@ class TestGoogleTokenCloudMode(unittest.TestCase):
             **_CLOUD_DYNAMO_RESPONSE,
             "accessToken": "enc:v1:encrypted-cloud-access-token",
         }
-        with patch(
-            "utils.dynamodb_utils.get_google_token_by_uuid", return_value=response
-        ):
-            with patch(
-                "gcal.gcal_token.decrypt_token", return_value="plain-cloud-access-token"
-            ) as mock_decrypt:
+        with patch("utils.dynamodb_utils.get_google_token_by_uuid", return_value=response):
+            with patch("gcal.gcal_token.decrypt_token", return_value="plain-cloud-access-token") as mock_decrypt:
                 with patch(
                     "gcal.gcal_token.get_ssm_parameter",
                     return_value="gcal-client-secret",
@@ -492,9 +455,7 @@ class TestGoogleTokenCloudMode(unittest.TestCase):
             "utils.dynamodb_utils.get_google_token_by_uuid",
             return_value=_CLOUD_DYNAMO_RESPONSE,
         ):
-            with patch(
-                "gcal.gcal_token.decrypt_token", side_effect=self._mock_cloud_decrypt
-            ):
+            with patch("gcal.gcal_token.decrypt_token", side_effect=self._mock_cloud_decrypt):
                 with patch(
                     "gcal.gcal_token.get_ssm_parameter",
                     return_value="gcal-client-secret",
@@ -527,17 +488,13 @@ class TestGoogleTokenCloudMode(unittest.TestCase):
             "utils.dynamodb_utils.get_google_token_by_uuid",
             return_value=_CLOUD_DYNAMO_RESPONSE,
         ):
-            with patch(
-                "gcal.gcal_token.decrypt_token", side_effect=self._mock_cloud_decrypt
-            ):
+            with patch("gcal.gcal_token.decrypt_token", side_effect=self._mock_cloud_decrypt):
                 with patch(
                     "gcal.gcal_token.get_ssm_parameter",
                     return_value="gcal-client-secret",
                 ):
                     with patch.dict(os.environ, _CLOUD_ENV):
-                        gt = GoogleToken(
-                            self._cloud_config("uuid-encrypted-save"), _make_logger()
-                        )
+                        gt = GoogleToken(self._cloud_config("uuid-encrypted-save"), _make_logger())
         mock_creds = MagicMock()
         mock_creds.token = "new-access-token"
         mock_creds.refresh_token = "new-refresh-token"
@@ -568,9 +525,7 @@ class TestGoogleTokenCloudMode(unittest.TestCase):
             "utils.dynamodb_utils.get_google_token_by_uuid",
             return_value=_CLOUD_DYNAMO_RESPONSE,
         ):
-            with patch(
-                "gcal.gcal_token.decrypt_token", side_effect=self._mock_cloud_decrypt
-            ):
+            with patch("gcal.gcal_token.decrypt_token", side_effect=self._mock_cloud_decrypt):
                 with patch(
                     "gcal.gcal_token.get_ssm_parameter",
                     return_value="gcal-client-secret",
@@ -591,9 +546,7 @@ class TestGoogleTokenCloudMode(unittest.TestCase):
         expired_response = {
             "accessToken": "enc:v1:expired-access-token",
             "refreshToken": "enc:v1:expired-refresh-token",
-            "expiryDate": str(
-                int(datetime(2000, 1, 1, tzinfo=timezone.utc).timestamp() * 1000)
-            ),
+            "expiryDate": str(int(datetime(2000, 1, 1, tzinfo=timezone.utc).timestamp() * 1000)),
             "updatedAt": _CLOUD_DYNAMO_RESPONSE["updatedAt"],
         }
 
@@ -613,9 +566,7 @@ class TestGoogleTokenCloudMode(unittest.TestCase):
                 "utils.dynamodb_utils.get_google_token_by_uuid",
                 return_value=expired_response,
             ):
-                with patch(
-                    "utils.dynamodb_utils.update_google_token_by_uuid"
-                ) as mock_updater:
+                with patch("utils.dynamodb_utils.update_google_token_by_uuid") as mock_updater:
                     with patch(
                         "google.oauth2.credentials.Credentials.refresh",
                         new=refresh_credentials,
@@ -641,9 +592,7 @@ class TestGoogleTokenCloudMode(unittest.TestCase):
         response = {
             **_CLOUD_DYNAMO_RESPONSE,
         }
-        with patch(
-            "utils.dynamodb_utils.get_google_token_by_uuid", return_value=response
-        ):
+        with patch("utils.dynamodb_utils.get_google_token_by_uuid", return_value=response):
             with patch(
                 "gcal.gcal_token.decrypt_token",
                 side_effect=["plain-access", "plain-refresh"],
@@ -666,9 +615,7 @@ class TestGoogleTokenCloudMode(unittest.TestCase):
             "accessToken": "enc:v1:encrypted-cloud-access-token",
             "refreshToken": "enc:v1:encrypted-cloud-refresh-token",
         }
-        with patch(
-            "utils.dynamodb_utils.get_google_token_by_uuid", return_value=response
-        ):
+        with patch("utils.dynamodb_utils.get_google_token_by_uuid", return_value=response):
             with patch(
                 "gcal.gcal_token.decrypt_token",
                 side_effect=["enc:v1:still-encrypted", "plain-refresh"],
@@ -688,9 +635,7 @@ class TestGoogleTokenCloudMode(unittest.TestCase):
             "accessToken": "plain-cloud-access-token",
             "refreshToken": "enc:v1:encrypted-cloud-refresh-token",
         }
-        with patch(
-            "utils.dynamodb_utils.get_google_token_by_uuid", return_value=response
-        ):
+        with patch("utils.dynamodb_utils.get_google_token_by_uuid", return_value=response):
             with patch(
                 "gcal.gcal_token.decrypt_token",
                 side_effect=TokenCryptoError(self._PLAINTEXT_CLOUD_TOKEN_ERROR),
@@ -709,9 +654,7 @@ class TestGoogleTokenCloudMode(unittest.TestCase):
             **_CLOUD_DYNAMO_RESPONSE,
             "refreshToken": "plain-cloud-refresh-token",
         }
-        with patch(
-            "utils.dynamodb_utils.get_google_token_by_uuid", return_value=response
-        ):
+        with patch("utils.dynamodb_utils.get_google_token_by_uuid", return_value=response):
             with patch(
                 "gcal.gcal_token.decrypt_token",
                 side_effect=[
@@ -733,9 +676,7 @@ class TestGoogleTokenCloudMode(unittest.TestCase):
             "utils.dynamodb_utils.get_google_token_by_uuid",
             return_value=_CLOUD_DYNAMO_RESPONSE,
         ):
-            with patch(
-                "gcal.gcal_token.decrypt_token", side_effect=self._mock_cloud_decrypt
-            ):
+            with patch("gcal.gcal_token.decrypt_token", side_effect=self._mock_cloud_decrypt):
                 with patch(
                     "gcal.gcal_token.get_ssm_parameter",
                     return_value="gcal-client-secret",
@@ -754,9 +695,7 @@ class TestGoogleTokenCloudMode(unittest.TestCase):
             "google.oauth2.credentials.Credentials.refresh",
             new=refresh_without_new_refresh_token,
         ):
-            with patch(
-                "utils.dynamodb_utils.update_google_token_by_uuid"
-            ) as mock_updater:
+            with patch("utils.dynamodb_utils.update_google_token_by_uuid") as mock_updater:
                 gt._refresh_tokens(gt.credentials)
 
         _, _, saved_refresh_token, _, _, expected_updated_at = mock_updater.call_args[0]
@@ -768,9 +707,7 @@ class TestGoogleTokenCloudMode(unittest.TestCase):
             "utils.dynamodb_utils.get_google_token_by_uuid",
             return_value=_CLOUD_DYNAMO_RESPONSE,
         ):
-            with patch(
-                "gcal.gcal_token.decrypt_token", side_effect=self._mock_cloud_decrypt
-            ):
+            with patch("gcal.gcal_token.decrypt_token", side_effect=self._mock_cloud_decrypt):
                 with patch(
                     "gcal.gcal_token.get_ssm_parameter",
                     return_value="gcal-client-secret",
@@ -785,9 +722,7 @@ class TestGoogleTokenCloudMode(unittest.TestCase):
 
         with patch("utils.dynamodb_utils.update_google_token_by_uuid") as mock_updater:
             with patch("gcal.gcal_token.datetime") as mock_datetime:
-                mock_datetime.now.return_value = datetime(
-                    2026, 1, 2, tzinfo=timezone.utc
-                )
+                mock_datetime.now.return_value = datetime(2026, 1, 2, tzinfo=timezone.utc)
                 gt._save_credentials(mock_creds)
 
         _, _, _, expiry_date, updated_at, expected_updated_at = mock_updater.call_args[0]
@@ -807,9 +742,7 @@ class TestGoogleTokenCloudMode(unittest.TestCase):
             "utils.dynamodb_utils.get_google_token_by_uuid",
             return_value=_CLOUD_DYNAMO_RESPONSE,
         ):
-            with patch(
-                "gcal.gcal_token.decrypt_token", side_effect=self._mock_cloud_decrypt
-            ):
+            with patch("gcal.gcal_token.decrypt_token", side_effect=self._mock_cloud_decrypt):
                 with patch(
                     "gcal.gcal_token.get_ssm_parameter",
                     return_value="gcal-client-secret",
@@ -824,9 +757,7 @@ class TestGoogleTokenCloudMode(unittest.TestCase):
 
         with patch("utils.dynamodb_utils.update_google_token_by_uuid"):
             with patch("gcal.gcal_token.datetime") as mock_datetime:
-                mock_datetime.now.return_value = datetime(
-                    2026, 1, 2, tzinfo=timezone.utc
-                )
+                mock_datetime.now.return_value = datetime(2026, 1, 2, tzinfo=timezone.utc)
                 gt._save_credentials(mock_creds)
 
         self.assertEqual(
@@ -838,9 +769,7 @@ class TestGoogleTokenCloudMode(unittest.TestCase):
         expired_response = {
             "accessToken": "enc:v1:expired-access-token",
             "refreshToken": "enc:v1:expired-refresh-token",
-            "expiryDate": str(
-                int(datetime(2000, 1, 1, tzinfo=timezone.utc).timestamp() * 1000)
-            ),
+            "expiryDate": str(int(datetime(2000, 1, 1, tzinfo=timezone.utc).timestamp() * 1000)),
             "updatedAt": _CLOUD_DYNAMO_RESPONSE["updatedAt"],
         }
         refreshed_response = {
@@ -892,9 +821,7 @@ class TestGoogleTokenCloudMode(unittest.TestCase):
             "utils.dynamodb_utils.get_google_token_by_uuid",
             side_effect=RuntimeError("DDB down"),
         ):
-            with patch(
-                "gcal.gcal_token.get_ssm_parameter", return_value="gcal-client-secret"
-            ):
+            with patch("gcal.gcal_token.get_ssm_parameter", return_value="gcal-client-secret"):
                 with patch.dict(os.environ, _CLOUD_ENV):
                     with self.assertRaises(SettingError) as ctx:
                         GoogleToken(self._cloud_config(), _make_logger())
@@ -904,9 +831,7 @@ class TestGoogleTokenCloudMode(unittest.TestCase):
         expired_response = {
             "accessToken": "enc:v1:expired-access-token",
             "refreshToken": "enc:v1:expired-refresh-token",
-            "expiryDate": str(
-                int(datetime(2000, 1, 1, tzinfo=timezone.utc).timestamp() * 1000)
-            ),
+            "expiryDate": str(int(datetime(2000, 1, 1, tzinfo=timezone.utc).timestamp() * 1000)),
             "updatedAt": _CLOUD_DYNAMO_RESPONSE["updatedAt"],
         }
         refreshed_response = {

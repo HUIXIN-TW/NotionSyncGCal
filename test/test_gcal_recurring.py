@@ -31,16 +31,16 @@ from notion.notion_service import NotionService  # noqa: E402
 
 MINIMAL_USER_SETTING = {
     "page_property": {
-        "Task_Notion_Name": "Name",
-        "Date_Notion_Name": "Date",
-        "GCal_End_Date_Notion_Name": "GCal End Date",
-        "GCal_EventId_Notion_Name": "GCal Event ID",
-        "GCal_Name_Notion_Name": "Calendar",
-        "GCal_Sync_Time_Notion_Name": "Last Sync",
-        "Delete_Notion_Name": "Delete",
-        "ExtraInfo_Notion_Name": "Extra Info",
-        "Location_Notion_Name": "Location",
-        "CompleteIcon_Notion_Name": "Complete Icon",
+        "Task_Notion_Name": "task-id",
+        "Date_Notion_Name": "date-id",
+        "GCal_End_Date_Notion_Name": "end-id",
+        "GCal_EventId_Notion_Name": "event-id",
+        "GCal_Name_Notion_Name": "calendar-id",
+        "GCal_Sync_Time_Notion_Name": "sync-id",
+        "Delete_Notion_Name": "delete-id",
+        "ExtraInfo_Notion_Name": "extra-id",
+        "Location_Notion_Name": "location-id",
+        "CompleteIcon_Notion_Name": "icon-id",
     },
     "gcal_name_dict": {"My Calendar": "cal@group.calendar.google.com"},
     "gcal_id_dict": {"cal@group.calendar.google.com": "My Calendar"},
@@ -163,11 +163,26 @@ def _make_notion_task(gcal_event_id, last_edited_time="2026-04-01T00:00:00.000Z"
         "id": f"notion-page-{gcal_event_id}",
         "last_edited_time": last_edited_time,
         "properties": {
-            pp["GCal_EventId_Notion_Name"]: {"rich_text": [{"plain_text": gcal_event_id}]},
-            pp["GCal_Name_Notion_Name"]: {"select": {"name": "My Calendar"}},
-            pp["Delete_Notion_Name"]: {"checkbox": False},
-            pp["Task_Notion_Name"]: {"title": [{"plain_text": "Weekly planning"}]},
-            pp["GCal_Sync_Time_Notion_Name"]: {"rich_text": []},
+            "GCal Event ID": {
+                "id": pp["GCal_EventId_Notion_Name"],
+                "rich_text": [{"plain_text": gcal_event_id}],
+            },
+            "Calendar": {
+                "id": pp["GCal_Name_Notion_Name"],
+                "select": {"name": "My Calendar"},
+            },
+            "Delete": {
+                "id": pp["Delete_Notion_Name"],
+                "checkbox": False,
+            },
+            "Name": {
+                "id": pp["Task_Notion_Name"],
+                "title": [{"plain_text": "Weekly planning"}],
+            },
+            "Last Sync": {
+                "id": pp["GCal_Sync_Time_Notion_Name"],
+                "rich_text": [],
+            },
         },
     }
 
@@ -575,7 +590,7 @@ class TestGetGcalEventLimit(unittest.TestCase):
 class TestDeleteHandling(unittest.TestCase):
     def _make_delete_task(self):
         notion_task = _make_notion_task("abc123_20260530T020000Z")
-        notion_task["properties"][MINIMAL_USER_SETTING["page_property"]["Delete_Notion_Name"]] = {"checkbox": True}
+        notion_task["properties"]["Delete"]["checkbox"] = True
         return notion_task
 
     def test_delete_failure_preserves_notion_linkage_and_reports_error(self):

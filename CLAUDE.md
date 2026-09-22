@@ -36,53 +36,56 @@ prettier --write .
 
 `src/config/config.py:generate_config()` is the single branch point. `APP_MODE` must be set explicitly.
 
-- **Local** (`APP_MODE=local`): loads structured config from `config/local.notion-setting.json`; secrets are loaded from environment variables.
-- **Cloud** (`APP_MODE=cloud`): requires a UUID and reads config/tokens from DynamoDB tables keyed by UUID.
+- **Local** (`APP_MODE=local`): loads the v2 mapping-domain document from `config/local.mapping-domain.json`; secrets are loaded from environment variables.
+- **Cloud** (`APP_MODE=cloud`): requires a UUID, reads settings/Task sources/Calendar mappings from the mapping-domain table, and reads OAuth tokens from their UUID-keyed tables.
 
 Do not infer mode from UUID. Do not fallback to `token/*.json`. Do not commit secrets.
 
-Local secrets live in `.env.local`: `NOTION_TOKEN`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, and `GOOGLE_REFRESH_TOKEN`. Cloud uses DynamoDB-backed config/tokens, `GOOGLE_CALENDAR_CLIENT_ID`, `GOOGLE_CALENDAR_CLIENT_SECRET_SSM_PATH`, and `TOKEN_ENCRYPTION_KEY_SSM_PATH`.
+Local configuration/credentials live in `.env.local`: `NOTION_TOKEN`, `GOOGLE_CALENDAR_CLIENT_ID`, `GOOGLE_CALENDAR_CLIENT_SECRET`, and `GOOGLE_CALENDAR_REFRESH_TOKEN`. Cloud reuses the non-secret `GOOGLE_CALENDAR_CLIENT_ID`, loads OAuth tokens from DynamoDB, and resolves secrets through `GOOGLE_CALENDAR_CLIENT_SECRET_SSM_PATH` and `TOKEN_ENCRYPTION_KEY_SSM_PATH`.
 
 Tokens may be plaintext or `enc:v1:` encrypted. Use `src/utils/token_crypto.py:decrypt_token_if_encrypted()` at token read boundaries; `decrypt_token()` stays strict. In cloud mode, token encryption keys are resolved from SSM via `TOKEN_ENCRYPTION_KEY_SSM_PATH`; local mode may still use plaintext `TOKEN_ENCRYPTION_KEY`.
 
-All downstream services (`NotionToken`, `NotionConfig`, `GoogleToken`, `GoogleService`) accept the config dict and handle the active mode internally.
+`MappingDomainConfig` is the only configuration boundary. It returns one current-contract runtime setting per active Task source, including the normalized Calendar-name mapping, explicit default Calendar, and worker-required stable Notion property IDs. It fails closed on missing, malformed, cross-owner, duplicate-Calendar-name, or incomplete configuration. Runtime property lookup must use `propertyId` only; do not add mutable-name fallbacks.
 
 ### Request flow
 
 ```
 Lambda trigger (SQS / EventBridge)
   └─ lambda_function.lambda_handler
+       ├─ reject superseded `execution` payloads
        └─ src/main.main(uuid)
             ├─ generate_config(uuid)
-            ├─ NotionConfig + NotionToken  →  NotionService
-            ├─ GoogleToken                →  GoogleService
-            └─ sync.synchronize_notion_and_google_calendar(...)
+            ├─ MappingDomainConfig → active source settings
+            ├─ NotionToken + GoogleToken
+            └─ for each source: NotionService + GoogleService → sync
 ```
 
 ### Sync logic (`src/sync/sync.py`)
 
-`synchronize_notion_and_google_calendar` drives the bidirectional sync:
+The mapping-domain migration preserves the existing event-ID-based synchronization algorithm.
 
-1. Fetch all GCal events and Notion tasks for the configured date window.
-2. For each Notion task, match it to a GCal event by `GCal_EventId` property.
-   - No GCal ID → create GCal event (`create_gcal`)
-   - Deletion flag set → delete GCal event + Notion task (`delete_gcal`)
-   - GCal ID found → compare `last_edited_time` vs `updated` to decide `update_gcal` or `update_notion`
+1. Fetch Notion tasks and Google Calendar events for the configured source/window.
+2. Read the task's persisted `GCal Event Id` and configured Calendar value.
+3. If a Notion task has no Google event ID, create the Google event and write the returned provider event ID back to Notion.
+4. If a task is marked deleted, delete the matching Google event by its stored provider event ID and apply the existing Notion cleanup behavior.
+5. If a task already has an event ID, compare Notion/Google timestamps and execute the existing update or Calendar-move behavior.
+6. `GCal Sync Time` remains part of timestamp reconciliation.
+7. The existing Google → Notion path and force modes remain available.
+8. Multiple Task sources are handled by invoking the same sync implementation once per current-contract source setting.
 
-3. Remaining unmatched GCal events → create Notion tasks (`create_notion`)
-4. Per-task errors are collected in `sync_errors` and returned without stopping the sync.
-5. Hard cap: aborts if either side exceeds 250 items (`SYNC_TASK_LIMIT`).
-
-`force_update_*` helpers call `synchronize_notion_and_google_calendar` with `compare_time=False` and one direction disabled.
+Do not introduce deterministic provider event identity, provider ownership metadata, or a new sync direction as part of this configuration migration.
 
 ### DynamoDB tables
 
-Four tables, all keyed by `uuid` (set via env vars):
+Runtime tables (set via env vars):
 
-- `DYNAMODB_USER_TABLE` — user config / local config equivalent
+- `DYNAMODB_MAPPING_DOMAIN_TABLE` — sole sync-configuration authority; owner partition plus `SourceMappingsIndex`
+- `DYNAMODB_USER_TABLE` — sync-log summary only; never configuration
 - `DYNAMODB_GOOGLE_OAUTH_TOKEN_TABLE` — Google OAuth tokens (refreshed in-place)
 - `DYNAMODB_NOTION_OAUTH_TOKEN_TABLE` — Notion API token (encrypted as `enc:v1:…`)
 - `DYNAMODB_SYNC_LOGS_TABLE` — sync result logs with TTL
+
+The worker consumes normalized mapping-domain records and uses persisted provider property IDs directly. It does not fall back to mutable Notion property names or legacy configuration shapes. `GCal Event Id` / `GCal Sync Time` semantics remain unchanged. Distinct Task sources may share a Google Calendar; configuration identity does not redefine provider event identity.
 
 ### Token encryption
 
