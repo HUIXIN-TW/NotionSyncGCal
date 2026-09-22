@@ -3,6 +3,7 @@ from dateutil.parser import isoparse
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 from google.auth.exceptions import RefreshError
+from notion.notion_properties import get_property, get_rich_text, get_title
 
 
 class SettingError(Exception):
@@ -177,66 +178,47 @@ class GoogleService:
             raise
 
     def make_event_body(self, notion_task):
-        # set icone and task name
-        event_icon = (
-            notion_task.get("properties", {})
-            .get(self.notion_page_property["CompleteIcon_Notion_Name"], {})
-            .get("formula", {})
-            .get("string", "❓")
+        properties = notion_task.get("properties", {})
+
+        icon_property = get_property(
+            properties,
+            self.notion_page_property["CompleteIcon_Notion_Name"],
         )
-        event_name = (
-            notion_task.get("properties", {})
-            .get(self.notion_page_property["Task_Notion_Name"], {})
-            .get("title", [{}])[0]
-            .get("text", {})
-            .get("content", "")
-        )
+        event_icon = icon_property.get("formula", {}).get("string", "❓")
+        event_name = get_title(
+            properties,
+            self.notion_page_property["Task_Notion_Name"],
+        ) or ""
         event_summary = event_icon + event_name
 
-        # set start and end date
-        # notion datetime format is "2024-05-27T19:00:00.000+08:00":
-        #   case1: with end datetime (using) or
-        #   case2: without end datetime (use start datetime + 1 hour)
-        # notion date format is "2024-05-26"
-        #   case1: with end date (using end date + 1 day) or
-        #   case2: without end date (use start date + 1 day)
-        # to_utc(event_start_date).strftime("%Y-%m-%dT%H:%M:%S")
-        # to_utc(event_start_date).strftime("%Y-%m-%d")
-        notion_task_start_date = (
-            notion_task.get("properties", {})
-            .get(self.notion_page_property["Date_Notion_Name"], {})
-            .get("date", {})
-            .get("start", "")
+        date_property = get_property(
+            properties,
+            self.notion_page_property["Date_Notion_Name"],
         )
-        notion_task_end_date = (
-            notion_task.get("properties", {})
-            .get(self.notion_page_property["Date_Notion_Name"], {})
-            .get("date", {})
-            .get("end", "")
+        notion_task_start_date = date_property.get("date", {}).get("start", "")
+        notion_task_end_date = date_property.get("date", {}).get("end", "")
+        event_start_date, event_end_date = self.adjust_notion_dates(
+            notion_task_start_date,
+            notion_task_end_date,
         )
-        # Adjust and convert dates to UTC
-        event_start_date, event_end_date = self.adjust_notion_dates(notion_task_start_date, notion_task_end_date)
 
-        # set location
         try:
-            event_location = (
-                notion_task.get("properties", {})
-                .get(self.notion_page_property["Location_Notion_Name"], {})
-                .get("place", {})
-                .get("address", "")
+            location_property = get_property(
+                properties,
+                self.notion_page_property["Location_Notion_Name"],
             )
+            event_location = location_property.get("place", {}).get("address", "")
         except Exception as e:
             self.logger.info(f"Getting location: {e}. Using empty string.")
             event_location = ""
 
-        # set description
         try:
             event_description = (
-                notion_task.get("properties", {})
-                .get(self.notion_page_property["ExtraInfo_Notion_Name"], {})
-                .get("rich_text", [{}])[0]
-                .get("text", {})
-                .get("content", "")
+                get_rich_text(
+                    properties,
+                    self.notion_page_property["ExtraInfo_Notion_Name"],
+                )
+                or ""
             )
         except Exception as e:
             self.logger.info(f"Getting description: {e}. Using empty string.")
