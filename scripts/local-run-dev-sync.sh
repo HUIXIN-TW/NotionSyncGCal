@@ -18,13 +18,14 @@ LOCAL_MAPPING_DOMAIN_CONFIG="${REPO_ROOT}/config/local.mapping-domain.json"
 MODE=""
 UUID=""
 DRY_RUN=0
+CHECK_CONFIG=0
 VERBOSE=0
 
 usage() {
   cat <<EOF
 Usage:
   $(basename "$0") --mode local [--dry-run] [--verbose]
-  $(basename "$0") --mode cloud --uuid UUID [--dry-run] [--verbose]
+  $(basename "$0") --mode cloud --uuid UUID [--check-config] [--dry-run] [--verbose]
 
 Runs the Notion-GCal sync locally using the explicit APP_MODE flow.
 
@@ -35,12 +36,14 @@ Modes:
 Options:
   --mode MODE      Required. Must be 'local' or 'cloud'.
   --uuid UUID      Required in cloud mode. Not used in local mode.
-  --dry-run        Validate prerequisites without running the sync.
+  --check-config   Cloud only: validate mapping-domain config without loading provider tokens or running sync.
+  --dry-run        Validate prerequisites without reading config or running the sync.
   --verbose        Enable DEBUG-level logging in the Python helper.
   -h, --help       Show this message.
 
 Examples:
   ./scripts/local-run-dev-sync.sh --mode local
+  ./scripts/local-run-dev-sync.sh --mode cloud --uuid xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx --check-config
   ./scripts/local-run-dev-sync.sh --mode cloud --uuid xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
 EOF
   exit 0
@@ -114,6 +117,10 @@ parse_args() {
         UUID="$2"
         shift 2
         ;;
+      --check-config)
+        CHECK_CONFIG=1
+        shift
+        ;;
       --dry-run)
         DRY_RUN=1
         shift
@@ -133,6 +140,9 @@ parse_args() {
 
   [[ -n "${MODE}" ]] || fail "--mode is required. Use --mode local or --mode cloud."
   [[ "${MODE}" == "local" || "${MODE}" == "cloud" ]] || fail "--mode must be 'local' or 'cloud'."
+  if [[ "${CHECK_CONFIG}" -eq 1 && "${MODE}" != "cloud" ]]; then
+    fail "--check-config is supported only in cloud mode."
+  fi
 }
 
 validate_local_mode() {
@@ -245,19 +255,24 @@ validate_cloud_mode() {
   export APP_REGION="${region}"
   export AWS_REGION="${region}"
 
-  for name in \
-    DYNAMODB_USER_TABLE \
-    DYNAMODB_MAPPING_DOMAIN_TABLE \
-    DYNAMODB_SYNC_LOGS_TABLE \
-    DYNAMODB_GOOGLE_OAUTH_TOKEN_TABLE \
-    DYNAMODB_NOTION_OAUTH_TOKEN_TABLE \
-    TOKEN_ENCRYPTION_KEY_SSM_PATH \
-    GOOGLE_CALENDAR_CLIENT_ID \
-    GOOGLE_CALENDAR_CLIENT_SECRET_SSM_PATH \
-    APP_REGION; do
-    require_env "${name}"
-  done
-  unset name
+  if [[ "${CHECK_CONFIG}" -eq 1 ]]; then
+    require_env DYNAMODB_MAPPING_DOMAIN_TABLE
+    require_env APP_REGION
+  else
+    for name in \
+      DYNAMODB_USER_TABLE \
+      DYNAMODB_MAPPING_DOMAIN_TABLE \
+      DYNAMODB_SYNC_LOGS_TABLE \
+      DYNAMODB_GOOGLE_OAUTH_TOKEN_TABLE \
+      DYNAMODB_NOTION_OAUTH_TOKEN_TABLE \
+      TOKEN_ENCRYPTION_KEY_SSM_PATH \
+      GOOGLE_CALENDAR_CLIENT_ID \
+      GOOGLE_CALENDAR_CLIENT_SECRET_SSM_PATH \
+      APP_REGION; do
+      require_env "${name}"
+    done
+    unset name
+  fi
 
   echo "Cloud prerequisites passed."
   echo "  APP_MODE: cloud"
@@ -279,6 +294,7 @@ run_helper() {
   if [[ "${MODE}" == "cloud" ]]; then
     invoke_args+=("--uuid" "${UUID}")
   fi
+  [[ "${CHECK_CONFIG}" -eq 1 ]] && invoke_args+=("--check-config")
   [[ "${VERBOSE}" -eq 1 ]] && invoke_args+=("--verbose")
 
   if [[ "${DRY_RUN}" -eq 1 ]]; then
@@ -290,7 +306,11 @@ run_helper() {
   fi
 
   echo ""
-  echo "=== Invoking Sync ==="
+  if [[ "${CHECK_CONFIG}" -eq 1 ]]; then
+    echo "=== Checking Mapping-Domain Configuration (Read-Only) ==="
+  else
+    echo "=== Invoking Sync ==="
+  fi
   cd "${REPO_ROOT}"
   uv run python scripts/local_invoke_sync_lambda.py "${invoke_args[@]}"
 }
