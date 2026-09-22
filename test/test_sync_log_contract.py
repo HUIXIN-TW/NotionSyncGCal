@@ -9,29 +9,23 @@ SRC_ROOT = Path(__file__).resolve().parents[1] / "src"
 sys.path.insert(0, str(SRC_ROOT))
 
 from sync import SYNC_CAPACITY_LIMIT_ERROR_CODE  # noqa: E402
-from sync.sync import project_notion_to_google_calendar  # noqa: E402
+from sync.sync import synchronize_notion_and_google_calendar  # noqa: E402
 import utils.lambda_utils as lambda_utils  # noqa: E402
 
 USER_SETTING = {
-    "owner_user_uuid": "11111111-1111-4111-8111-111111111111",
-    "settings_version": 1,
-    "source_id": "source-1",
-    "source_version": 1,
-    "calendar_mappings": [
-        {
-            "mapping_id": "mapping-1",
-            "mapping_version": 1,
-            "calendar_id": "primary@example.com",
-            "routing": {"mode": "all"},
-        }
-    ],
     "page_property": {
         "Task_Notion_Name": "Task Name",
         "Date_Notion_Name": "Date",
         "GCal_Name_Notion_Name": "Calendar",
+        "GCal_EventId_Notion_Name": "GCal Event Id",
+        "GCal_Sync_Time_Notion_Name": "GCal Sync Time",
         "Delete_Notion_Name": "Delete",
         "GCal_End_Date_Notion_Name": "End Date",
     },
+    "gcal_name_dict": {"Primary": "primary@example.com"},
+    "gcal_id_dict": {"primary@example.com": "Primary"},
+    "gcal_default_name": "Primary",
+    "gcal_default_id": "primary@example.com",
 }
 
 
@@ -43,10 +37,13 @@ class SyncContractTests(unittest.TestCase):
         notion_service.get_notion_task.return_value = ({"db": "x"}, [])
         google_service.get_gcal_event.return_value = []
 
-        result = project_notion_to_google_calendar(
+        result = synchronize_notion_and_google_calendar(
             user_setting=copy.deepcopy(USER_SETTING),
             notion_service=notion_service,
-            google_services={"mapping-1": google_service},
+            google_service=google_service,
+            compare_time=True,
+            should_update_notion_tasks=True,
+            should_update_google_events=True,
         )
 
         self.assertEqual(result["statusCode"], 200)
@@ -78,7 +75,7 @@ class SyncContractTests(unittest.TestCase):
                     "trigger_time": "2026-05-23T00:00:00.000Z",
                     "errors": [
                         {
-                            "action": "upsert_gcal",
+                            "action": "update_notion",
                             "error_code": "runtime_error",
                             "error": "provider failure",
                             "gcal_event_start": "2026-05-23T09:00:00+08:00",
@@ -116,7 +113,9 @@ class SyncContractTests(unittest.TestCase):
             "duration_ms",
         }
         self.assertTrue(required_top_level_keys.issubset(payload.keys()))
-        self.assertEqual(payload["contract_version"], lambda_utils.SYNC_LOG_CONTRACT_VERSION)
+        self.assertEqual(
+            payload["contract_version"], lambda_utils.SYNC_LOG_CONTRACT_VERSION
+        )
 
         persisted_errors = payload["message"]["errors"]
         self.assertEqual(len(persisted_errors), 1)
@@ -148,10 +147,13 @@ class SyncContractTests(unittest.TestCase):
         )
         google_service.get_gcal_event.return_value = []
 
-        result = project_notion_to_google_calendar(
+        result = synchronize_notion_and_google_calendar(
             user_setting=copy.deepcopy(USER_SETTING),
             notion_service=notion_service,
-            google_services={"mapping-1": google_service},
+            google_service=google_service,
+            compare_time=True,
+            should_update_notion_tasks=True,
+            should_update_google_events=True,
         )
 
         self.assertEqual(result["statusCode"], 200)
