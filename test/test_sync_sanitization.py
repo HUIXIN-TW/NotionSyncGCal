@@ -11,13 +11,13 @@ from sync.sync import synchronize_notion_and_google_calendar  # noqa: E402
 
 USER_SETTING = {
     "page_property": {
-        "Task_Notion_Name": "Task Name",
-        "Date_Notion_Name": "Date",
-        "GCal_Name_Notion_Name": "Calendar",
-        "GCal_EventId_Notion_Name": "GCal Event Id",
-        "GCal_Sync_Time_Notion_Name": "GCal Sync Time",
-        "Delete_Notion_Name": "Delete",
-        "GCal_End_Date_Notion_Name": "End Date",
+        "Task_Notion_Name": "task-id",
+        "Date_Notion_Name": "date-id",
+        "GCal_Name_Notion_Name": "calendar-id",
+        "GCal_EventId_Notion_Name": "event-id",
+        "GCal_Sync_Time_Notion_Name": "sync-id",
+        "Delete_Notion_Name": "delete-id",
+        "GCal_End_Date_Notion_Name": "end-id",
     },
     "gcal_name_dict": {"Primary": "primary@example.com"},
     "gcal_id_dict": {"primary@example.com": "Primary"},
@@ -31,12 +31,30 @@ def _make_notion_task(event_id: str) -> dict:
         "id": "page-123",
         "last_edited_time": "2026-05-01T00:00:00.000Z",
         "properties": {
-            "Calendar": {"select": {"name": "Primary"}},
-            "GCal Event Id": {"rich_text": [{"plain_text": event_id}]},
-            "GCal Sync Time": {"rich_text": []},
-            "Delete": {"checkbox": False},
-            "Task Name": {"title": [{"plain_text": "Highly sensitive task title"}]},
-            "Date": {"date": {"start": "2026-05-23"}},
+            "Calendar": {
+                "id": "calendar-id",
+                "select": {"name": "Primary"},
+            },
+            "GCal Event Id": {
+                "id": "event-id",
+                "rich_text": [{"plain_text": event_id}],
+            },
+            "GCal Sync Time": {
+                "id": "sync-id",
+                "rich_text": [],
+            },
+            "Delete": {
+                "id": "delete-id",
+                "checkbox": False,
+            },
+            "Task Name": {
+                "id": "task-id",
+                "title": [{"plain_text": "Highly sensitive task title"}],
+            },
+            "Date": {
+                "id": "date-id",
+                "date": {"start": "2026-05-23"},
+            },
         },
     }
 
