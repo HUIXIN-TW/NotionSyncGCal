@@ -116,7 +116,7 @@ class MappingDomainConfigTests(unittest.TestCase):
                 logger=mock.MagicMock(),
             ).get()
 
-    def test_expands_normalized_rows_to_legacy_equivalent_worker_setting(self):
+    def test_expands_normalized_rows_to_worker_setting(self):
         [setting] = self.load(build_payload())
 
         self.assertEqual(setting["database_id"], "notion-db-1")
@@ -127,14 +127,14 @@ class MappingDomainConfigTests(unittest.TestCase):
         self.assertEqual(setting["default_event_length"], 60)
         self.assertEqual(setting["default_start_time"], 8)
 
-        self.assertEqual(setting["page_property"]["Task_Notion_Name"], "Task Name")
+        self.assertEqual(setting["page_property"]["Task_Notion_Name"], "task-id")
         self.assertEqual(
             setting["page_property"]["GCal_EventId_Notion_Name"],
-            "GCal Event Id",
+            "event-id",
         )
         self.assertEqual(
             setting["page_property"]["GCal_Sync_Time_Notion_Name"],
-            "GCal Sync Time",
+            "sync-id",
         )
 
         self.assertEqual(
@@ -153,12 +153,12 @@ class MappingDomainConfigTests(unittest.TestCase):
         self.assertTrue(setting["google_timemin"].endswith("+08:00"))
         self.assertTrue(setting["google_timemax"].endswith("+08:00"))
 
-    def test_uses_property_names_not_provider_ids_for_worker_runtime(self):
+    def test_uses_stable_provider_ids_for_worker_runtime(self):
         [setting] = self.load(build_payload())
-        self.assertEqual(setting["page_property"]["Date_Notion_Name"], "Date")
+        self.assertEqual(setting["page_property"]["Date_Notion_Name"], "date-id")
         self.assertNotEqual(
             setting["page_property"]["Date_Notion_Name"],
-            "date-id",
+            "Date",
         )
 
     def test_rejects_missing_event_id_binding(self):
