@@ -192,5 +192,104 @@ class ReadOnlyProviderMatchTests(unittest.TestCase):
         self.assertEqual(result["body"]["message"]["missing_event_ids"], 1)
 
 
+class OnePairProviderCanaryTests(unittest.TestCase):
+    def _source_setting(self):
+        return {
+            "source_id": "source-1",
+            "database_id": "05482e3c-4aca-40e0-9527-9ff2f2630e66",
+            "gcal_default_name": "Learning",
+            "gcal_name_dict": {"Learning": "calendar-1@example.com"},
+            "page_property": {
+                "GCal_EventId_Notion_Name": "event-id-property",
+                "Delete_Notion_Name": "delete-property",
+                "GCal_Name_Notion_Name": "calendar-name-property",
+            },
+        }
+
+    def _page(self, *, deleted=False):
+        return {
+            "id": "page-1",
+            "parent": {"database_id": "05482e3c-4aca-40e0-9527-9ff2f2630e66"},
+            "properties": {
+                "GCal Event Id": {
+                    "id": "event-id-property",
+                    "rich_text": [{"plain_text": "event-1"}],
+                },
+                "Delete": {"id": "delete-property", "checkbox": deleted},
+                "Calendar": {
+                    "id": "calendar-name-property",
+                    "select": {"name": "Learning"},
+                },
+            },
+        }
+
+    def test_one_pair_canary_uses_existing_pair_and_preserves_event_count(self):
+        logger = MagicMock()
+        page = self._page()
+        existing_event = {"id": "event-1", "organizer": {"email": "calendar-1@example.com"}}
+        notion_service = MagicMock()
+        notion_service.client.pages.retrieve.return_value = page
+        google_service = MagicMock()
+        google_service.get_gcal_event.side_effect = [[existing_event], [existing_event]]
+
+        with patch.dict(os.environ, {"APP_MODE": "cloud"}, clear=True):
+            with patch.object(local_invoke, "_require_env"):
+                with patch("config.mapping_domain_config.MappingDomainConfig") as mapping_config:
+                    mapping_config.return_value.get.return_value = [self._source_setting()]
+                    with patch("notion.notion_token.NotionToken") as notion_token:
+                        notion_token.return_value.get.return_value = "notion-token"
+                        with patch("gcal.gcal_token.GoogleToken"):
+                            with patch("notion.notion_service.NotionService", return_value=notion_service):
+                                with patch("gcal.gcal_service.GoogleService", return_value=google_service):
+                                    with patch(
+                                        "sync.sync.force_update_google_event_by_notion_task_and_ignore_time",
+                                        return_value={"statusCode": 200, "body": {"status": "sync_success"}},
+                                    ) as sync_fn:
+                                        result = local_invoke._run_cloud_canary(
+                                            "user-1",
+                                            "page-1",
+                                            "page-1",
+                                            logger,
+                                        )
+
+        self.assertEqual(result["statusCode"], 200)
+        message = result["body"]["message"]
+        self.assertTrue(message["same_event_preserved"])
+        self.assertEqual(message["google_event_count_before"], 1)
+        self.assertEqual(message["google_event_count_after"], 1)
+        scoped_notion = sync_fn.call_args.kwargs["notion_service"]
+        scoped_google = sync_fn.call_args.kwargs["google_service"]
+        self.assertEqual(scoped_notion.get_notion_task()[1], [page])
+        self.assertEqual(scoped_google.get_gcal_event(), [existing_event])
+
+    def test_one_pair_canary_refuses_delete_flag_before_sync(self):
+        logger = MagicMock()
+        page = self._page(deleted=True)
+        notion_service = MagicMock()
+        notion_service.client.pages.retrieve.return_value = page
+
+        with patch.dict(os.environ, {"APP_MODE": "cloud"}, clear=True):
+            with patch.object(local_invoke, "_require_env"):
+                with patch("config.mapping_domain_config.MappingDomainConfig") as mapping_config:
+                    mapping_config.return_value.get.return_value = [self._source_setting()]
+                    with patch("notion.notion_token.NotionToken") as notion_token:
+                        notion_token.return_value.get.return_value = "notion-token"
+                        with patch("gcal.gcal_token.GoogleToken"):
+                            with patch("notion.notion_service.NotionService", return_value=notion_service):
+                                with patch(
+                                    "sync.sync.force_update_google_event_by_notion_task_and_ignore_time"
+                                ) as sync_fn:
+                                    result = local_invoke._run_cloud_canary(
+                                        "user-1",
+                                        "page-1",
+                                        "page-1",
+                                        logger,
+                                    )
+
+        self.assertEqual(result["statusCode"], 409)
+        self.assertEqual(result["body"]["status"], "canary_refused")
+        sync_fn.assert_not_called()
+
+
 if __name__ == "__main__":
     unittest.main()
