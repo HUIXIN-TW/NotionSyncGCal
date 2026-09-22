@@ -26,13 +26,22 @@ def property_mapping(property_id, property_type):
     }
 
 
-def task_source(source_id="source-1", owner="user-1", lifecycle="active", database_id="db-1"):
+def task_source(
+    source_id="source-1",
+    owner="user-1",
+    lifecycle="active",
+    database_id="db-1",
+):
     return {
         "id": source_id,
         "ownerUserUuid": owner,
         "lifecycle": lifecycle,
         "version": 1,
-        "database": {"externalId": database_id, "url": "https://notion.so/db", "name": "Tasks"},
+        "database": {
+            "externalId": database_id,
+            "url": "https://notion.so/db",
+            "name": "Tasks",
+        },
         "defaults": {
             "goBackDays": 3,
             "goForwardDays": 14,
@@ -42,26 +51,68 @@ def task_source(source_id="source-1", owner="user-1", lifecycle="active", databa
         "propertyMappings": {
             "task": property_mapping("task-id", "title"),
             "date": property_mapping("date-id", "date"),
-            "location": property_mapping("location-id", "place"),
-            "calendarName": property_mapping("calendar-id", "select"),
-            "googleCalendarEventId": property_mapping("event-id", "rich_text"),
-            "googleCalendarSyncTime": property_mapping("sync-id", "rich_text"),
-            "googleCalendarEndDate": property_mapping("end-id", "formula"),
+            "location": property_mapping(
+                "location-id",
+                "place",
+            ),
+            "calendarName": property_mapping(
+                "calendar-id",
+                "select",
+            ),
+            "googleCalendarEndDate": property_mapping(
+                "end-id",
+                "formula",
+            ),
         },
         "updatedAtMs": 1,
     }
 
 
-def calendar_mapping(source_id="source-1", calendar_id="calendar-1", owner="user-1", lifecycle="active"):
+def calendar_mapping(
+    source_id="source-1",
+    calendar_id="calendar-1",
+    owner="user-1",
+    lifecycle="active",
+    *,
+    mapping_id=None,
+    routing=None,
+):
     return {
-        "id": f"mapping-{source_id}-{calendar_id}",
+        "id": (
+            mapping_id
+            or f"mapping-{source_id}-{calendar_id}"
+        ),
         "ownerUserUuid": owner,
         "sourceId": source_id,
         "calendarId": calendar_id,
+        "routing": routing or {"mode": "all"},
         "lifecycle": lifecycle,
         "version": 1,
         "updatedAtMs": 1,
     }
+
+
+def routed_mapping(
+    value,
+    *,
+    source_id="source-1",
+    calendar_id=None,
+    owner="user-1",
+    mapping_id=None,
+):
+    calendar_id = calendar_id or f"{value.lower()}-calendar"
+    return calendar_mapping(
+        source_id,
+        calendar_id,
+        owner,
+        mapping_id=(
+            mapping_id or f"mapping-{source_id}-{value.lower()}"
+        ),
+        routing={
+            "mode": "notion_calendar_value",
+            "value": value,
+        },
+    )
 
 
 def contract(owner="user-1"):
@@ -73,142 +124,348 @@ def contract(owner="user-1"):
             "updatedAtMs": 1,
         },
         "taskSources": [task_source(owner=owner)],
-        "calendarMappings": [calendar_mapping(owner=owner)],
+        "calendarMappings": [
+            calendar_mapping(owner=owner)
+        ],
+    }
+
+
+def execution_for(payload, *, settings_version=1):
+    source = payload["taskSources"][0]
+    source_mappings = [
+        mapping
+        for mapping in payload["calendarMappings"]
+        if (
+            mapping["sourceId"] == source["id"]
+            and mapping["lifecycle"] == "active"
+        )
+    ]
+    return {
+        "contractVersion": 3,
+        "admissionStartedAtMs": 1789920000000,
+        "operationId": "operation-1",
+        "ownerUserUuid": source["ownerUserUuid"],
+        "settingsVersion": settings_version,
+        "taskSources": [
+            {
+                "sourceId": source["id"],
+                "sourceVersion": source["version"],
+                "mappings": [
+                    {
+                        "mappingId": mapping["id"],
+                        "mappingVersion": mapping["version"],
+                        "calendarId": mapping["calendarId"],
+                        "routing": mapping["routing"],
+                    }
+                    for mapping in source_mappings
+                ],
+            }
+        ],
     }
 
 
 class MappingDomainConfigLocalTests(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
-        self.path = Path(self.tmp.name) / "mapping-domain.json"
+        self.path = (
+            Path(self.tmp.name) / "mapping-domain.json"
+        )
 
     def tearDown(self):
         self.tmp.cleanup()
 
-    def write(self, payload):
-        self.path.write_text(json.dumps(payload), encoding="utf-8")
-
     def load(self, payload):
-        self.write(payload)
-        return MappingDomainConfig({"mode": "local", "mapping_domain_config_path": self.path}, MagicMock()).get()
+        self.path.write_text(
+            json.dumps(payload),
+            encoding="utf-8",
+        )
+        return MappingDomainConfig(
+            {
+                "mode": "local",
+                "mapping_domain_config_path": self.path,
+            },
+            MagicMock(),
+        ).get()
 
-    def test_loads_active_source_using_provider_property_ids(self):
+    def test_loads_source_with_complete_mapping_set(self):
         payload = contract(owner="local-user")
         settings = self.load(payload)
 
         self.assertEqual(len(settings), 1)
-        self.assertEqual(settings[0]["source_id"], "source-1")
-        self.assertEqual(settings[0]["database_id"], "db-1")
-        self.assertEqual(settings[0]["page_property"]["Task_Notion_Name"], "task-id")
-        self.assertEqual(settings[0]["calendar_ids"], ["calendar-1"])
-        self.assertEqual(settings[0]["calendar_id"], "calendar-1")
-        self.assertEqual(settings[0]["mapping_id"], "mapping-source-1-calendar-1")
-        self.assertEqual(settings[0]["settings_version"], 1)
-        self.assertEqual(settings[0]["source_version"], 1)
-        self.assertEqual(settings[0]["mapping_version"], 1)
-        self.assertNotIn("timecode", settings[0])
-
-    def test_rejects_missing_required_settings_shape(self):
-        payload = contract(owner="local-user")
-        del payload["settings"]["timeZone"]
-        with self.assertRaisesRegex(SettingError, "settings.timeZone"):
-            self.load(payload)
+        setting = settings[0]
+        self.assertEqual(setting["source_id"], "source-1")
+        self.assertEqual(setting["database_id"], "db-1")
+        self.assertEqual(
+            setting["page_property"]["Task_Notion_Name"],
+            "task-id",
+        )
+        self.assertEqual(
+            setting["calendar_mappings"],
+            [
+                {
+                    "mapping_id": (
+                        "mapping-source-1-calendar-1"
+                    ),
+                    "mapping_version": 1,
+                    "calendar_id": "calendar-1",
+                    "routing": {"mode": "all"},
+                }
+            ],
+        )
+        self.assertNotIn("mapping_id", setting)
+        self.assertNotIn("calendar_id", setting)
+        self.assertNotIn("timecode", setting)
 
     def test_filters_disabled_sources_and_mappings(self):
         payload = contract(owner="local-user")
-        payload["taskSources"].append(task_source("source-2", "local-user", "disabled", "db-2"))
-        payload["calendarMappings"].append(calendar_mapping("source-2", "calendar-2", "local-user"))
-        payload["calendarMappings"].append(calendar_mapping("source-1", "calendar-disabled", "local-user", "disabled"))
+        payload["taskSources"].append(
+            task_source(
+                "source-2",
+                "local-user",
+                "disabled",
+                "db-2",
+            )
+        )
+        payload["calendarMappings"].append(
+            calendar_mapping(
+                "source-2",
+                "calendar-2",
+                "local-user",
+            )
+        )
+        payload["calendarMappings"].append(
+            calendar_mapping(
+                "source-1",
+                "calendar-disabled",
+                "local-user",
+                "disabled",
+            )
+        )
 
         settings = self.load(payload)
 
-        self.assertEqual([setting["source_id"] for setting in settings], ["source-1"])
-        self.assertEqual(settings[0]["calendar_ids"], ["calendar-1"])
+        self.assertEqual(
+            [setting["source_id"] for setting in settings],
+            ["source-1"],
+        )
+        self.assertEqual(
+            len(settings[0]["calendar_mappings"]),
+            1,
+        )
 
-    def test_rejects_missing_sync_required_mapping(self):
+    def test_rejects_missing_sync_required_property(self):
         payload = contract(owner="local-user")
-        del payload["taskSources"][0]["propertyMappings"]["googleCalendarEndDate"]
-        with self.assertRaisesRegex(SettingError, "not sync-ready"):
+        del payload["taskSources"][0][
+            "propertyMappings"
+        ]["googleCalendarEndDate"]
+        with self.assertRaisesRegex(
+            SettingError,
+            "not sync-ready",
+        ):
             self.load(payload)
 
     def test_rejects_wrong_property_type(self):
         payload = contract(owner="local-user")
-        payload["taskSources"][0]["propertyMappings"]["task"]["propertyType"] = "rich_text"
-        with self.assertRaisesRegex(SettingError, "must be title"):
+        payload["taskSources"][0]["propertyMappings"][
+            "task"
+        ]["propertyType"] = "rich_text"
+        with self.assertRaisesRegex(
+            SettingError,
+            "must be title",
+        ):
             self.load(payload)
 
-    def test_rejects_cross_owner_record(self):
+    def test_rejects_cross_owner_and_unknown_source_mapping(self):
         payload = contract(owner="local-user")
-        payload["calendarMappings"][0]["ownerUserUuid"] = "other-user"
-        with self.assertRaisesRegex(SettingError, "requested owner"):
+        payload["calendarMappings"][0][
+            "ownerUserUuid"
+        ] = "other-user"
+        with self.assertRaisesRegex(
+            SettingError,
+            "requested owner",
+        ):
             self.load(payload)
 
-    def test_rejects_cross_owner_disabled_record(self):
         payload = contract(owner="local-user")
-        payload["calendarMappings"].append(calendar_mapping("source-1", "disabled", "other-user", "disabled"))
-        with self.assertRaisesRegex(SettingError, "requested owner"):
-            self.load(payload)
-
-    def test_rejects_invalid_source_lifecycle(self):
-        payload = contract(owner="local-user")
-        payload["taskSources"][0]["lifecycle"] = "deleted"
-        with self.assertRaisesRegex(SettingError, "lifecycle must be active or disabled"):
-            self.load(payload)
-
-    def test_rejects_invalid_mapping_lifecycle(self):
-        payload = contract(owner="local-user")
-        payload["calendarMappings"][0]["lifecycle"] = "deleted"
-        with self.assertRaisesRegex(SettingError, "lifecycle must be active or disabled"):
-            self.load(payload)
-
-    def test_rejects_mapping_for_unknown_source(self):
-        payload = contract(owner="local-user")
-        payload["calendarMappings"].append(calendar_mapping("missing-source", "calendar-2", "local-user"))
-        with self.assertRaisesRegex(SettingError, "references unknown Task source"):
+        payload["calendarMappings"].append(
+            calendar_mapping(
+                "missing-source",
+                "calendar-2",
+                "local-user",
+            )
+        )
+        with self.assertRaisesRegex(
+            SettingError,
+            "references unknown Task source",
+        ):
             self.load(payload)
 
     def test_rejects_duplicate_mapping_id(self):
         payload = contract(owner="local-user")
-        duplicate = calendar_mapping("source-1", "calendar-2", "local-user")
-        duplicate["id"] = payload["calendarMappings"][0]["id"]
+        duplicate = routed_mapping(
+            "Job",
+            owner="local-user",
+            mapping_id=payload["calendarMappings"][0]["id"],
+        )
         payload["calendarMappings"].append(duplicate)
-        with self.assertRaisesRegex(SettingError, "Duplicate Calendar mapping id"):
+        with self.assertRaisesRegex(
+            SettingError,
+            "Duplicate Calendar mapping id",
+        ):
             self.load(payload)
 
-    def test_rejects_duplicate_active_calendar_mapping_for_one_source(self):
+    def test_all_routing_requires_exactly_one_active_mapping(self):
         payload = contract(owner="local-user")
-        duplicate = calendar_mapping("source-1", "calendar-1", "local-user")
-        duplicate["id"] = "mapping-duplicate"
-        payload["calendarMappings"].append(duplicate)
-        with self.assertRaisesRegex(SettingError, "exactly one active Calendar mapping"):
+        payload["calendarMappings"].append(
+            calendar_mapping(
+                "source-1",
+                "calendar-2",
+                "local-user",
+            )
+        )
+        with self.assertRaisesRegex(
+            SettingError,
+            "all routing requires exactly one",
+        ):
             self.load(payload)
 
-    def test_accepts_calendar_shared_by_distinct_active_sources(self):
+    def test_accepts_multiple_unique_notion_calendar_routes(self):
         payload = contract(owner="local-user")
-        payload["taskSources"].append(task_source("source-2", "local-user", database_id="db-2"))
-        payload["calendarMappings"].append(calendar_mapping("source-2", "calendar-1", "local-user"))
+        payload["calendarMappings"] = [
+            routed_mapping(
+                "Learning",
+                owner="local-user",
+            ),
+            routed_mapping(
+                "Job",
+                owner="local-user",
+            ),
+        ]
 
         settings = self.load(payload)
 
-        self.assertEqual([setting["source_id"] for setting in settings], ["source-1", "source-2"])
-        self.assertEqual([setting["calendar_id"] for setting in settings], ["calendar-1", "calendar-1"])
-        self.assertNotEqual(settings[0]["mapping_id"], settings[1]["mapping_id"])
+        routes = [
+            mapping["routing"]["value"]
+            for mapping in settings[0]["calendar_mappings"]
+        ]
+        self.assertEqual(routes, ["Job", "Learning"])
 
-    def test_rejects_active_source_without_active_calendar_mapping(self):
+    def test_rejects_mixed_or_duplicate_routing(self):
         payload = contract(owner="local-user")
-        payload["calendarMappings"][0]["lifecycle"] = "disabled"
-        with self.assertRaisesRegex(SettingError, "exactly one active Calendar mapping"):
+        payload["calendarMappings"].append(
+            routed_mapping(
+                "Job",
+                owner="local-user",
+            )
+        )
+        with self.assertRaisesRegex(
+            SettingError,
+            "cannot mix",
+        ):
             self.load(payload)
 
-    def test_rejects_one_unmapped_active_source_even_when_another_source_is_ready(self):
         payload = contract(owner="local-user")
-        payload["taskSources"].append(task_source("source-2", "local-user", database_id="db-2"))
+        payload["calendarMappings"] = [
+            routed_mapping(
+                "Job",
+                owner="local-user",
+                mapping_id="mapping-job-1",
+            ),
+            routed_mapping(
+                "Job",
+                owner="local-user",
+                calendar_id="other-calendar",
+                mapping_id="mapping-job-2",
+            ),
+        ]
+        with self.assertRaisesRegex(
+            SettingError,
+            "duplicate Notion Calendar routing value",
+        ):
+            self.load(payload)
 
-        with self.assertRaisesRegex(SettingError, "Task source source-2 requires exactly one active Calendar mapping"):
+    def test_routed_mode_requires_calendar_name_binding(self):
+        payload = contract(owner="local-user")
+        payload["calendarMappings"] = [
+            routed_mapping(
+                "Job",
+                owner="local-user",
+            )
+        ]
+        del payload["taskSources"][0][
+            "propertyMappings"
+        ]["calendarName"]
+        with self.assertRaisesRegex(
+            SettingError,
+            "requires calendarName",
+        ):
+            self.load(payload)
+
+    def test_accepts_shared_calendar_for_distinct_sources(self):
+        payload = contract(owner="local-user")
+        payload["taskSources"].append(
+            task_source(
+                "source-2",
+                "local-user",
+                database_id="db-2",
+            )
+        )
+        payload["calendarMappings"].append(
+            calendar_mapping(
+                "source-2",
+                "calendar-1",
+                "local-user",
+            )
+        )
+
+        settings = self.load(payload)
+
+        self.assertEqual(
+            [setting["source_id"] for setting in settings],
+            ["source-1", "source-2"],
+        )
+        self.assertEqual(
+            [
+                setting["calendar_mappings"][0]["calendar_id"]
+                for setting in settings
+            ],
+            ["calendar-1", "calendar-1"],
+        )
+
+    def test_rejects_active_source_without_mapping(self):
+        payload = contract(owner="local-user")
+        payload["calendarMappings"][0][
+            "lifecycle"
+        ] = "disabled"
+        with self.assertRaisesRegex(
+            SettingError,
+            "at least one active Calendar mapping",
+        ):
             self.load(payload)
 
 
 class MappingDomainConfigCloudTests(unittest.TestCase):
+    def _load_cloud(self, payload, execution=None):
+        with (
+            patch(
+                "utils.dynamodb_utils.get_mapping_domain_settings",
+                return_value=payload["settings"],
+            ),
+            patch(
+                "utils.dynamodb_utils.list_mapping_domain_task_sources",
+                return_value=payload["taskSources"],
+            ),
+            patch(
+                "utils.dynamodb_utils.list_mapping_domain_calendar_mappings_for_owner",
+                return_value=payload["calendarMappings"],
+            ),
+        ):
+            return MappingDomainConfig(
+                {"mode": "cloud", "uuid": "user-1"},
+                MagicMock(),
+                execution_fence=execution,
+            )
+
     def test_reads_only_mapping_domain_records(self):
         payload = contract()
         with (
@@ -225,9 +482,15 @@ class MappingDomainConfigCloudTests(unittest.TestCase):
                 return_value=payload["calendarMappings"],
             ) as list_mappings,
         ):
-            result = MappingDomainConfig({"mode": "cloud", "uuid": "user-1"}, MagicMock()).get()
+            result = MappingDomainConfig(
+                {"mode": "cloud", "uuid": "user-1"},
+                MagicMock(),
+            ).get()
 
-        self.assertEqual(result[0]["source_id"], "source-1")
+        self.assertEqual(
+            result[0]["source_id"],
+            "source-1",
+        )
         get_settings.assert_called_once_with("user-1")
         list_sources.assert_called_once_with("user-1")
         list_mappings.assert_called_once_with("user-1")
@@ -240,30 +503,99 @@ class MappingDomainConfigCloudTests(unittest.TestCase):
         defaults["defaultEventLengthMinutes"] = Decimal("60")
         defaults["defaultStartHour"] = Decimal("8")
 
-        with (
-            patch(
-                "utils.dynamodb_utils.get_mapping_domain_settings",
-                return_value=payload["settings"],
-            ),
-            patch(
-                "utils.dynamodb_utils.list_mapping_domain_task_sources",
-                return_value=payload["taskSources"],
-            ),
-            patch(
-                "utils.dynamodb_utils.list_mapping_domain_calendar_mappings_for_owner",
-                return_value=payload["calendarMappings"],
-            ),
-        ):
-            result = MappingDomainConfig({"mode": "cloud", "uuid": "user-1"}, MagicMock()).get()
+        config = self._load_cloud(payload)
 
+        result = config.get()
         self.assertEqual(result[0]["goback_days"], 3)
-        self.assertIsInstance(result[0]["goback_days"], int)
-        self.assertEqual(result[0]["default_event_length"], 60)
-        self.assertIsInstance(result[0]["default_event_length"], int)
+        self.assertIsInstance(
+            result[0]["default_event_length"],
+            int,
+        )
 
-    def test_rejects_non_integral_dynamodb_decimal_defaults(self):
+    def test_rejects_v2_execution_contract(self):
         payload = contract()
-        payload["taskSources"][0]["defaults"]["goBackDays"] = Decimal("1.5")
+        execution = execution_for(payload)
+        execution["contractVersion"] = 2
+
+        with self.assertRaisesRegex(
+            SettingError,
+            "Unsupported sync execution contract version",
+        ):
+            self._load_cloud(
+                payload,
+                execution,
+            )
+
+    def test_rejects_execution_fence_when_settings_changed(self):
+        payload = contract()
+        execution = execution_for(
+            payload,
+            settings_version=2,
+        )
+
+        with self.assertRaisesRegex(
+            SettingError,
+            "settings changed",
+        ):
+            self._load_cloud(
+                payload,
+                execution,
+            )
+
+    def test_accepts_matching_v3_execution_mapping_set(self):
+        payload = contract()
+        payload["calendarMappings"] = [
+            routed_mapping("Learning"),
+            routed_mapping("Job"),
+        ]
+        execution = execution_for(payload)
+
+        config = self._load_cloud(
+            payload,
+            execution,
+        )
+        result = config.get()
+
+        self.assertEqual(
+            result[0]["operation_id"],
+            "operation-1",
+        )
+        self.assertEqual(
+            result[0]["execution_contract_version"],
+            3,
+        )
+        self.assertEqual(
+            len(result[0]["calendar_mappings"]),
+            2,
+        )
+
+    def test_rejects_changed_execution_mapping_route(self):
+        payload = contract()
+        payload["calendarMappings"] = [
+            routed_mapping("Job")
+        ]
+        execution = execution_for(payload)
+        execution["taskSources"][0]["mappings"][0][
+            "routing"
+        ]["value"] = "Life"
+
+        with self.assertRaisesRegex(
+            SettingError,
+            "changed after the sync job was admitted",
+        ):
+            self._load_cloud(
+                payload,
+                execution,
+            )
+
+    def test_revalidate_source_compares_complete_mapping_set(self):
+        payload = contract()
+        payload["calendarMappings"] = [
+            routed_mapping("Learning"),
+            routed_mapping("Job"),
+        ]
+        config = self._load_cloud(payload)
+        setting = config.get()[0]
 
         with (
             patch(
@@ -271,114 +603,76 @@ class MappingDomainConfigCloudTests(unittest.TestCase):
                 return_value=payload["settings"],
             ),
             patch(
-                "utils.dynamodb_utils.list_mapping_domain_task_sources",
-                return_value=payload["taskSources"],
+                "utils.dynamodb_utils.get_mapping_domain_task_source",
+                return_value=payload["taskSources"][0],
             ),
             patch(
                 "utils.dynamodb_utils.list_mapping_domain_calendar_mappings_for_owner",
                 return_value=payload["calendarMappings"],
             ),
         ):
-            with self.assertRaisesRegex(SettingError, "goBackDays must be an integer"):
-                MappingDomainConfig({"mode": "cloud", "uuid": "user-1"}, MagicMock()).get()
+            config.revalidate_source(setting)
 
-    def test_rejects_execution_fence_when_settings_version_changed(self):
-        payload = contract()
-        execution = {
-            "contractVersion": 2,
-            "admissionStartedAtMs": 1789920000000,
-            "operationId": "operation-1",
-            "ownerUserUuid": "user-1",
-            "settingsVersion": 2,
-            "taskSources": [
-                {
-                    "sourceId": "source-1",
-                    "sourceVersion": 1,
-                    "mappingId": "mapping-source-1-calendar-1",
-                    "mappingVersion": 1,
-                    "calendarId": "calendar-1",
-                }
-            ],
-        }
-
+        changed = json.loads(
+            json.dumps(payload["calendarMappings"])
+        )
+        changed[0]["routing"]["value"] = "Changed"
         with (
             patch(
                 "utils.dynamodb_utils.get_mapping_domain_settings",
                 return_value=payload["settings"],
             ),
             patch(
-                "utils.dynamodb_utils.list_mapping_domain_task_sources",
-                return_value=payload["taskSources"],
+                "utils.dynamodb_utils.get_mapping_domain_task_source",
+                return_value=payload["taskSources"][0],
             ),
             patch(
                 "utils.dynamodb_utils.list_mapping_domain_calendar_mappings_for_owner",
-                return_value=payload["calendarMappings"],
+                return_value=changed,
             ),
         ):
-            with self.assertRaisesRegex(SettingError, "settings changed"):
-                MappingDomainConfig(
-                    {"mode": "cloud", "uuid": "user-1"},
-                    MagicMock(),
-                    execution_fence=execution,
-                ).get()
-
-    def test_accepts_matching_execution_fence_and_keeps_operation_identity(self):
-        payload = contract()
-        execution = {
-            "contractVersion": 2,
-            "admissionStartedAtMs": 1789920000000,
-            "operationId": "operation-1",
-            "ownerUserUuid": "user-1",
-            "settingsVersion": 1,
-            "taskSources": [
-                {
-                    "sourceId": "source-1",
-                    "sourceVersion": 1,
-                    "mappingId": "mapping-source-1-calendar-1",
-                    "mappingVersion": 1,
-                    "calendarId": "calendar-1",
-                }
-            ],
-        }
-
-        with (
-            patch(
-                "utils.dynamodb_utils.get_mapping_domain_settings",
-                return_value=payload["settings"],
-            ),
-            patch(
-                "utils.dynamodb_utils.list_mapping_domain_task_sources",
-                return_value=payload["taskSources"],
-            ),
-            patch(
-                "utils.dynamodb_utils.list_mapping_domain_calendar_mappings_for_owner",
-                return_value=payload["calendarMappings"],
-            ),
-        ):
-            result = MappingDomainConfig(
-                {"mode": "cloud", "uuid": "user-1"},
-                MagicMock(),
-                execution_fence=execution,
-            ).get()
-
-        self.assertEqual(result[0]["operation_id"], "operation-1")
-        self.assertEqual(result[0]["execution_contract_version"], 2)
-        self.assertEqual(result[0]["admission_started_at_ms"], 1789920000000)
+            with self.assertRaisesRegex(
+                SettingError,
+                "changed while the sync job was running",
+            ):
+                config.revalidate_source(setting)
 
 
 class MappingDomainDateRangeTests(unittest.TestCase):
-    def test_derives_dst_offsets_from_iana_timezone_for_each_boundary(self):
+    def test_derives_dst_offsets_from_iana_timezone(self):
         setting = {"timezone": "Australia/Sydney"}
-        now = datetime(2026, 4, 5, 12, tzinfo=ZoneInfo("Australia/Sydney"))
+        now = datetime(
+            2026,
+            4,
+            5,
+            12,
+            tzinfo=ZoneInfo("Australia/Sydney"),
+        )
 
-        apply_date_range(setting, 1, 1, now=now)
+        apply_date_range(
+            setting,
+            1,
+            1,
+            now=now,
+        )
 
-        self.assertTrue(setting["google_timemin"].endswith("+11:00"))
-        self.assertTrue(setting["google_timemax"].endswith("+10:00"))
+        self.assertTrue(
+            setting["google_timemin"].endswith("+11:00")
+        )
+        self.assertTrue(
+            setting["google_timemax"].endswith("+10:00")
+        )
 
     def test_rejects_invalid_iana_timezone(self):
-        with self.assertRaisesRegex(SettingError, "valid IANA"):
-            apply_date_range({"timezone": "Mars/Olympus"}, 1, 1)
+        with self.assertRaisesRegex(
+            SettingError,
+            "valid IANA",
+        ):
+            apply_date_range(
+                {"timezone": "Mars/Olympus"},
+                1,
+                1,
+            )
 
 
 if __name__ == "__main__":

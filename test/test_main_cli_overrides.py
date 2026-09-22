@@ -17,22 +17,23 @@ BASE_SETTING = {
     "timezone": "Asia/Taipei",
     "default_event_length": 60,
     "default_start_time": 8,
-    "gcal_name_dict": {"TestCal": "test@gmail.com"},
-    "gcal_id_dict": {"test@gmail.com": "TestCal"},
     "owner_user_uuid": "local-user",
     "settings_version": 1,
     "source_id": "source-1",
     "source_version": 1,
-    "mapping_id": "mapping-1",
-    "mapping_version": 1,
-    "calendar_id": "test@gmail.com",
-    "calendar_ids": ["test@gmail.com"],
+    "calendar_mappings": [
+        {
+            "mapping_id": "mapping-1",
+            "mapping_version": 1,
+            "calendar_id": "test@gmail.com",
+            "routing": {"mode": "all"},
+        }
+    ],
     "page_property": {
         "Task_Notion_Name": "Task Name",
         "Date_Notion_Name": "Date",
         "GCal_Name_Notion_Name": "Calendar",
-        "GCal_EventId_Notion_Name": "GCal Event Id",
-        "GCal_Sync_Time_Notion_Name": "GCal Sync Time",
+        "GCal_End_Date_Notion_Name": "GCal End Date",
         "Delete_Notion_Name": "GCal Deleted?",
     },
 }
@@ -175,7 +176,7 @@ class MainProviderBindingFenceTests(unittest.TestCase):
                 return_value=None if run_source_side_effect else run_result,
             ) as run_source,
         ):
-            result = main_module.main("user-1", execution={"contractVersion": 2})
+            result = main_module.main("user-1", execution={"contractVersion": 3})
 
         return (
             result,

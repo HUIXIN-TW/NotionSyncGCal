@@ -14,20 +14,21 @@ USER_SETTING = {
     "settings_version": 1,
     "source_id": "source-1",
     "source_version": 1,
-    "mapping_id": "mapping-1",
-    "mapping_version": 1,
-    "calendar_id": "primary@example.com",
+    "calendar_mappings": [
+        {
+            "mapping_id": "mapping-1",
+            "mapping_version": 1,
+            "calendar_id": "primary@example.com",
+            "routing": {"mode": "all"},
+        }
+    ],
     "page_property": {
         "Task_Notion_Name": "Task Name",
         "Date_Notion_Name": "Date",
         "GCal_Name_Notion_Name": "Calendar",
-        "GCal_EventId_Notion_Name": "GCal Event Id",
-        "GCal_Sync_Time_Notion_Name": "GCal Sync Time",
         "Delete_Notion_Name": "Delete",
         "GCal_End_Date_Notion_Name": "End Date",
     },
-    "gcal_name_dict": {"Primary": "primary@example.com"},
-    "gcal_id_dict": {"primary@example.com": "Primary"},
 }
 
 
@@ -61,7 +62,7 @@ class SyncSanitizationTests(unittest.TestCase):
         result = project_notion_to_google_calendar(
             user_setting=copy.deepcopy(USER_SETTING),
             notion_service=notion_service,
-            google_service=google_service,
+            google_services={"mapping-1": google_service},
         )
 
         self.assertEqual(result["statusCode"], 200)
@@ -103,7 +104,7 @@ class SyncSanitizationTests(unittest.TestCase):
             result = project_notion_to_google_calendar(
                 user_setting=copy.deepcopy(USER_SETTING),
                 notion_service=notion_service,
-                google_service=google_service,
+                google_services={"mapping-1": google_service},
             )
 
         self.assertEqual(result["statusCode"], 200)

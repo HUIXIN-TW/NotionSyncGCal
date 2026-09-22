@@ -23,7 +23,7 @@ USER_SETTING = {
     "mapping_id": "mapping-1",
     "mapping_version": 1,
     "calendar_id": "calendar@example.com",
-    "calendar_ids": ["calendar@example.com"],
+    "routing": {"mode": "all"},
     "google_timemin": "2026-05-01T00:00:00+08:00",
     "google_timemax": "2026-06-01T00:00:00+08:00",
     "timezone": "Australia/Perth",

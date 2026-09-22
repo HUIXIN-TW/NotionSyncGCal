@@ -48,16 +48,6 @@
           "propertyName": "Calendar",
           "propertyType": "select"
         },
-        "googleCalendarEventId": {
-          "propertyId": "event-id-property-id",
-          "propertyName": "GCal Event Id",
-          "propertyType": "rich_text"
-        },
-        "googleCalendarSyncTime": {
-          "propertyId": "sync-time-property-id",
-          "propertyName": "GCal Sync Time",
-          "propertyType": "rich_text"
-        },
         "googleCalendarEndDate": {
           "propertyId": "end-date-property-id",
           "propertyName": "GCal End Date",
@@ -79,10 +69,27 @@
   ],
   "calendarMappings": [
     {
-      "id": "local-calendar-mapping",
+      "id": "local-calendar-learning",
       "ownerUserUuid": "local-user",
       "sourceId": "local-task-source",
-      "calendarId": "your_calendar_id@gmail.com",
+      "calendarId": "learning_calendar_id@group.calendar.google.com",
+      "routing": {
+        "mode": "notion_calendar_value",
+        "value": "Learning"
+      },
+      "lifecycle": "active",
+      "version": 1,
+      "updatedAtMs": 0
+    },
+    {
+      "id": "local-calendar-job",
+      "ownerUserUuid": "local-user",
+      "sourceId": "local-task-source",
+      "calendarId": "job_calendar_id@group.calendar.google.com",
+      "routing": {
+        "mode": "notion_calendar_value",
+        "value": "Job"
+      },
       "lifecycle": "active",
       "version": 1,
       "updatedAtMs": 0

@@ -1,7 +1,7 @@
 import re
 from datetime import datetime, timezone
 
-from notion.notion_properties import get_checkbox
+from notion.notion_properties import get_checkbox, get_select
 from sync.contracts import (
     StaleExecutionError,
     build_capacity_limited_result,
@@ -46,16 +46,63 @@ def _task_is_marked_deleted(notion_task: dict, page_property: dict) -> bool:
     )
 
 
+def _mapping_setting(source_setting: dict, mapping: dict) -> dict:
+    return {
+        **source_setting,
+        "mapping_id": mapping["mapping_id"],
+        "mapping_version": mapping["mapping_version"],
+        "calendar_id": mapping["calendar_id"],
+        "routing": mapping["routing"],
+    }
+
+
+def _resolve_task_mapping(notion_task: dict, source_setting: dict) -> dict | None:
+    mappings = source_setting["calendar_mappings"]
+    mode = mappings[0]["routing"]["mode"]
+    if mode == "all":
+        return mappings[0]
+
+    calendar_property_id = source_setting["page_property"].get(
+        "GCal_Name_Notion_Name"
+    )
+    if not calendar_property_id:
+        return None
+
+    route_value = get_select(
+        notion_task.get("properties", {}),
+        calendar_property_id,
+    )
+    if not route_value:
+        return None
+
+    for mapping in mappings:
+        if mapping["routing"]["value"] == route_value:
+            return mapping
+    return None
+
+
+def _route_value(notion_task: dict, source_setting: dict) -> str | None:
+    calendar_property_id = source_setting["page_property"].get(
+        "GCal_Name_Notion_Name"
+    )
+    if not calendar_property_id:
+        return None
+    return get_select(
+        notion_task.get("properties", {}),
+        calendar_property_id,
+    )
+
+
 def project_notion_to_google_calendar(
     user_setting: dict,
     notion_service,
-    google_service,
+    google_services: dict,
 ):
-    """Project authoritative Notion tasks into one explicitly mapped Calendar."""
+    """Project one authoritative Notion source through its explicit Calendar routes."""
     trigger_sync_time = get_current_time_in_iso_format()
     source_id = user_setting["source_id"]
-    mapping_id = user_setting["mapping_id"]
     page_property = user_setting["page_property"]
+    mappings = user_setting["calendar_mappings"]
 
     try:
         notion_config, notion_task_list = notion_service.get_notion_task()
@@ -73,7 +120,8 @@ def project_notion_to_google_calendar(
     task_count = len(notion_task_list)
     sync_summary = {
         "source_id": source_id,
-        "mapping_id": mapping_id,
+        "mapping_count": len(mappings),
+        "mapping_ids": [mapping["mapping_id"] for mapping in mappings],
         "notion_task_count": task_count,
         "notion_config": notion_config,
     }
@@ -94,32 +142,91 @@ def project_notion_to_google_calendar(
         )
 
     sync_errors = []
-    current_task_ids = set()
+    current_task_ids_by_mapping = {
+        mapping["mapping_id"]: set() for mapping in mappings
+    }
+    unresolved_task_ids = set()
     stale_execution = False
+
     for notion_task in notion_task_list:
         notion_task_page_id = notion_task.get("id")
         action = None
         projection = None
+
         try:
-            projection = build_projection_identity(
-                user_setting,
-                notion_task_page_id,
+            normalized_task_id = normalize_notion_page_id(
+                notion_task_page_id
             )
-            current_task_ids.add(projection["task_id"])
 
             if _task_is_marked_deleted(notion_task, page_property):
                 action = "delete_gcal"
-                google_service.delete_projection(projection)
+                for mapping in mappings:
+                    mapping_setting = _mapping_setting(
+                        user_setting,
+                        mapping,
+                    )
+                    projection = build_projection_identity(
+                        mapping_setting,
+                        notion_task_page_id,
+                    )
+                    google_services[
+                        mapping["mapping_id"]
+                    ].delete_projection(projection)
                 continue
 
+            mapping = _resolve_task_mapping(notion_task, user_setting)
+            if mapping is None:
+                unresolved_task_ids.add(normalized_task_id)
+                route_value = _route_value(
+                    notion_task,
+                    user_setting,
+                )
+                sync_errors.append(
+                    build_sync_error(
+                        "route_gcal",
+                        "calendar_route_unresolved",
+                        error_message=(
+                            "Notion task Calendar routing is blank or does not "
+                            "match an active Calendar mapping."
+                        ),
+                        notion_task_id=notion_task_page_id,
+                        retriable=False,
+                    )
+                )
+                logger.warning(
+                    "Skipped unresolved Calendar route: source_id=%s task_id=%s route=%r",
+                    source_id,
+                    notion_task_page_id,
+                    route_value,
+                )
+                continue
+
+            mapping_id = mapping["mapping_id"]
+            mapping_setting = _mapping_setting(
+                user_setting,
+                mapping,
+            )
+            projection = build_projection_identity(
+                mapping_setting,
+                notion_task_page_id,
+            )
+            current_task_ids_by_mapping[mapping_id].add(
+                projection["task_id"]
+            )
+
             action = "upsert_gcal"
-            google_service.upsert_projection(notion_task, projection)
+            google_services[mapping_id].upsert_projection(
+                notion_task,
+                projection,
+            )
         except StaleExecutionError as exc:
             sync_errors.append(
                 build_sync_error(
                     action,
                     "stale_execution_snapshot",
-                    error_message="Sync configuration changed before the provider write.",
+                    error_message=(
+                        "Sync configuration changed before the provider write."
+                    ),
                     notion_task_id=notion_task_page_id,
                     gcal_event_id=(projection or {}).get("event_id"),
                     retriable=False,
@@ -127,7 +234,8 @@ def project_notion_to_google_calendar(
                 )
             )
             logger.warning(
-                "Stopped stale sync execution before provider mutation: source_id=%s task_id=%s",
+                "Stopped stale sync execution before provider mutation: "
+                "source_id=%s task_id=%s",
                 source_id,
                 notion_task_page_id,
             )
@@ -138,7 +246,9 @@ def project_notion_to_google_calendar(
                 build_sync_error(
                     action,
                     "projection_identity_mismatch",
-                    error_message="Provider materialization ownership could not be verified.",
+                    error_message=(
+                        "Provider materialization ownership could not be verified."
+                    ),
                     notion_task_id=notion_task_page_id,
                     gcal_event_id=(projection or {}).get("event_id"),
                     retriable=False,
@@ -146,7 +256,8 @@ def project_notion_to_google_calendar(
                 )
             )
             logger.warning(
-                "Projection identity verification failed: source_id=%s task_id=%s",
+                "Projection identity verification failed: "
+                "source_id=%s task_id=%s",
                 source_id,
                 notion_task_page_id,
             )
@@ -163,95 +274,131 @@ def project_notion_to_google_calendar(
                 )
             )
             logger.exception(
-                "Provider projection failed action=%s source_id=%s notion_task_id=%s",
+                "Provider projection failed action=%s source_id=%s "
+                "notion_task_id=%s",
                 action,
                 source_id,
                 notion_task_page_id,
             )
 
     if not stale_execution:
-        try:
-            owned_events = google_service.get_gcal_event()
-            sync_summary["owned_google_event_count"] = len(owned_events)
-            for event in owned_events:
-                private = (event.get("extendedProperties") or {}).get("private")
-                provider_task_id = private.get("noticaTask") if isinstance(private, dict) else None
-                if not provider_task_id:
-                    sync_errors.append(
-                        build_sync_error(
-                            "inspect_gcal_projection",
-                            "projection_identity_mismatch",
-                            error_message=(
-                                "Tagged provider event is missing complete Notica ownership metadata."
-                            ),
-                            gcal_event_id=event.get("id"),
-                            retriable=False,
-                        )
+        owned_event_count = 0
+        for mapping in mappings:
+            mapping_id = mapping["mapping_id"]
+            google_service = google_services[mapping_id]
+            mapping_setting = _mapping_setting(
+                user_setting,
+                mapping,
+            )
+            try:
+                owned_events = google_service.get_gcal_event()
+                owned_event_count += len(owned_events)
+                for event in owned_events:
+                    private = (
+                        event.get("extendedProperties") or {}
+                    ).get("private")
+                    provider_task_id = (
+                        private.get("noticaTask")
+                        if isinstance(private, dict)
+                        else None
                     )
-                    continue
-
-                try:
-                    normalized_task_id = normalize_notion_page_id(provider_task_id)
-                    if normalized_task_id in current_task_ids:
+                    if not provider_task_id:
+                        sync_errors.append(
+                            build_sync_error(
+                                "inspect_gcal_projection",
+                                "projection_identity_mismatch",
+                                error_message=(
+                                    "Tagged provider event is missing complete "
+                                    "Notica ownership metadata."
+                                ),
+                                gcal_event_id=event.get("id"),
+                                retriable=False,
+                            )
+                        )
                         continue
 
-                    orphan_projection = build_projection_identity(
-                        user_setting,
-                        normalized_task_id,
-                    )
-                    google_service.delete_projection(orphan_projection)
-                except StaleExecutionError as exc:
-                    sync_errors.append(
-                        build_sync_error(
-                            "delete_orphan_gcal",
-                            "stale_execution_snapshot",
-                            error_message=(
-                                "Sync configuration changed before orphan reconciliation."
-                            ),
-                            notion_task_id=provider_task_id,
-                            gcal_event_id=event.get("id"),
-                            retriable=False,
-                            debug_detail=build_debug_exception_detail(exc),
+                    try:
+                        normalized_task_id = normalize_notion_page_id(
+                            provider_task_id
                         )
-                    )
-                    stale_execution = True
+                        if (
+                            normalized_task_id
+                            in current_task_ids_by_mapping[mapping_id]
+                            or normalized_task_id in unresolved_task_ids
+                        ):
+                            continue
+
+                        orphan_projection = build_projection_identity(
+                            mapping_setting,
+                            normalized_task_id,
+                        )
+                        google_service.delete_projection(
+                            orphan_projection
+                        )
+                    except StaleExecutionError as exc:
+                        sync_errors.append(
+                            build_sync_error(
+                                "delete_orphan_gcal",
+                                "stale_execution_snapshot",
+                                error_message=(
+                                    "Sync configuration changed before orphan "
+                                    "reconciliation."
+                                ),
+                                notion_task_id=provider_task_id,
+                                gcal_event_id=event.get("id"),
+                                retriable=False,
+                                debug_detail=(
+                                    build_debug_exception_detail(exc)
+                                ),
+                            )
+                        )
+                        stale_execution = True
+                        break
+                    except ProjectionIdentityError as exc:
+                        sync_errors.append(
+                            build_sync_error(
+                                "delete_orphan_gcal",
+                                "projection_identity_mismatch",
+                                error_message=(
+                                    "Provider materialization ownership could "
+                                    "not be verified."
+                                ),
+                                notion_task_id=provider_task_id,
+                                gcal_event_id=event.get("id"),
+                                retriable=False,
+                                debug_detail=(
+                                    build_debug_exception_detail(exc)
+                                ),
+                            )
+                        )
+                    except Exception as exc:
+                        sync_errors.append(
+                            build_sync_error(
+                                "delete_orphan_gcal",
+                                _exception_error_code(exc),
+                                error_message=SAFE_SYNC_FAILURE_MESSAGE,
+                                notion_task_id=provider_task_id,
+                                gcal_event_id=event.get("id"),
+                                retriable=True,
+                                debug_detail=(
+                                    build_debug_exception_detail(exc)
+                                ),
+                            )
+                        )
+                if stale_execution:
                     break
-                except ProjectionIdentityError as exc:
-                    sync_errors.append(
-                        build_sync_error(
-                            "delete_orphan_gcal",
-                            "projection_identity_mismatch",
-                            error_message=(
-                                "Provider materialization ownership could not be verified."
-                            ),
-                            notion_task_id=provider_task_id,
-                            gcal_event_id=event.get("id"),
-                            retriable=False,
-                            debug_detail=build_debug_exception_detail(exc),
-                        )
+            except Exception as exc:
+                sync_errors.append(
+                    build_sync_error(
+                        "list_gcal_projections",
+                        _exception_error_code(exc),
+                        error_message=SAFE_SYNC_FAILURE_MESSAGE,
+                        retriable=True,
+                        debug_detail=build_debug_exception_detail(exc),
                     )
-                except Exception as exc:
-                    sync_errors.append(
-                        build_sync_error(
-                            "delete_orphan_gcal",
-                            _exception_error_code(exc),
-                            error_message=SAFE_SYNC_FAILURE_MESSAGE,
-                            notion_task_id=provider_task_id,
-                            gcal_event_id=event.get("id"),
-                            retriable=True,
-                            debug_detail=build_debug_exception_detail(exc),
-                        )
-                    )
-        except Exception as exc:
-            sync_errors.append(
-                build_sync_error(
-                    "list_gcal_projections",
-                    _exception_error_code(exc),
-                    error_message=SAFE_SYNC_FAILURE_MESSAGE,
-                    retriable=True,
-                    debug_detail=build_debug_exception_detail(exc),
                 )
-            )
+
+        sync_summary["owned_google_event_count"] = owned_event_count
 
     return build_sync_result(
         200,

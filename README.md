@@ -22,7 +22,9 @@ Releases: https://github.com/HUIXIN-TW/NotionSyncGCal/releases
 ## Sync Behavior
 
 - Notion is authoritative for task content and scheduling.
-- Each runnable Task source has exactly one active Calendar mapping.
+- Each runnable Task source uses exactly one routing mode: one `all` mapping or multiple unique `notion_calendar_value` mappings.
+- In routed mode, the bound Notion `calendarName` select value resolves the exact active Calendar mapping for each task.
+- Blank or unknown routes fail closed: no provider mutation and no implicit default Calendar/writeback.
 - Each Notion task maps to a deterministic Google event identity scoped by owner, source, mapping, task, and target Calendar.
 - Existing owned projections are updated in place; retries do not create a second projection.
 - A configured Notion deletion flag removes only the matching owned Google projection.
@@ -37,13 +39,13 @@ Cloud execution reads the current mapping-domain records:
 
 - `NOTION_SETTINGS` supplies the IANA time zone and settings version;
 - each active `NOTION_TASK_SOURCE#<sourceId>` supplies one Notion database, defaults, provider property IDs, source identity, and version;
-- each active `CALENDAR_MAPPING#<mappingId>` supplies source identity, target Calendar identity, mapping identity, and version;
+- each active `CALENDAR_MAPPING#<mappingId>` supplies source identity, target Calendar identity, mapping identity/version, and typed routing policy;
 - authoritative execution checks use strongly consistent base-table reads;
 - each source is executed independently and results are aggregated at the user job boundary.
 
-The Task source requires the `task` and `date` semantic bindings. The worker additionally requires `googleCalendarEndDate` for its current projection query. Other supported Task bindings remain optional.
+The Task source requires the `task` and `date` semantic bindings. The worker additionally requires `googleCalendarEndDate` for its current projection query. `calendarName` is required only for `notion_calendar_value` routing. Other supported Task bindings remain optional.
 
-Configuration fails closed when owner identity, lifecycle, source/mapping cardinality, provider type, version, OAuth binding, or required projection bindings are inconsistent.
+Configuration fails closed when owner identity, lifecycle, routing mode/value uniqueness, provider type, version, OAuth binding, or required projection bindings are inconsistent. Queue execution contract v3 carries the complete active mapping set per source and the worker revalidates that complete set before provider mutation.
 
 ## Current Architecture
 
