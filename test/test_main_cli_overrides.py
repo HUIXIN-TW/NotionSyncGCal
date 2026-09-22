@@ -136,7 +136,11 @@ class MainProviderBindingFenceTests(unittest.TestCase):
         mapping_config.get.return_value = [setting]
         notion_binding = MagicMock()
         notion_binding.get.return_value = "notion-token"
+        notion_binding.assert_admission_binding = MagicMock()
+        notion_binding.assert_current_binding = MagicMock()
         google_binding = MagicMock()
+        google_binding.assert_admission_binding = MagicMock()
+        google_binding.assert_current_binding = MagicMock()
 
         run_result = {
             "statusCode": 200,
