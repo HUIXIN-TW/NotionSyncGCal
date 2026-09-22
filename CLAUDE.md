@@ -61,18 +61,18 @@ Lambda trigger (SQS / EventBridge)
 
 ### Sync logic (`src/sync/sync.py`)
 
-`project_notion_to_google_calendar` is the only sync direction. Notion is authoritative for task content and scheduling.
+The mapping-domain migration preserves the existing event-ID-based synchronization algorithm.
 
-1. Fetch the authoritative Notion tasks for the configured source/window.
-2. Build deterministic provider projection identity from owner + source + mapping + task + target.
-3. For each Notion task:
-   - deletion flag set → delete only the owned Google projection;
-   - otherwise → upsert the owned Google projection.
-4. Inventory only mapping-tagged Google events in the configured target and retire owned projections whose Notion task is no longer present.
-5. Never create/update/delete Notion tasks from Google Calendar state.
-6. Before every Google mutation, revalidate mapping-domain state plus current Notion and Google OAuth bindings.
-7. Untagged, incompletely tagged, or wrongly tagged provider events are not silently adopted.
-8. Hard cap: skip a source run if authoritative Notion task input exceeds `SYNC_TASK_LIMIT`.
+1. Fetch Notion tasks and Google Calendar events for the configured source/window.
+2. Read the task's persisted `GCal Event Id` and configured Calendar value.
+3. If a Notion task has no Google event ID, create the Google event and write the returned provider event ID back to Notion.
+4. If a task is marked deleted, delete the matching Google event by its stored provider event ID and apply the existing Notion cleanup behavior.
+5. If a task already has an event ID, compare Notion/Google timestamps and execute the existing update or Calendar-move behavior.
+6. `GCal Sync Time` remains part of timestamp reconciliation.
+7. The existing Google → Notion path and force modes remain available.
+8. Multiple Task sources are handled by invoking the same sync implementation once per legacy-equivalent expanded source setting.
+
+Do not introduce deterministic provider event identity, provider ownership metadata, or a new sync direction as part of this configuration migration.
 
 ### DynamoDB tables
 
