@@ -92,12 +92,8 @@ def apply_date_range(setting, goback_days, goforward_days):
     setting["goforward_days"] = goforward_days
     setting["after_date"] = (today + timedelta(days=-goback_days)).strftime("%Y-%m-%d")
     setting["before_date"] = (today + timedelta(days=goforward_days)).strftime("%Y-%m-%d")
-    setting["google_timemin"] = (today + timedelta(days=-goback_days)).strftime(
-        f"%Y-%m-%dT%H:%M:%S{timecode}"
-    )
-    setting["google_timemax"] = (today + timedelta(days=goforward_days)).strftime(
-        f"%Y-%m-%dT%H:%M:%S{timecode}"
-    )
+    setting["google_timemin"] = (today + timedelta(days=-goback_days)).strftime(f"%Y-%m-%dT%H:%M:%S{timecode}")
+    setting["google_timemax"] = (today + timedelta(days=goforward_days)).strftime(f"%Y-%m-%dT%H:%M:%S{timecode}")
     return setting
 
 
@@ -132,17 +128,11 @@ class MappingDomainConfig:
                 with open(path, encoding="utf-8") as file:
                     return json.load(file)
             except FileNotFoundError as exc:
-                raise SettingError(
-                    f"Local mapping-domain config file not found: {path}"
-                ) from exc
+                raise SettingError(f"Local mapping-domain config file not found: {path}") from exc
             except json.JSONDecodeError as exc:
-                raise SettingError(
-                    f"Local mapping-domain config file is not valid JSON: {exc}"
-                ) from exc
+                raise SettingError(f"Local mapping-domain config file is not valid JSON: {exc}") from exc
 
-        raise SettingError(
-            f"Unknown config mode '{self.mode}'. Expected 'cloud' or 'local'."
-        )
+        raise SettingError(f"Unknown config mode '{self.mode}'. Expected 'cloud' or 'local'.")
 
     def _format_contract(self, contract):
         contract = _require_dict(contract, "mapping-domain configuration")
@@ -162,13 +152,9 @@ class MappingDomainConfig:
             source_id = _require_string(source.get("id"), "taskSource.id")
             if source_id in validated_sources:
                 raise SettingError(f"Duplicate Task source id: {source_id}")
-            lifecycle = _require_string(
-                source.get("lifecycle"), f"taskSource[{source_id}].lifecycle"
-            )
+            lifecycle = _require_string(source.get("lifecycle"), f"taskSource[{source_id}].lifecycle")
             if lifecycle not in {"active", "disabled"}:
-                raise SettingError(
-                    f"taskSource[{source_id}].lifecycle must be active or disabled."
-                )
+                raise SettingError(f"taskSource[{source_id}].lifecycle must be active or disabled.")
             source["id"] = source_id
             source["lifecycle"] = lifecycle
             validated_sources[source_id] = source
@@ -182,20 +168,12 @@ class MappingDomainConfig:
             if mapping_id in seen_mapping_ids:
                 raise SettingError(f"Duplicate Calendar mapping id: {mapping_id}")
             seen_mapping_ids.add(mapping_id)
-            source_id = _require_string(
-                mapping.get("sourceId"), f"calendarMapping[{mapping_id}].sourceId"
-            )
+            source_id = _require_string(mapping.get("sourceId"), f"calendarMapping[{mapping_id}].sourceId")
             if source_id not in validated_sources:
-                raise SettingError(
-                    f"Calendar mapping {mapping_id} references unknown Task source {source_id}."
-                )
-            lifecycle = _require_string(
-                mapping.get("lifecycle"), f"calendarMapping[{mapping_id}].lifecycle"
-            )
+                raise SettingError(f"Calendar mapping {mapping_id} references unknown Task source {source_id}.")
+            lifecycle = _require_string(mapping.get("lifecycle"), f"calendarMapping[{mapping_id}].lifecycle")
             if lifecycle not in {"active", "disabled"}:
-                raise SettingError(
-                    f"calendarMapping[{mapping_id}].lifecycle must be active or disabled."
-                )
+                raise SettingError(f"calendarMapping[{mapping_id}].lifecycle must be active or disabled.")
             mapping["id"] = mapping_id
             mapping["sourceId"] = source_id
             mapping["calendarName"] = _require_string(
@@ -213,15 +191,9 @@ class MappingDomainConfig:
         for source_id, source in validated_sources.items():
             if source["lifecycle"] != "active":
                 continue
-            active_mappings = [
-                mapping
-                for mapping in mappings_by_source[source_id]
-                if mapping["lifecycle"] == "active"
-            ]
+            active_mappings = [mapping for mapping in mappings_by_source[source_id] if mapping["lifecycle"] == "active"]
             if not active_mappings:
-                raise SettingError(
-                    f"Task source {source_id} requires at least one active Calendar mapping."
-                )
+                raise SettingError(f"Task source {source_id} requires at least one active Calendar mapping.")
             active_source_settings.append(
                 self._to_source_setting(
                     source,
@@ -237,12 +209,8 @@ class MappingDomainConfig:
 
     def _to_source_setting(self, source, mappings, timezone, timecode):
         source_id = source["id"]
-        database = _require_dict(
-            source.get("database"), f"taskSource[{source_id}].database"
-        )
-        defaults = _require_dict(
-            source.get("defaults"), f"taskSource[{source_id}].defaults"
-        )
+        database = _require_dict(source.get("database"), f"taskSource[{source_id}].database")
+        defaults = _require_dict(source.get("defaults"), f"taskSource[{source_id}].defaults")
         property_mappings = _require_dict(
             source.get("propertyMappings"),
             f"taskSource[{source_id}].propertyMappings",
@@ -250,9 +218,7 @@ class MappingDomainConfig:
 
         missing = sorted(SYNC_REQUIRED_PROPERTIES - property_mappings.keys())
         if missing:
-            raise SettingError(
-                f"Task source {source_id} is missing worker-required property mappings: {missing}"
-            )
+            raise SettingError(f"Task source {source_id} is missing worker-required property mappings: {missing}")
 
         page_property = {}
         for semantic_key, raw_mapping in property_mappings.items():
@@ -260,17 +226,13 @@ class MappingDomainConfig:
             if not policy:
                 continue
             runtime_key, expected_type = policy
-            property_mapping = _require_dict(
-                raw_mapping, f"propertyMappings.{semantic_key}"
-            )
+            property_mapping = _require_dict(raw_mapping, f"propertyMappings.{semantic_key}")
             property_type = _require_string(
                 property_mapping.get("propertyType"),
                 f"propertyMappings.{semantic_key}.propertyType",
             )
             if property_type != expected_type:
-                raise SettingError(
-                    f"propertyMappings.{semantic_key} must be {expected_type}, got {property_type}."
-                )
+                raise SettingError(f"propertyMappings.{semantic_key} must be {expected_type}, got {property_type}.")
             page_property[runtime_key] = _require_string(
                 property_mapping.get("propertyId"),
                 f"propertyMappings.{semantic_key}.propertyId",
@@ -278,16 +240,10 @@ class MappingDomainConfig:
 
         calendar_by_name = {}
         for mapping in mappings:
-            calendar_name = _require_string(
-                mapping.get("calendarName"), "calendarMapping.calendarName"
-            )
+            calendar_name = _require_string(mapping.get("calendarName"), "calendarMapping.calendarName")
             if calendar_name in calendar_by_name:
-                raise SettingError(
-                    f"Duplicate Calendar name for Task source {source_id}: {calendar_name}"
-                )
-            calendar_by_name[calendar_name] = _require_string(
-                mapping.get("calendarId"), "calendarMapping.calendarId"
-            )
+                raise SettingError(f"Duplicate Calendar name for Task source {source_id}: {calendar_name}")
+            calendar_by_name[calendar_name] = _require_string(mapping.get("calendarId"), "calendarMapping.calendarId")
 
         default_calendar_name = _require_string(
             defaults.get("defaultCalendarName"),
@@ -301,13 +257,8 @@ class MappingDomainConfig:
         ordered_calendar_names = [default_calendar_name] + sorted(
             name for name in calendar_by_name if name != default_calendar_name
         )
-        gcal_name_dict = {
-            name: calendar_by_name[name] for name in ordered_calendar_names
-        }
-        gcal_id_dict = {
-            calendar_id: calendar_name
-            for calendar_name, calendar_id in gcal_name_dict.items()
-        }
+        gcal_name_dict = {name: calendar_by_name[name] for name in ordered_calendar_names}
+        gcal_id_dict = {calendar_id: calendar_name for calendar_name, calendar_id in gcal_name_dict.items()}
 
         setting = {
             "owner_user_uuid": self.owner_user_uuid,

@@ -185,10 +185,13 @@ class GoogleService:
             self.notion_page_property["CompleteIcon_Notion_Name"],
         )
         event_icon = icon_property.get("formula", {}).get("string", "❓")
-        event_name = get_title(
-            properties,
-            self.notion_page_property["Task_Notion_Name"],
-        ) or ""
+        event_name = (
+            get_title(
+                properties,
+                self.notion_page_property["Task_Notion_Name"],
+            )
+            or ""
+        )
         event_summary = event_icon + event_name
 
         date_property = get_property(
