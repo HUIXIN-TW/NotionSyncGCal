@@ -24,16 +24,16 @@ BASE_SETTING = {
     "gcal_default_name": "TestCal",
     "gcal_default_id": "test@gmail.com",
     "page_property": {
-        "Task_Notion_Name": "Task Name",
-        "Date_Notion_Name": "Date",
-        "GCal_Name_Notion_Name": "Calendar",
-        "GCal_EventId_Notion_Name": "GCal Event Id",
-        "GCal_Sync_Time_Notion_Name": "GCal Sync Time",
-        "Delete_Notion_Name": "GCal Deleted?",
-        "GCal_End_Date_Notion_Name": "GCal End Date",
-        "Location_Notion_Name": "Location",
-        "ExtraInfo_Notion_Name": "Extra Info",
-        "CompleteIcon_Notion_Name": "GCal Icon",
+        "Task_Notion_Name": "task-id",
+        "Date_Notion_Name": "date-id",
+        "GCal_Name_Notion_Name": "calendar-id",
+        "GCal_EventId_Notion_Name": "event-id",
+        "GCal_Sync_Time_Notion_Name": "sync-id",
+        "Delete_Notion_Name": "deleted-id",
+        "GCal_End_Date_Notion_Name": "end-id",
+        "Location_Notion_Name": "location-id",
+        "ExtraInfo_Notion_Name": "extra-id",
+        "CompleteIcon_Notion_Name": "icon-id",
     },
 }
 
@@ -102,7 +102,7 @@ class MainCliOverrideTests(unittest.TestCase):
         self.assertEqual(result["statusCode"], 200)
         self.assertEqual(
             setting["page_property"]["GCal_EventId_Notion_Name"],
-            "GCal Event Id",
+            "event-id",
         )
         self.assertIs(mock_sync.call_args.kwargs["user_setting"], setting)
 
