@@ -37,7 +37,10 @@ def _parse_args():
     )
     parser.add_argument(
         "--canary-page-id",
-        help="Cloud only: force one existing Notion page -> its existing Google event using the normal sync update path.",
+        help=(
+            "Cloud only: force one existing Notion page -> its existing Google event "
+            "using the normal sync update path."
+        ),
     )
     parser.add_argument(
         "--confirm-canary-page-id",
@@ -269,7 +272,6 @@ def _check_cloud_provider_match(uuid: str, logger: logging.Logger):
     }
 
 
-
 class _ScopedNotionService:
     """Delegate all writes to the real service but expose exactly one task to the sync algorithm."""
 
@@ -466,6 +468,7 @@ def _run_cloud_canary(uuid: str, page_id: str, confirm_page_id: str, logger: log
             "message": "Selected Notion page does not belong to any active configured Task source.",
         },
     }
+
 
 def _invoke_cloud(uuid: str, logger: logging.Logger):
     if not uuid:
