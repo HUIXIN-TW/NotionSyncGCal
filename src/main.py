@@ -2,9 +2,9 @@ import sys
 import argparse
 import json
 from pathlib import Path
+
 from google.auth.exceptions import RefreshError
 
-# Ensure this module can import sibling packages when run as a script
 sys.path.append(str(Path(__file__).resolve().parent))
 
 from config.config import generate_config  # noqa: E402
@@ -22,17 +22,8 @@ from gcal.gcal_token import (  # noqa: E402
     GoogleToken,
     SettingError as GoogleTokenSettingError,
 )
-from gcal.gcal_service import (  # noqa: E402
-    GoogleService,
-    SettingError as GoogleSettingError,
-)
-from sync.contracts import (  # noqa: E402
-    StaleExecutionError,
-    build_sync_result,
-    get_result_message,
-    get_result_status,
-    is_retryable_result,
-)
+from gcal.gcal_service import GoogleService  # noqa: E402
+from sync.contracts import build_sync_result, is_retryable_result  # noqa: E402
 from utils.logging_utils import get_logger  # noqa: E402
 
 
@@ -51,14 +42,21 @@ def _parse_args(argv: list[str] | None = None):
         "--timestamp",
         nargs=2,
         type=int,
-        help="Override the projection date range [start end]",
+        help="Update Notion Task and Google Calendar by timestamp [start end]",
+    )
+    parser.add_argument(
+        "-g",
+        "--google",
+        nargs=2,
+        type=int,
+        help="Force: Update Notion Task from Google Calendar [start end]",
     )
     parser.add_argument(
         "-n",
         "--notion",
         nargs=2,
         type=int,
-        help="Project Notion tasks to Google Calendar for date range [start end]",
+        help="Force: Update Google Calendar from Notion Task [start end]",
     )
     return parser.parse_args(argv)
 
@@ -76,29 +74,19 @@ def _apply_date_range_override(
     )
 
 
-def _mapping_setting(source_setting: dict, mapping: dict) -> dict:
-    return {
-        **source_setting,
-        "mapping_id": mapping["mapping_id"],
-        "mapping_version": mapping["mapping_version"],
-        "calendar_id": mapping["calendar_id"],
-        "routing": mapping["routing"],
-    }
-
-
-def _run_source(
-    args,
-    source_setting,
-    notion_token,
-    google_token,
-    logger,
-    mutation_guard,
-):
+def _run_source(args, source_setting, notion_token, google_token, logger):
     if args.timestamp:
         _apply_date_range_override(
             source_setting,
             args.timestamp[0],
             args.timestamp[1],
+            logger,
+        )
+    elif args.google:
+        _apply_date_range_override(
+            source_setting,
+            args.google[0],
+            args.google[1],
             logger,
         )
     elif args.notion:
@@ -109,37 +97,13 @@ def _run_source(
             logger,
         )
 
-    notion_service = NotionService(
-        notion_token,
-        source_setting,
-        logger,
-    )
-    google_services = {}
-    for mapping in source_setting["calendar_mappings"]:
-        mapping_setting = _mapping_setting(
-            source_setting,
-            mapping,
-        )
-        google_service = GoogleService(
-            mapping_setting,
-            google_token,
-            logger,
-            mutation_guard=mutation_guard,
-        )
-        google_service.validate_calendar_access()
-        google_services[mapping["mapping_id"]] = google_service
+    notion_service = NotionService(notion_token, source_setting, logger)
+    google_service = GoogleService(source_setting, google_token, logger)
 
     if args.test_connection:
         notion_connected = notion_service.test_connection()
-        google_connected = all(
-            service.test_connection()
-            for service in google_services.values()
-        )
-        status_code = (
-            200
-            if notion_connected and google_connected
-            else 503
-        )
+        google_connected = google_service.test_connection()
+        status_code = 200 if notion_connected and google_connected else 503
         return build_sync_result(
             status_code,
             "sync_success" if status_code == 200 else "sync_error",
@@ -151,128 +115,81 @@ def _run_source(
 
     from sync import sync
 
-    return sync.project_notion_to_google_calendar(
+    if args.google:
+        return sync.force_update_notion_tasks_by_google_event_and_ignore_time(
+            user_setting=source_setting,
+            notion_service=notion_service,
+            google_service=google_service,
+        )
+    if args.notion:
+        return sync.force_update_google_event_by_notion_task_and_ignore_time(
+            user_setting=source_setting,
+            notion_service=notion_service,
+            google_service=google_service,
+        )
+
+    return sync.synchronize_notion_and_google_calendar(
         user_setting=source_setting,
         notion_service=notion_service,
-        google_services=google_services,
+        google_service=google_service,
+        compare_time=True,
+        should_update_notion_tasks=True,
+        should_update_google_events=True,
     )
 
 
 def _aggregate_source_results(source_results):
+    if len(source_results) == 1:
+        return source_results[0][1]
+
     summaries = []
-    errors = []
-    retryable_failure_count = 0
-    failure_count = 0
+    retryable = False
+    failed = False
     for source_id, result in source_results:
-        retryable = is_retryable_result(result)
-        retryable_failure_count += int(retryable)
-        message = get_result_message(result)
-        error_code = (
-            message.get("error_code")
-            if isinstance(message, dict)
-            else None
-        )
-        source_status_code = int(
-            (result or {}).get("statusCode", 500)
-        )
-        source_errors = (
-            message.get("errors")
-            if isinstance(message, dict)
-            else None
-        )
-        has_task_errors = bool(source_errors) and not message.get(
-            "capacity_limited",
-            False,
-        )
-        source_failed = (
-            source_status_code >= 400
-            or get_result_status(result) == "sync_error"
-            or has_task_errors
-        )
-        failure_count += int(source_failed)
+        status_code = int((result or {}).get("statusCode", 500))
+        body = (result or {}).get("body") or {}
+        status = body.get("status", "sync_error")
+        retryable = retryable or is_retryable_result(result)
+        failed = failed or status_code >= 400 or status == "sync_error"
         summaries.append(
             {
                 "source_id": source_id,
-                "status_code": source_status_code,
-                "status": get_result_status(result),
-                "error_code": error_code,
-                "retriable": retryable,
+                "status_code": status_code,
+                "status": status,
             }
         )
-        if isinstance(message, dict) and isinstance(
-            source_errors,
-            list,
-        ):
-            for error in source_errors:
-                if isinstance(error, dict):
-                    errors.append(
-                        {**error, "source_id": source_id}
-                    )
 
-    source_count = len(source_results)
-    status_code = (
-        500
-        if retryable_failure_count
-        else (409 if failure_count else 200)
-    )
     return build_sync_result(
-        status_code,
-        "sync_error" if failure_count else "sync_success",
+        500 if retryable else (409 if failed else 200),
+        "sync_error" if failed else "sync_success",
         {
-            "source_count": source_count,
-            "success_count": source_count - failure_count,
-            "failure_count": failure_count,
+            "source_count": len(source_results),
             "source_summaries": summaries,
-            "errors": errors,
-            "retriable": retryable_failure_count > 0,
+            "retriable": retryable,
         },
     )
 
 
-def main(
-    uuid: str | None = None,
-    execution: dict | None = None,
-) -> dict:
+def main(uuid: str | None = None) -> dict:
     logger = get_logger(__name__)
 
     try:
         config = generate_config(uuid)
-        mapping_config = MappingDomainConfig(
-            config,
-            logger,
-            execution_fence=execution,
-        )
-        source_settings = mapping_config.get()
-        notion_binding = NotionToken(config, logger)
-        notion_token = notion_binding.get()
+        source_settings = MappingDomainConfig(config, logger).get()
+        notion_token = NotionToken(config, logger).get()
         google_token = GoogleToken(config, logger)
-        if execution is not None:
-            admission_started_at_ms = source_settings[0][
-                "admission_started_at_ms"
-            ]
-            notion_binding.assert_admission_binding(
-                admission_started_at_ms
-            )
-            google_token.assert_admission_binding(
-                admission_started_at_ms
-            )
-    except RefreshError as e:
+    except RefreshError as exc:
         logger.error(
-            f"Google RefreshError during initialization: {e}",
+            f"Google RefreshError during initialization: {exc}",
             exc_info=True,
         )
         return build_sync_result(
             500,
             "sync_error",
-            {
-                "error_code": "google_refresh_error",
-                "retriable": True,
-            },
+            {"error_code": "google_refresh_error", "retriable": True},
         )
     except MappingDomainSettingError:
-        logger.exception(
-            "Mapping-domain configuration is not sync-ready"
-        )
+        logger.exception("Mapping-domain configuration is not sync-ready")
         return build_sync_result(
             409,
             "sync_error",
@@ -282,21 +199,17 @@ def main(
             },
         )
     except (NotionTokenSettingError, GoogleTokenSettingError):
-        logger.exception(
-            "Provider binding is not valid for this sync execution"
-        )
+        logger.exception("Provider token configuration is invalid")
         return build_sync_result(
             409,
             "sync_error",
             {
-                "error_code": "sync_provider_binding_stale",
+                "error_code": "sync_provider_binding_invalid",
                 "retriable": False,
             },
         )
     except Exception:
-        logger.exception(
-            "Error loading mapping-domain configuration or tokens"
-        )
+        logger.exception("Error loading mapping-domain configuration or tokens")
         return build_sync_result(
             500,
             "sync_error",
@@ -308,9 +221,8 @@ def main(
 
     try:
         args = _parse_args()
-        logger.debug(f"Parsed arguments: {args}")
-    except Exception as e:
-        logger.error(f"Error parsing arguments: {e}")
+    except Exception:
+        logger.exception("Error parsing CLI arguments")
         return build_sync_result(
             400,
             "sync_error",
@@ -324,49 +236,16 @@ def main(
     for source_setting in source_settings:
         source_id = source_setting["source_id"]
         try:
-
-            def mutation_guard(setting=source_setting):
-                try:
-                    mapping_config.revalidate_source(setting)
-                    notion_binding.assert_current_binding()
-                    google_token.assert_current_binding()
-                except (
-                    MappingDomainSettingError,
-                    NotionTokenSettingError,
-                    GoogleTokenSettingError,
-                ) as exc:
-                    raise StaleExecutionError(
-                        "Sync execution is no longer authoritative."
-                    ) from exc
-
             result = _run_source(
                 args,
                 source_setting,
                 notion_token,
                 google_token,
                 logger,
-                mutation_guard,
-            )
-        except GoogleSettingError:
-            logger.exception(
-                "Source Calendar mapping is not sync-ready: "
-                "source_id=%s",
-                source_id,
-            )
-            result = build_sync_result(
-                409,
-                "sync_error",
-                {
-                    "error_code": (
-                        "source_calendar_mapping_invalid"
-                    ),
-                    "retriable": False,
-                },
             )
         except Exception:
             logger.exception(
-                "Source sync failed during initialization or execution: "
-                "source_id=%s",
+                "Source sync failed: source_id=%s",
                 source_id,
             )
             result = build_sync_result(
@@ -378,6 +257,7 @@ def main(
                 },
             )
         source_results.append((source_id, result))
+
     return _aggregate_source_results(source_results)
 
 
