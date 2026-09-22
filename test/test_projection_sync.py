@@ -141,6 +141,37 @@ class RoutedOneWayProjectionTests(unittest.TestCase):
         notion.create_notion_task.assert_not_called()
         notion.delete_notion_task.assert_not_called()
 
+    def test_all_routing_projects_without_calendar_select(self):
+        notion = MagicMock()
+        all_mapping = {
+            "mapping_id": "mapping-all",
+            "mapping_version": 1,
+            "calendar_id": "all@example.com",
+            "routing": {"mode": "all"},
+        }
+        setting = {
+            **copy.deepcopy(SETTING),
+            "calendar_mappings": [all_mapping],
+        }
+        setting["page_property"].pop("GCal_Name_Notion_Name", None)
+        google = MagicMock(name="all_google")
+        google.get_gcal_event.return_value = []
+        notion.get_notion_task.return_value = (
+            {},
+            [_task(TASK_ONE, route=None)],
+        )
+
+        result = project_notion_to_google_calendar(
+            setting,
+            notion,
+            {"mapping-all": google},
+        )
+
+        self.assertEqual(result["statusCode"], 200)
+        notion.get_notion_task.assert_called_once()
+        google.upsert_projection.assert_called_once()
+        google.delete_projection.assert_not_called()
+
     def test_blank_or_unknown_route_fails_closed_without_mutation(self):
         for route in (None, "Unknown"):
             with self.subTest(route=route):
