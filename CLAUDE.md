@@ -45,7 +45,7 @@ Local configuration/credentials live in `.env.local`: `NOTION_TOKEN`, `GOOGLE_CA
 
 Tokens may be plaintext or `enc:v1:` encrypted. Use `src/utils/token_crypto.py:decrypt_token_if_encrypted()` at token read boundaries; `decrypt_token()` stays strict. In cloud mode, token encryption keys are resolved from SSM via `TOKEN_ENCRYPTION_KEY_SSM_PATH`; local mode may still use plaintext `TOKEN_ENCRYPTION_KEY`.
 
-`MappingDomainConfig` is the only configuration boundary. It returns one isolated runtime setting per active Task source with active Calendar mappings. It must never read `Users.notionConfig` or add fallback behavior.
+`MappingDomainConfig` is the only configuration boundary. It returns one isolated runtime setting per active Task source with exactly one active Calendar mapping in the current topology. It must never read `Users.notionConfig` or add fallback behavior.
 
 ### Request flow
 
@@ -61,19 +61,18 @@ Lambda trigger (SQS / EventBridge)
 
 ### Sync logic (`src/sync/sync.py`)
 
-`synchronize_notion_and_google_calendar` drives the bidirectional sync:
+`project_notion_to_google_calendar` is the only sync direction. Notion is authoritative for task content and scheduling.
 
-1. Fetch all GCal events and Notion tasks for the configured date window.
-2. For each Notion task, match it to a GCal event by `GCal_EventId` property.
-   - No GCal ID → create GCal event (`create_gcal`)
-   - Deletion flag set → delete GCal event + Notion task (`delete_gcal`)
-   - GCal ID found → compare `last_edited_time` vs `updated` to decide `update_gcal` or `update_notion`
-
-3. Remaining unmatched GCal events → create Notion tasks (`create_notion`)
-4. Per-task errors are collected in `sync_errors` and returned without stopping the sync.
-5. Hard cap: aborts if either side exceeds 250 items (`SYNC_TASK_LIMIT`).
-
-`force_update_*` helpers call `synchronize_notion_and_google_calendar` with `compare_time=False` and one direction disabled.
+1. Fetch the authoritative Notion tasks for the configured source/window.
+2. Build deterministic provider projection identity from owner + source + mapping + task + target.
+3. For each Notion task:
+   - deletion flag set → delete only the owned Google projection;
+   - otherwise → upsert the owned Google projection.
+4. Inventory only mapping-tagged Google events in the configured target and retire owned projections whose Notion task is no longer present.
+5. Never create/update/delete Notion tasks from Google Calendar state.
+6. Before every Google mutation, revalidate mapping-domain state plus current Notion and Google OAuth bindings.
+7. Legacy/untagged/wrongly tagged provider events are not silently adopted.
+8. Hard cap: skip a source run if authoritative Notion task input exceeds `SYNC_TASK_LIMIT`.
 
 ### DynamoDB tables
 
@@ -85,7 +84,7 @@ Runtime tables (set via env vars):
 - `DYNAMODB_NOTION_OAUTH_TOKEN_TABLE` — Notion API token (encrypted as `enc:v1:…`)
 - `DYNAMODB_SYNC_LOGS_TABLE` — sync result logs with TTL
 
-The worker consumes provider property IDs, derives offsets from `NotionSettings.timeZone`, and resolves Google Calendar display names live from persisted Calendar IDs. A Calendar assigned to multiple active sources fails closed until explicit routing/materialization semantics exist.
+The worker consumes provider property IDs, derives offsets from `NotionSettings.timeZone`, and routes by persisted mapping/Calendar identity. Distinct Task sources may share one Calendar because provider materializations are isolated by owner/source/mapping/task/target identity.
 
 ### Token encryption
 
