@@ -28,9 +28,7 @@ from utils.logging_utils import get_logger  # noqa: E402
 
 
 def _parse_args(argv: list[str] | None = None):
-    parser = argparse.ArgumentParser(
-        description="Welcome to Notion-Google Calendar Sync CLI!"
-    )
+    parser = argparse.ArgumentParser(description="Welcome to Notion-Google Calendar Sync CLI!")
     parser.add_argument(
         "-x",
         "--test-connection",
@@ -69,8 +67,7 @@ def _apply_date_range_override(
 ) -> None:
     apply_date_range(user_setting, goback_days, goforward_days)
     logger.debug(
-        "Applied in-memory CLI date range override: "
-        f"goback_days={goback_days}, goforward_days={goforward_days}"
+        "Applied in-memory CLI date range override: " f"goback_days={goback_days}, goforward_days={goforward_days}"
     )
 
 
