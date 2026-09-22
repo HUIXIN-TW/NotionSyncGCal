@@ -41,6 +41,14 @@ class NotionPropertyIdTests(unittest.TestCase):
         self.assertIsNone(get_rich_text(self.properties, None))
         self.assertFalse(get_checkbox(self.properties, None))
 
+    def test_does_not_fallback_to_mutable_property_name(self):
+        properties = {
+            "notes-id": {
+                "rich_text": [{"plain_text": "Legacy fallback value"}],
+            }
+        }
+        self.assertIsNone(get_rich_text(properties, "notes-id"))
+
     def test_provider_id_wins_when_mutable_name_shadows_it(self):
         properties = {
             "task-id": {
