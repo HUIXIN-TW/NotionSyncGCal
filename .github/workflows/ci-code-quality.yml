@@ -14,6 +14,9 @@ jobs:
         with:
           python-version: "3.11"
 
+      - name: Verify generated Notica contract adapter
+        run: python scripts/generate_notica_mapping_contract.py --check
+
       - name: Install Flake8
         run: pip install flake8
 
