@@ -3,6 +3,8 @@ from copy import deepcopy
 from datetime import date, timedelta
 from decimal import Decimal
 
+from contracts.notica_mapping_domain import CONFIG_LIFECYCLES
+
 
 TASK_PROPERTY_POLICY = {
     "task": ("Task_Notion_Name", "title"),
