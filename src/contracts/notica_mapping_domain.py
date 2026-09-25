@@ -5,7 +5,12 @@ from urllib.parse import quote
 MAPPING_DOMAIN_SCHEMA_VERSION = 1
 PUBLIC_PROJECTION_SHA256 = "d806144c1db5c5b726dacf18ce28b50ba3fbe415d998a15775bd4988b57fbe74"
 SOURCE_MAPPING_DOMAIN_SHA256 = "e29f2d82eeb7d4ed440803ad8f6936963dcdc987ee26b06714f260a510d33a05"
-CONFIG_LIFECYCLES = frozenset(("active", "disabled"))
+CONFIG_LIFECYCLES = frozenset(
+    (
+        "active",
+        "disabled",
+    )
+)
 PARTITION_KEY_ATTRIBUTE = "pk"
 SORT_KEY_ATTRIBUTE = "sk"
 OWNER_PARTITION_KEY_PATTERN = "USER#{userUuid}"
