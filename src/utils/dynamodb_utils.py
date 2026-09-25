@@ -180,7 +180,10 @@ def update_google_token_by_uuid(
 def get_mapping_domain_settings(uuid: str) -> dict:
     table = _get_mapping_domain_table()
     response = table.get_item(
-        Key={"pk": f"USER#{uuid}", "sk": "NOTION_SETTINGS"},
+        Key={
+            PARTITION_KEY_ATTRIBUTE: owner_partition_key(uuid),
+            SORT_KEY_ATTRIBUTE: NOTION_SETTINGS_SORT_KEY,
+        },
         ConsistentRead=True,
     )
     item = response.get("Item")
@@ -194,10 +197,13 @@ def list_mapping_domain_task_sources(uuid: str) -> list[dict]:
     return _query_all(
         table,
         KeyConditionExpression="#pk = :pk AND begins_with(#sk, :sourcePrefix)",
-        ExpressionAttributeNames={"#pk": "pk", "#sk": "sk"},
+        ExpressionAttributeNames={
+            "#pk": PARTITION_KEY_ATTRIBUTE,
+            "#sk": SORT_KEY_ATTRIBUTE,
+        },
         ExpressionAttributeValues={
-            ":pk": f"USER#{uuid}",
-            ":sourcePrefix": "NOTION_TASK_SOURCE#",
+            ":pk": owner_partition_key(uuid),
+            ":sourcePrefix": TASK_SOURCE_SORT_KEY_PREFIX,
         },
         ConsistentRead=True,
     )
@@ -206,7 +212,10 @@ def list_mapping_domain_task_sources(uuid: str) -> list[dict]:
 def get_mapping_domain_task_source(uuid: str, source_id: str) -> dict:
     table = _get_mapping_domain_table()
     response = table.get_item(
-        Key={"pk": f"USER#{uuid}", "sk": f"NOTION_TASK_SOURCE#{source_id}"},
+        Key={
+            PARTITION_KEY_ATTRIBUTE: owner_partition_key(uuid),
+            SORT_KEY_ATTRIBUTE: task_source_sort_key(source_id),
+        },
         ConsistentRead=True,
     )
     item = response.get("Item")
@@ -218,7 +227,10 @@ def get_mapping_domain_task_source(uuid: str, source_id: str) -> dict:
 def get_mapping_domain_calendar_mapping(uuid: str, mapping_id: str) -> dict:
     table = _get_mapping_domain_table()
     response = table.get_item(
-        Key={"pk": f"USER#{uuid}", "sk": f"CALENDAR_MAPPING#{mapping_id}"},
+        Key={
+            PARTITION_KEY_ATTRIBUTE: owner_partition_key(uuid),
+            SORT_KEY_ATTRIBUTE: calendar_mapping_sort_key(mapping_id),
+        },
         ConsistentRead=True,
     )
     item = response.get("Item")
@@ -249,10 +261,13 @@ def list_mapping_domain_calendar_mappings_for_owner(uuid: str) -> list[dict]:
     return _query_all(
         table,
         KeyConditionExpression="#pk = :pk AND begins_with(#sk, :mappingPrefix)",
-        ExpressionAttributeNames={"#pk": "pk", "#sk": "sk"},
+        ExpressionAttributeNames={
+            "#pk": PARTITION_KEY_ATTRIBUTE,
+            "#sk": SORT_KEY_ATTRIBUTE,
+        },
         ExpressionAttributeValues={
-            ":pk": f"USER#{uuid}",
-            ":mappingPrefix": "CALENDAR_MAPPING#",
+            ":pk": owner_partition_key(uuid),
+            ":mappingPrefix": CALENDAR_MAPPING_SORT_KEY_PREFIX,
         },
         ConsistentRead=True,
     )
