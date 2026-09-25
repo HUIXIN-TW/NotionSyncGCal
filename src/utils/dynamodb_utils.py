@@ -2,6 +2,16 @@ import os
 import time
 from datetime import datetime, timezone
 import boto3
+from contracts.notica_mapping_domain import (
+    CALENDAR_MAPPING_SORT_KEY_PREFIX,
+    NOTION_SETTINGS_SORT_KEY,
+    PARTITION_KEY_ATTRIBUTE,
+    SORT_KEY_ATTRIBUTE,
+    TASK_SOURCE_SORT_KEY_PREFIX,
+    calendar_mapping_sort_key,
+    owner_partition_key,
+    task_source_sort_key,
+)
 from utils.token_crypto import encrypt_token_if_plaintext
 
 
