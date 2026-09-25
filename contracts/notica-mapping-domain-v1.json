@@ -1,0 +1,282 @@
+{
+  "artifactKind": "notica-public-mapping-domain-contract",
+  "artifactSetVersion": "1.0.0",
+  "domain": {
+    "entities": {
+      "calendarMapping": {
+        "fields": {
+          "calendarId": {
+            "required": true,
+            "type": "string"
+          },
+          "calendarName": {
+            "required": true,
+            "type": "string"
+          },
+          "id": {
+            "required": true,
+            "type": "string"
+          },
+          "lifecycle": {
+            "required": true,
+            "type": "string"
+          },
+          "ownerUserUuid": {
+            "required": true,
+            "type": "string"
+          },
+          "sourceId": {
+            "required": true,
+            "type": "string"
+          },
+          "updatedAtMs": {
+            "required": true,
+            "type": "number"
+          },
+          "version": {
+            "required": true,
+            "type": "number"
+          }
+        }
+      },
+      "notionSettings": {
+        "fields": {
+          "ownerUserUuid": {
+            "required": true,
+            "type": "string"
+          },
+          "timeCode": {
+            "required": true,
+            "type": "string"
+          },
+          "timeZone": {
+            "required": true,
+            "type": "string"
+          },
+          "updatedAtMs": {
+            "required": true,
+            "type": "number"
+          },
+          "version": {
+            "required": true,
+            "type": "number"
+          }
+        }
+      },
+      "taskSource": {
+        "databaseFields": {
+          "externalId": {
+            "required": true,
+            "type": "string"
+          },
+          "name": {
+            "required": true,
+            "type": "string"
+          },
+          "url": {
+            "required": true,
+            "type": "string"
+          }
+        },
+        "defaultFields": {
+          "defaultCalendarName": {
+            "required": true,
+            "type": "string"
+          },
+          "defaultEventLengthMinutes": {
+            "required": true,
+            "type": "number"
+          },
+          "defaultStartHour": {
+            "required": true,
+            "type": "number"
+          },
+          "goBackDays": {
+            "required": true,
+            "type": "number"
+          },
+          "goForwardDays": {
+            "required": true,
+            "type": "number"
+          }
+        },
+        "fields": {
+          "database": {
+            "required": true,
+            "type": "object"
+          },
+          "defaults": {
+            "required": true,
+            "type": "object"
+          },
+          "id": {
+            "required": true,
+            "type": "string"
+          },
+          "lifecycle": {
+            "required": true,
+            "type": "string"
+          },
+          "ownerUserUuid": {
+            "required": true,
+            "type": "string"
+          },
+          "propertyMappings": {
+            "required": true,
+            "type": "object"
+          },
+          "updatedAtMs": {
+            "required": true,
+            "type": "number"
+          },
+          "version": {
+            "required": true,
+            "type": "number"
+          }
+        },
+        "propertyMappingFields": {
+          "propertyId": {
+            "required": true,
+            "type": "string"
+          },
+          "propertyName": {
+            "required": true,
+            "type": "string"
+          },
+          "propertyType": {
+            "required": true,
+            "type": "string"
+          }
+        },
+        "semanticPropertyMappings": {
+          "calendarName": {
+            "required": false,
+            "type": "object"
+          },
+          "date": {
+            "required": true,
+            "type": "object"
+          },
+          "extraInfo": {
+            "required": false,
+            "type": "object"
+          },
+          "googleCalendarDeleted": {
+            "required": false,
+            "type": "object"
+          },
+          "googleCalendarEndDate": {
+            "required": false,
+            "type": "object"
+          },
+          "googleCalendarEventId": {
+            "required": false,
+            "type": "object"
+          },
+          "googleCalendarIcon": {
+            "required": false,
+            "type": "object"
+          },
+          "googleCalendarSyncTime": {
+            "required": false,
+            "type": "object"
+          },
+          "initiative": {
+            "required": false,
+            "type": "object"
+          },
+          "location": {
+            "required": false,
+            "type": "object"
+          },
+          "sprint": {
+            "required": false,
+            "type": "object"
+          },
+          "status": {
+            "required": false,
+            "type": "object"
+          },
+          "task": {
+            "required": true,
+            "type": "object"
+          }
+        }
+      }
+    },
+    "lifecycleValues": [
+      "active",
+      "disabled"
+    ],
+    "notionPropertyTypes": [
+      "button",
+      "checkbox",
+      "created_by",
+      "created_time",
+      "date",
+      "email",
+      "files",
+      "formula",
+      "last_edited_by",
+      "last_edited_time",
+      "multi_select",
+      "number",
+      "people",
+      "phone_number",
+      "place",
+      "relation",
+      "rich_text",
+      "rollup",
+      "select",
+      "status",
+      "title",
+      "unique_id",
+      "url"
+    ]
+  },
+  "schemaVersion": 1,
+  "sourceArtifact": {
+    "artifactKind": "notica-mapping-domain-contract",
+    "sha256": "e29f2d82eeb7d4ed440803ad8f6936963dcdc987ee26b06714f260a510d33a05"
+  },
+  "workerStorageRead": {
+    "calendarMappingSortKeyPrefix": "CALENDAR_MAPPING#",
+    "componentEncoding": "encodeURIComponent",
+    "keyAttributes": {
+      "partitionKey": "pk",
+      "sortKey": "sk"
+    },
+    "notionSettingsSortKey": "NOTION_SETTINGS",
+    "ownerPartitionKeyPattern": "USER#{userUuid}",
+    "requiredRecordFields": {
+      "calendarMapping": [
+        "calendarId",
+        "calendarName",
+        "id",
+        "lifecycle",
+        "ownerUserUuid",
+        "sourceId",
+        "updatedAtMs",
+        "version"
+      ],
+      "notionSettings": [
+        "ownerUserUuid",
+        "timeCode",
+        "timeZone",
+        "updatedAtMs",
+        "version"
+      ],
+      "taskSource": [
+        "database",
+        "defaults",
+        "id",
+        "lifecycle",
+        "ownerUserUuid",
+        "propertyMappings",
+        "updatedAtMs",
+        "version"
+      ]
+    },
+    "taskSourceSortKeyPrefix": "NOTION_TASK_SOURCE#"
+  }
+}
