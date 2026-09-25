@@ -153,7 +153,7 @@ class MappingDomainConfig:
             if source_id in validated_sources:
                 raise SettingError(f"Duplicate Task source id: {source_id}")
             lifecycle = _require_string(source.get("lifecycle"), f"taskSource[{source_id}].lifecycle")
-            if lifecycle not in {"active", "disabled"}:
+            if lifecycle not in CONFIG_LIFECYCLES:
                 raise SettingError(f"taskSource[{source_id}].lifecycle must be active or disabled.")
             source["id"] = source_id
             source["lifecycle"] = lifecycle
@@ -172,7 +172,7 @@ class MappingDomainConfig:
             if source_id not in validated_sources:
                 raise SettingError(f"Calendar mapping {mapping_id} references unknown Task source {source_id}.")
             lifecycle = _require_string(mapping.get("lifecycle"), f"calendarMapping[{mapping_id}].lifecycle")
-            if lifecycle not in {"active", "disabled"}:
+            if lifecycle not in CONFIG_LIFECYCLES:
                 raise SettingError(f"calendarMapping[{mapping_id}].lifecycle must be active or disabled.")
             mapping["id"] = mapping_id
             mapping["sourceId"] = source_id
