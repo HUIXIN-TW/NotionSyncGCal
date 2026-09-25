@@ -28,14 +28,6 @@
           "sourceId": {
             "required": true,
             "type": "string"
-          },
-          "updatedAtMs": {
-            "required": true,
-            "type": "number"
-          },
-          "version": {
-            "required": true,
-            "type": "number"
           }
         }
       },
@@ -52,28 +44,12 @@
           "timeZone": {
             "required": true,
             "type": "string"
-          },
-          "updatedAtMs": {
-            "required": true,
-            "type": "number"
-          },
-          "version": {
-            "required": true,
-            "type": "number"
           }
         }
       },
       "taskSource": {
         "databaseFields": {
           "externalId": {
-            "required": true,
-            "type": "string"
-          },
-          "name": {
-            "required": true,
-            "type": "string"
-          },
-          "url": {
             "required": true,
             "type": "string"
           }
@@ -124,22 +100,10 @@
           "propertyMappings": {
             "required": true,
             "type": "object"
-          },
-          "updatedAtMs": {
-            "required": true,
-            "type": "number"
-          },
-          "version": {
-            "required": true,
-            "type": "number"
           }
         },
         "propertyMappingFields": {
           "propertyId": {
-            "required": true,
-            "type": "string"
-          },
-          "propertyName": {
             "required": true,
             "type": "string"
           },
@@ -237,7 +201,7 @@
   "schemaVersion": 1,
   "sourceArtifact": {
     "artifactKind": "notica-mapping-domain-contract",
-    "sha256": "e29f2d82eeb7d4ed440803ad8f6936963dcdc987ee26b06714f260a510d33a05"
+    "sha256": "2c3bacf9f59c4d88509742b26f8d447ae656266736864e078f97130d834587c6"
   },
   "workerStorageRead": {
     "calendarMappingSortKeyPrefix": "CALENDAR_MAPPING#",
@@ -255,16 +219,12 @@
         "id",
         "lifecycle",
         "ownerUserUuid",
-        "sourceId",
-        "updatedAtMs",
-        "version"
+        "sourceId"
       ],
       "notionSettings": [
         "ownerUserUuid",
         "timeCode",
-        "timeZone",
-        "updatedAtMs",
-        "version"
+        "timeZone"
       ],
       "taskSource": [
         "database",
@@ -272,9 +232,7 @@
         "id",
         "lifecycle",
         "ownerUserUuid",
-        "propertyMappings",
-        "updatedAtMs",
-        "version"
+        "propertyMappings"
       ]
     },
     "taskSourceSortKeyPrefix": "NOTION_TASK_SOURCE#"

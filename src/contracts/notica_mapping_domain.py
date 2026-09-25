@@ -3,8 +3,8 @@
 from urllib.parse import quote
 
 MAPPING_DOMAIN_SCHEMA_VERSION = 1
-PUBLIC_PROJECTION_SHA256 = "d806144c1db5c5b726dacf18ce28b50ba3fbe415d998a15775bd4988b57fbe74"
-SOURCE_MAPPING_DOMAIN_SHA256 = "e29f2d82eeb7d4ed440803ad8f6936963dcdc987ee26b06714f260a510d33a05"
+PUBLIC_PROJECTION_SHA256 = "1567a118085ec48668409a786fba9efe0ee948a5f1b42ab270c4f204133f170a"
+SOURCE_MAPPING_DOMAIN_SHA256 = "2c3bacf9f59c4d88509742b26f8d447ae656266736864e078f97130d834587c6"
 CONFIG_LIFECYCLES = frozenset(
     (
         "active",
@@ -25,8 +25,6 @@ TASK_SOURCE_REQUIRED_FIELDS = frozenset(
         "lifecycle",
         "ownerUserUuid",
         "propertyMappings",
-        "updatedAtMs",
-        "version",
     )
 )
 CALENDAR_MAPPING_REQUIRED_FIELDS = frozenset(
@@ -37,8 +35,6 @@ CALENDAR_MAPPING_REQUIRED_FIELDS = frozenset(
         "lifecycle",
         "ownerUserUuid",
         "sourceId",
-        "updatedAtMs",
-        "version",
     )
 )
 NOTION_SETTINGS_REQUIRED_FIELDS = frozenset(
@@ -46,8 +42,6 @@ NOTION_SETTINGS_REQUIRED_FIELDS = frozenset(
         "ownerUserUuid",
         "timeCode",
         "timeZone",
-        "updatedAtMs",
-        "version",
     )
 )
 
