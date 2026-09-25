@@ -42,7 +42,13 @@ CALENDAR_MAPPING_REQUIRED_FIELDS = frozenset(
     )
 )
 NOTION_SETTINGS_REQUIRED_FIELDS = frozenset(
-    ("ownerUserUuid", "timeCode", "timeZone", "updatedAtMs", "version")
+    (
+        "ownerUserUuid",
+        "timeCode",
+        "timeZone",
+        "updatedAtMs",
+        "version",
+    )
 )
 
 
