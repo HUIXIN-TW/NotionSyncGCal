@@ -70,6 +70,41 @@ def build_output(artifact_path=ARTIFACT_PATH, meta_path=META_PATH):
     notion_settings = entities["notionSettings"]
     required = storage["requiredRecordFields"]
 
+    logical_required_fields = {
+        "taskSource": {
+            name
+            for name, definition in task_source["fields"].items()
+            if definition.get("required") is True
+        },
+        "calendarMapping": {
+            name
+            for name, definition in calendar_mapping["fields"].items()
+            if definition.get("required") is True
+        },
+        "notionSettings": {
+            name
+            for name, definition in notion_settings["fields"].items()
+            if definition.get("required") is True
+        },
+    }
+    for entity_name, logical_fields in logical_required_fields.items():
+        persisted_fields = required.get(entity_name)
+        if not isinstance(persisted_fields, list) or not all(
+            isinstance(field, str) for field in persisted_fields
+        ):
+            raise ValueError(
+                f"Invalid Worker storage-read required fields for {entity_name}."
+            )
+        if len(persisted_fields) != len(set(persisted_fields)):
+            raise ValueError(
+                f"Duplicate Worker storage-read required fields for {entity_name}."
+            )
+        if set(persisted_fields) != logical_fields:
+            raise ValueError(
+                "Worker storage-read required fields for "
+                f"{entity_name} must match required logical fields."
+            )
+
     lines = [
         '"""Generated Notica mapping-domain contract adapter. Do not edit by hand."""',
         "",

@@ -183,6 +183,31 @@ class NoticaMappingDomainContractTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "source digest"):
                 build_output(artifact_path, meta_path)
 
+    def test_generator_rejects_storage_required_field_drift(self):
+        artifact = copy.deepcopy(self.artifact)
+        artifact["workerStorageRead"]["requiredRecordFields"]["taskSource"].remove(
+            "defaults"
+        )
+
+        with tempfile.TemporaryDirectory() as tmp:
+            artifact_path = Path(tmp) / "artifact.json"
+            meta_path = Path(tmp) / "meta.json"
+            artifact_path.write_text(
+                json.dumps(artifact, separators=(",", ":")),
+                encoding="utf-8",
+            )
+            meta = dict(self.meta)
+            meta["publicProjectionSha256"] = hashlib.sha256(
+                artifact_path.read_bytes()
+            ).hexdigest()
+            meta_path.write_text(json.dumps(meta), encoding="utf-8")
+
+            with self.assertRaisesRegex(
+                ValueError,
+                "storage-read required fields for taskSource",
+            ):
+                build_output(artifact_path, meta_path)
+
     def test_generated_key_builders_follow_backend_encoding_contract(self):
         self.assertEqual(owner_partition_key("user/1"), "USER#user%2F1")
         self.assertEqual(
