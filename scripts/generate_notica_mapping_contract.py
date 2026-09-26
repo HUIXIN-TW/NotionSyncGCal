@@ -15,8 +15,8 @@ def _load_json(path):
         return json.load(file)
 
 
-def _artifact_sha256():
-    return hashlib.sha256(ARTIFACT_PATH.read_bytes()).hexdigest()
+def _artifact_sha256(path=ARTIFACT_PATH):
+    return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
 def _py_string(value):
@@ -30,10 +30,26 @@ def _frozenset_assignment(name, values):
     return lines
 
 
-def build_output():
-    artifact = _load_json(ARTIFACT_PATH)
-    meta = _load_json(META_PATH)
-    digest = _artifact_sha256()
+def _field_specs_assignment(name, fields):
+    lines = [f"{name} = {{"]
+    for field_name in sorted(fields):
+        field = fields[field_name]
+        field_type = field.get("type")
+        required = field.get("required")
+        if not isinstance(field_type, str) or not isinstance(required, bool):
+            raise ValueError(f"Invalid field contract for {field_name}.")
+        lines.append(
+            f"    {_py_string(field_name)}: "
+            f"({_py_string(field_type)}, {required}),"
+        )
+    lines.append("}")
+    return lines
+
+
+def build_output(artifact_path=ARTIFACT_PATH, meta_path=META_PATH):
+    artifact = _load_json(artifact_path)
+    meta = _load_json(meta_path)
+    digest = _artifact_sha256(artifact_path)
 
     if digest != meta["publicProjectionSha256"]:
         raise ValueError(
@@ -48,6 +64,10 @@ def build_output():
 
     storage = artifact["workerStorageRead"]
     domain = artifact["domain"]
+    entities = domain["entities"]
+    task_source = entities["taskSource"]
+    calendar_mapping = entities["calendarMapping"]
+    notion_settings = entities["notionSettings"]
     required = storage["requiredRecordFields"]
 
     lines = [
@@ -64,6 +84,45 @@ def build_output():
     ]
     lines.extend(
         _frozenset_assignment("CONFIG_LIFECYCLES", domain["lifecycleValues"])
+    )
+    lines.extend(
+        _field_specs_assignment("TASK_SOURCE_FIELD_SPECS", task_source["fields"])
+    )
+    lines.extend(
+        _field_specs_assignment(
+            "TASK_SOURCE_DATABASE_FIELD_SPECS",
+            task_source["databaseFields"],
+        )
+    )
+    lines.extend(
+        _field_specs_assignment(
+            "TASK_SOURCE_DEFAULT_FIELD_SPECS",
+            task_source["defaultFields"],
+        )
+    )
+    lines.extend(
+        _field_specs_assignment(
+            "TASK_SOURCE_PROPERTY_MAPPING_FIELD_SPECS",
+            task_source["propertyMappingFields"],
+        )
+    )
+    lines.extend(
+        _field_specs_assignment(
+            "TASK_SOURCE_SEMANTIC_PROPERTY_SPECS",
+            task_source["semanticPropertyMappings"],
+        )
+    )
+    lines.extend(
+        _field_specs_assignment(
+            "CALENDAR_MAPPING_FIELD_SPECS",
+            calendar_mapping["fields"],
+        )
+    )
+    lines.extend(
+        _field_specs_assignment(
+            "NOTION_SETTINGS_FIELD_SPECS",
+            notion_settings["fields"],
+        )
     )
     lines.extend(
         [
@@ -113,7 +172,7 @@ def build_output():
             "",
             "",
             "def _encode_component(value: str) -> str:",
-            '    return quote(value, safe="-_.!~*\'()")',
+            "    return quote(value, safe=\"-_.!~*'()\")",
             "",
             "",
             "def owner_partition_key(user_uuid: str) -> str:",
