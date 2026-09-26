@@ -2,6 +2,9 @@ name: Code Quality Checks
 
 on: push
 
+permissions:
+  contents: read
+
 jobs:
   formatting:
     runs-on: ubuntu-latest
