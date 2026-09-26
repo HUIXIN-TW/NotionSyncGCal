@@ -18,3 +18,6 @@ node_modules/
 
 # Ignore all Markdown files in a specific directory
 docs/**/*.md
+
+# Preserve the backend producer's exact public-contract bytes for SHA-256 pinning
+contracts/notica-mapping-domain-v1.json
