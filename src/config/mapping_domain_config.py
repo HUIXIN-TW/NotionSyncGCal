@@ -3,7 +3,16 @@ from copy import deepcopy
 from datetime import date, timedelta
 from decimal import Decimal
 
-from contracts.notica_mapping_domain import CONFIG_LIFECYCLES
+from contracts.notica_mapping_domain import (
+    CALENDAR_MAPPING_FIELD_SPECS,
+    CONFIG_LIFECYCLES,
+    NOTION_SETTINGS_FIELD_SPECS,
+    TASK_SOURCE_DATABASE_FIELD_SPECS,
+    TASK_SOURCE_DEFAULT_FIELD_SPECS,
+    TASK_SOURCE_FIELD_SPECS,
+    TASK_SOURCE_PROPERTY_MAPPING_FIELD_SPECS,
+    TASK_SOURCE_SEMANTIC_PROPERTY_SPECS,
+)
 
 
 TASK_PROPERTY_POLICY = {
@@ -77,6 +86,70 @@ def _require_int(value, label, *, minimum=None, maximum=None):
     return value
 
 
+def _validate_contract_value(value, expected_type, label):
+    if expected_type == "string":
+        valid = isinstance(value, str)
+    elif expected_type == "object":
+        valid = isinstance(value, dict)
+    elif expected_type == "number":
+        valid = not isinstance(value, bool) and isinstance(value, (int, float, Decimal))
+    else:
+        raise SettingError(f"{label} uses unsupported contract type '{expected_type}'.")
+
+    if not valid:
+        raise SettingError(f"{label} must match contract type {expected_type}.")
+
+
+def _validate_contract_fields(record, field_specs, label):
+    for field_name, (expected_type, required) in field_specs.items():
+        field_label = f"{label}.{field_name}"
+        if field_name not in record:
+            if required:
+                raise SettingError(f"{field_label} is required by the mapping-domain contract.")
+            continue
+        _validate_contract_value(record[field_name], expected_type, field_label)
+
+
+def _validate_task_source_contract(source, label):
+    _validate_contract_fields(source, TASK_SOURCE_FIELD_SPECS, label)
+
+    database = _require_dict(source.get("database"), f"{label}.database")
+    _validate_contract_fields(
+        database,
+        TASK_SOURCE_DATABASE_FIELD_SPECS,
+        f"{label}.database",
+    )
+
+    defaults = _require_dict(source.get("defaults"), f"{label}.defaults")
+    _validate_contract_fields(
+        defaults,
+        TASK_SOURCE_DEFAULT_FIELD_SPECS,
+        f"{label}.defaults",
+    )
+
+    property_mappings = _require_dict(
+        source.get("propertyMappings"),
+        f"{label}.propertyMappings",
+    )
+    for semantic_key, (expected_type, required) in TASK_SOURCE_SEMANTIC_PROPERTY_SPECS.items():
+        mapping_label = f"{label}.propertyMappings.{semantic_key}"
+        if semantic_key not in property_mappings:
+            if required:
+                raise SettingError(
+                    f"{mapping_label} is required by the mapping-domain contract."
+                )
+            continue
+
+        raw_mapping = property_mappings[semantic_key]
+        _validate_contract_value(raw_mapping, expected_type, mapping_label)
+        mapping = _require_dict(raw_mapping, mapping_label)
+        _validate_contract_fields(
+            mapping,
+            TASK_SOURCE_PROPERTY_MAPPING_FIELD_SPECS,
+            mapping_label,
+        )
+
+
 def _validate_owner(record, owner_user_uuid, label):
     owner = _require_string(record.get("ownerUserUuid"), f"{label}.ownerUserUuid")
     if owner != owner_user_uuid:
@@ -143,6 +216,7 @@ class MappingDomainConfig:
         mappings = _require_list(contract.get("calendarMappings"), "calendarMappings")
         owner = self.owner_user_uuid
 
+        _validate_contract_fields(settings, NOTION_SETTINGS_FIELD_SPECS, "settings")
         _validate_owner(settings, owner, "settings")
         timezone = _require_string(settings.get("timeZone"), "settings.timeZone")
         timecode = _require_string(settings.get("timeCode"), "settings.timeCode")
@@ -150,6 +224,7 @@ class MappingDomainConfig:
         validated_sources = {}
         for raw_source in sources:
             source = _require_dict(raw_source, "taskSource")
+            _validate_task_source_contract(source, "taskSource")
             _validate_owner(source, owner, "taskSource")
             source_id = _require_string(source.get("id"), "taskSource.id")
             if source_id in validated_sources:
@@ -165,6 +240,11 @@ class MappingDomainConfig:
         seen_mapping_ids = set()
         for raw_mapping in mappings:
             mapping = _require_dict(raw_mapping, "calendarMapping")
+            _validate_contract_fields(
+                mapping,
+                CALENDAR_MAPPING_FIELD_SPECS,
+                "calendarMapping",
+            )
             _validate_owner(mapping, owner, "calendarMapping")
             mapping_id = _require_string(mapping.get("id"), "calendarMapping.id")
             if mapping_id in seen_mapping_ids:
