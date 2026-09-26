@@ -11,6 +11,56 @@ CONFIG_LIFECYCLES = frozenset(
         "disabled",
     )
 )
+TASK_SOURCE_FIELD_SPECS = {
+    "database": ("object", True),
+    "defaults": ("object", True),
+    "id": ("string", True),
+    "lifecycle": ("string", True),
+    "ownerUserUuid": ("string", True),
+    "propertyMappings": ("object", True),
+}
+TASK_SOURCE_DATABASE_FIELD_SPECS = {
+    "externalId": ("string", True),
+}
+TASK_SOURCE_DEFAULT_FIELD_SPECS = {
+    "defaultCalendarName": ("string", True),
+    "defaultEventLengthMinutes": ("number", True),
+    "defaultStartHour": ("number", True),
+    "goBackDays": ("number", True),
+    "goForwardDays": ("number", True),
+}
+TASK_SOURCE_PROPERTY_MAPPING_FIELD_SPECS = {
+    "propertyId": ("string", True),
+    "propertyType": ("string", True),
+}
+TASK_SOURCE_SEMANTIC_PROPERTY_SPECS = {
+    "calendarName": ("object", False),
+    "date": ("object", True),
+    "extraInfo": ("object", False),
+    "googleCalendarDeleted": ("object", False),
+    "googleCalendarEndDate": ("object", False),
+    "googleCalendarEventId": ("object", False),
+    "googleCalendarIcon": ("object", False),
+    "googleCalendarSyncTime": ("object", False),
+    "initiative": ("object", False),
+    "location": ("object", False),
+    "sprint": ("object", False),
+    "status": ("object", False),
+    "task": ("object", True),
+}
+CALENDAR_MAPPING_FIELD_SPECS = {
+    "calendarId": ("string", True),
+    "calendarName": ("string", True),
+    "id": ("string", True),
+    "lifecycle": ("string", True),
+    "ownerUserUuid": ("string", True),
+    "sourceId": ("string", True),
+}
+NOTION_SETTINGS_FIELD_SPECS = {
+    "ownerUserUuid": ("string", True),
+    "timeCode": ("string", True),
+    "timeZone": ("string", True),
+}
 PARTITION_KEY_ATTRIBUTE = "pk"
 SORT_KEY_ATTRIBUTE = "sk"
 OWNER_PARTITION_KEY_PATTERN = "USER#{userUuid}"
