@@ -4,36 +4,32 @@ on:
   pull_request:
     types: [opened, synchronize]
 
+permissions:
+  pull-requests: write
+
 jobs:
   update-title:
+    if: github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v6
+      - name: Update PR title from branch name
+        uses: actions/github-script@v9
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const pullRequest = context.payload.pull_request;
+            const branchName = pullRequest.head.ref;
+            const match = branchName.match(/^(issue-\d+)-(.*)$/i);
 
-      - name: Extract branch name and update PR title
-        run: |
-          # Use GitHub CLI to get the actual head branch name of the PR
-          branch_name=$(gh pr view ${{ github.event.pull_request.number }} --json headRefName --jq .headRefName)
-          echo "Branch name: $branch_name"
+            const title = match
+              ? `[${match[1]}]: ${match[2]}`.toUpperCase()
+              : branchName.toUpperCase();
 
-          # Convert branch name to lowercase to handle case insensitivity
-          lower_branch_name="${branch_name,,}"
-
-          # Construct a new PR title using a case-insensitive approach
-          if [[ "$lower_branch_name" =~ ^(issue-[0-9]+)-(.*)$ ]]; then
-            issue_part="${BASH_REMATCH[1]}"
-            remainder="${BASH_REMATCH[2]}"
-            pr_title="[$issue_part]: $remainder"
-          else
-            pr_title="$branch_name"
-          fi
-
-          # Convert the entire PR title to uppercase
-          pr_title="${pr_title^^}"
-
-          echo "New PR Title: $pr_title"
-          # Update the PR title using GitHub CLI
-          gh pr edit ${{ github.event.pull_request.number }} --title "$pr_title"
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+            await github.rest.pulls.update({
+              owner,
+              repo,
+              pull_number: pullRequest.number,
+              title,
+            });

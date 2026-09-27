@@ -4,51 +4,74 @@ on:
   issues:
     types: [assigned]
 
+permissions:
+  contents: write
+  issues: write
+
 jobs:
   create-branch-and-add-link:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v6
-
-      - name: Create Branch for Issue
-        id: create_branch
-        run: |
-          ISSUE_NUMBER="${{ github.event.issue.number }}"
-          ISSUE_TITLE="${{ github.event.issue.title }}"
-          BRANCH_NAME="issue-$ISSUE_NUMBER-${ISSUE_TITLE// /-}"
-
-          # Ensure branch name is URL safe
-          BRANCH_NAME="${BRANCH_NAME//[^a-zA-Z0-9-]/-}"
-          BRANCH_NAME="${BRANCH_NAME,,}" # Convert to lowercase
-
-          echo "Creating branch: $BRANCH_NAME"
-          git config --global user.email "action@github.com"
-          git config --global user.name "GitHub Action"
-          git checkout -b "$BRANCH_NAME"
-          git push origin "$BRANCH_NAME"
-          echo "::set-output name=branch::$BRANCH_NAME"
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Add branch link to issue body
-        if: steps.create_branch.outputs.branch != ''
+      - name: Create branch and add issue link
         uses: actions/github-script@v9
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
-            const branchName = "${{ steps.create_branch.outputs.branch }}";
-            const branchLink = `[View branch](${{ github.server_url }}/${{ github.repository }}/tree/${branchName})`;
-            const issueNumber = ${{ github.event.issue.number }};
-            const issue = await github.rest.issues.get({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: issueNumber
-            });
-            const newBody = issue.data.body + "\n\n" + branchLink;
-            await github.rest.issues.update({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: issueNumber,
-              body: newBody
-            });
+            const issue = context.payload.issue;
+            const repository = context.payload.repository;
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+
+            const normalizedTitle = issue.title
+              .normalize("NFKD")
+              .replace(/[^\x00-\x7F]/g, "")
+              .replace(/[^a-zA-Z0-9-]+/g, "-")
+              .replace(/^-+|-+$/g, "")
+              .toLowerCase()
+              .slice(0, 80);
+
+            const branchName = `issue-${issue.number}${normalizedTitle ? `-${normalizedTitle}` : ""}`;
+            const branchRef = `heads/${branchName}`;
+
+            let branchExists = true;
+            try {
+              await github.rest.git.getRef({
+                owner,
+                repo,
+                ref: branchRef,
+              });
+            } catch (error) {
+              if (error.status !== 404) {
+                throw error;
+              }
+              branchExists = false;
+            }
+
+            if (!branchExists) {
+              const base = await github.rest.git.getRef({
+                owner,
+                repo,
+                ref: `heads/${repository.default_branch}`,
+              });
+              await github.rest.git.createRef({
+                owner,
+                repo,
+                ref: `refs/heads/${branchName}`,
+                sha: base.data.object.sha,
+              });
+            }
+
+            const branchLink = `[View branch](${repository.html_url}/tree/${encodeURIComponent(branchName)})`;
+            const currentBody = issue.body ?? "";
+
+            if (!currentBody.includes(branchLink)) {
+              const newBody = currentBody
+                ? `${currentBody}\n\n${branchLink}`
+                : branchLink;
+              await github.rest.issues.update({
+                owner,
+                repo,
+                issue_number: issue.number,
+                body: newBody,
+              });
+            }
