@@ -135,9 +135,7 @@ def _validate_task_source_contract(source, label):
         mapping_label = f"{label}.propertyMappings.{semantic_key}"
         if semantic_key not in property_mappings:
             if required:
-                raise SettingError(
-                    f"{mapping_label} is required by the mapping-domain contract."
-                )
+                raise SettingError(f"{mapping_label} is required by the mapping-domain contract.")
             continue
 
         raw_mapping = property_mappings[semantic_key]
