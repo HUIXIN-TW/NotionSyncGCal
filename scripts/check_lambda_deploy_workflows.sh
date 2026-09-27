@@ -387,9 +387,10 @@ else
   for file in "${production_workflows[@]}"; do
     is_workflow_dispatch_only "$file" || report_failure "$file must be triggered by workflow_dispatch only."
     contains_required_literal "$file" "PRD_DEPLOY_ROLE_ARN" || report_failure "$file must reference PRD_DEPLOY_ROLE_ARN."
-    contains_required_literal "$file" "ap-southeast-2" || report_failure "$file must use AWS region ap-southeast-2."
-    contains_required_literal "$file" "262835400669" || report_failure "$file must use ECR account 262835400669."
-    contains_required_literal "$file" "notion-sync-gcal-lambda" || report_failure "$file must use image name notion-sync-gcal-lambda."
+    contains_required_literal "$file" 'vars.PRD_AWS_REGION' || report_failure "$file must source its AWS region from an approved PRD environment variable."
+    contains_required_literal "$file" 'vars.PRD_ECR_ACCOUNT_ID' || report_failure "$file must source its ECR account from an approved PRD environment variable."
+    contains_required_literal "$file" 'vars.PRD_ECR_REPOSITORY' || report_failure "$file must source its ECR repository from an approved PRD environment variable."
+    contains_required_literal "$file" 'vars.PRD_FUNCTION_NAME' || report_failure "$file must source its Lambda function from an approved PRD environment variable."
   done
 fi
 
