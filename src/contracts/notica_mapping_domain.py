@@ -101,9 +101,7 @@ def _encode_component(value: str) -> str:
 
 
 def owner_partition_key(user_uuid: str) -> str:
-    return OWNER_PARTITION_KEY_PATTERN.replace(
-        "{userUuid}", _encode_component(user_uuid)
-    )
+    return OWNER_PARTITION_KEY_PATTERN.replace("{userUuid}", _encode_component(user_uuid))
 
 
 def task_source_sort_key(source_id: str) -> str:
