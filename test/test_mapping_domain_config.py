@@ -9,7 +9,12 @@ from unittest import mock
 SRC_ROOT = Path(__file__).resolve().parents[1] / "src"
 sys.path.insert(0, str(SRC_ROOT))
 
-from config.mapping_domain_config import MappingDomainConfig, SettingError  # noqa: E402
+from config.mapping_domain_config import (  # noqa: E402
+    MappingDomainConfig,
+    SettingError,
+    _validate_contract_fields,
+)
+from contracts.notica_mapping_domain import TASK_SOURCE_FIELD_SPECS  # noqa: E402
 
 
 def property_mapping(property_id, property_name, property_type):
@@ -219,6 +224,81 @@ class MappingDomainConfigTests(unittest.TestCase):
             {setting["source_id"] for setting in settings},
             {"source-1", "source-2"},
         )
+
+    def test_rejects_missing_source_id(self):
+        payload = build_payload()
+        del payload["taskSources"][0]["id"]
+        with self.assertRaisesRegex(SettingError, "taskSource.id"):
+            self.load(payload)
+
+    def test_rejects_unknown_source_lifecycle(self):
+        payload = build_payload()
+        payload["taskSources"][0]["lifecycle"] = "archived"
+        with self.assertRaisesRegex(SettingError, "lifecycle"):
+            self.load(payload)
+
+    def test_rejects_unknown_mapping_lifecycle(self):
+        payload = build_payload()
+        payload["calendarMappings"][0]["lifecycle"] = "archived"
+        with self.assertRaisesRegex(SettingError, "lifecycle"):
+            self.load(payload)
+
+    def test_rejects_missing_stable_property_id(self):
+        payload = build_payload()
+        del payload["taskSources"][0]["propertyMappings"]["task"]["propertyId"]
+        with self.assertRaisesRegex(SettingError, "propertyId"):
+            self.load(payload)
+
+    def test_rejects_missing_notion_settings_field(self):
+        payload = build_payload()
+        del payload["settings"]["timeZone"]
+        with self.assertRaisesRegex(SettingError, "settings.timeZone"):
+            self.load(payload)
+
+    def test_rejects_missing_database_external_id(self):
+        payload = build_payload()
+        del payload["taskSources"][0]["database"]["externalId"]
+        with self.assertRaisesRegex(SettingError, "database.externalId"):
+            self.load(payload)
+
+    def test_rejects_missing_required_default_field(self):
+        payload = build_payload()
+        del payload["taskSources"][0]["defaults"]["defaultStartHour"]
+        with self.assertRaisesRegex(SettingError, "defaults.defaultStartHour"):
+            self.load(payload)
+
+    def test_rejects_contract_type_drift(self):
+        payload = build_payload()
+        payload["settings"]["timeZone"] = 8
+        with self.assertRaisesRegex(SettingError, "contract type string"):
+            self.load(payload)
+
+    def test_incompatible_contract_fixture_fails_closed(self):
+        source = build_payload()["taskSources"][0]
+        incompatible_specs = dict(TASK_SOURCE_FIELD_SPECS)
+        incompatible_specs["futureRequiredField"] = ("string", True)
+
+        with self.assertRaisesRegex(SettingError, "futureRequiredField"):
+            _validate_contract_fields(
+                source,
+                incompatible_specs,
+                "taskSource",
+            )
+
+    def test_rejects_duplicate_task_source_ids(self):
+        payload = build_payload()
+        payload["taskSources"].append(copy.deepcopy(payload["taskSources"][0]))
+        with self.assertRaisesRegex(SettingError, "Duplicate Task source id"):
+            self.load(payload)
+
+    def test_rejects_duplicate_calendar_mapping_ids(self):
+        payload = build_payload()
+        duplicate = copy.deepcopy(payload["calendarMappings"][0])
+        duplicate["calendarName"] = "Other"
+        duplicate["calendarId"] = "other@example.com"
+        payload["calendarMappings"].append(duplicate)
+        with self.assertRaisesRegex(SettingError, "Duplicate Calendar mapping id"):
+            self.load(payload)
 
     def test_rejects_cross_owner_mapping(self):
         payload = build_payload()
