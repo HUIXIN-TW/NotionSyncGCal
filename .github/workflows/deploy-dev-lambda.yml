@@ -15,16 +15,19 @@ jobs:
       contents: read
 
     env:
-      AWS_REGION: ap-southeast-2
-      ECR_ACCOUNT_ID: 262835400669
+      AWS_REGION: ${{ vars.DEV_AWS_REGION }}
+      ECR_ACCOUNT_ID: ${{ vars.DEV_ECR_ACCOUNT_ID }}
       DOCKER_FILE: Dockerfile
-      IMAGE_NAME: notion-sync-gcal-lambda
+      IMAGE_NAME: ${{ vars.DEV_ECR_REPOSITORY }}
       IMAGE_VERSION: dev
-      FUNCTION_NAME: dev-fn-notion-sync-gcal
+      FUNCTION_NAME: ${{ vars.DEV_LAMBDA_FUNCTION_NAME }}
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
+
+      - name: Validate deployment configuration
+        run: ./scripts/validate_dev_deploy_config.sh
 
       - name: Set up Python
         uses: actions/setup-python@v6

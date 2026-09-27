@@ -367,10 +367,11 @@ done
 dev_workflow="${WORKFLOW_DIR}/deploy-dev-lambda.yml"
 if [[ -f "$dev_workflow" ]]; then
   contains_required_literal "$dev_workflow" "DEV_DEPLOY_ROLE_ARN" || report_failure "$dev_workflow must reference DEV_DEPLOY_ROLE_ARN."
-  contains_required_literal "$dev_workflow" "ap-southeast-2" || report_failure "$dev_workflow must use AWS region ap-southeast-2."
-  contains_required_literal "$dev_workflow" "262835400669" || report_failure "$dev_workflow must use ECR account 262835400669."
-  contains_required_literal "$dev_workflow" "notion-sync-gcal-lambda" || report_failure "$dev_workflow must use image name notion-sync-gcal-lambda."
-  contains_required_literal "$dev_workflow" "dev-fn-notion-sync-gcal" || report_failure "$dev_workflow must deploy only to dev-fn-notion-sync-gcal."
+  contains_required_literal "$dev_workflow" 'AWS_REGION: ${{ vars.DEV_AWS_REGION }}' || report_failure "$dev_workflow must source AWS_REGION from vars.DEV_AWS_REGION."
+  contains_required_literal "$dev_workflow" 'ECR_ACCOUNT_ID: ${{ vars.DEV_ECR_ACCOUNT_ID }}' || report_failure "$dev_workflow must source ECR_ACCOUNT_ID from vars.DEV_ECR_ACCOUNT_ID."
+  contains_required_literal "$dev_workflow" 'IMAGE_NAME: ${{ vars.DEV_ECR_REPOSITORY }}' || report_failure "$dev_workflow must source IMAGE_NAME from vars.DEV_ECR_REPOSITORY."
+  contains_required_literal "$dev_workflow" 'FUNCTION_NAME: ${{ vars.DEV_LAMBDA_FUNCTION_NAME }}' || report_failure "$dev_workflow must source FUNCTION_NAME from vars.DEV_LAMBDA_FUNCTION_NAME."
+  contains_required_literal "$dev_workflow" "./scripts/validate_dev_deploy_config.sh" || report_failure "$dev_workflow must validate deployment configuration before AWS access."
 else
   report_failure "$dev_workflow is missing."
 fi
