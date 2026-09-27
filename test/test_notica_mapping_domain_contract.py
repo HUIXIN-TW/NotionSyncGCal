@@ -137,11 +137,8 @@ class NoticaMappingDomainContractTests(unittest.TestCase):
             NOTION_SETTINGS_REQUIRED_FIELDS,
         )
 
-    def test_metadata_pins_immutable_backend_merge_sha(self):
-        self.assertEqual(
-            self.meta["producerHead"],
-            "5eaedc3c60e942d4f022616fa32fb9e7832cf4b7",
-        )
+    def test_metadata_excludes_backend_commit_provenance(self):
+        self.assertNotIn("producerHead", self.meta)
 
     def test_generator_rejects_schema_drift_even_with_updated_public_digest(self):
         artifact = copy.deepcopy(self.artifact)
