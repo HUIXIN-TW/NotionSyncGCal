@@ -7,7 +7,7 @@ from pathlib import Path
 DIRECT_EVENT_EXPRESSION = re.compile(
     r"\$\{\{\s*github\.(?:event\b|head_ref\b|ref\b|ref_name\b)"
 )
-EXECUTABLE_KEY = re.compile(r"^(\s*)(run|script):(?:\s*(.*))?$")
+EXECUTABLE_KEY = re.compile(r"^(\s*)(?:-\s+)?(run|script):(?:\s*(.*))?$")
 JOB_KEY = re.compile(r"^  ([A-Za-z0-9_-]+):\s*$")
 JOB_PERMISSION = re.compile(r"^    permissions:\s*(?:.*)?$")
 TOP_LEVEL_PERMISSION = re.compile(r"^permissions:\s*(?:.*)?$")
