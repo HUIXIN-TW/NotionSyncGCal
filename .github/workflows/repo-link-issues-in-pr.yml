@@ -4,36 +4,57 @@ on:
   pull_request:
     types: [opened, edited, synchronize]
 
+permissions:
+  issues: read
+  pull-requests: write
+
 jobs:
   link-issues:
+    if: github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v6
+      - name: Link issue in PR description
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const pullRequest = context.payload.pull_request;
+            const match = pullRequest.head.ref.match(/^issue-(\d+)(?:-|$)/i);
 
-      - name: Link Issue in PR Description
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          # Extract the issue number from the branch name
-          ISSUE_NUMBER=$(echo "${{ github.head_ref }}" | grep -oE 'issue-[0-9]+' | cut -d '-' -f2)
-          if [ ! -z "$ISSUE_NUMBER" ]; then
-            # Fetch the current PR description
-            PR_DESCRIPTION=$(gh pr view ${{ github.event.pull_request.number }} --json body -q ".body")
+            if (!match) {
+              return;
+            }
 
-            # Fetch the title of the issue using GitHub CLI
-            ISSUE_TITLE=$(gh issue view $ISSUE_NUMBER --json title -q ".title")
+            const issueNumber = Number(match[1]);
+            const issue = await github.rest.issues.get({
+              owner,
+              repo,
+              issue_number: issueNumber,
+            });
+            const currentPullRequest = await github.rest.pulls.get({
+              owner,
+              repo,
+              pull_number: pullRequest.number,
+            });
 
-            # Create the issue link
-            ISSUE_LINK="https://github.com/${{ github.repository }}/issues/$ISSUE_NUMBER"
-            LINK_TEXT="Linked Issue: [$ISSUE_TITLE]($ISSUE_LINK)"
-            FIX_TEXT="Fixes #$ISSUE_NUMBER"
+            const issueLink = `${context.payload.repository.html_url}/issues/${issueNumber}`;
+            const linkText = `Linked Issue: [${issue.data.title}](${issueLink})`;
+            const fixText = `Fixes #${issueNumber}`;
+            const currentBody = currentPullRequest.data.body ?? "";
 
-            # Check if the link already exists in the PR description to prevent duplication
-            if [[ "$PR_DESCRIPTION" != *"$LINK_TEXT"* ]]; then
-              UPDATED_DESCRIPTION="${PR_DESCRIPTION}"$'\n\n'"$LINK_TEXT"$'\n'$FIX_TEXT
+            if (currentBody.includes(fixText)) {
+              return;
+            }
 
-              # Update the PR description using echo to handle new lines properly
-              echo "$UPDATED_DESCRIPTION" | gh pr edit ${{ github.event.pull_request.number }} --body-file -
-            fi
-          fi
+            const updatedBody = currentBody
+              ? `${currentBody}\n\n${linkText}\n${fixText}`
+              : `${linkText}\n${fixText}`;
+
+            await github.rest.pulls.update({
+              owner,
+              repo,
+              pull_number: pullRequest.number,
+              body: updatedBody,
+            });
