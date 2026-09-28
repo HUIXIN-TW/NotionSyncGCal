@@ -94,8 +94,25 @@ jobs:
       - name: Validate deployment configuration
         run: ./scripts/validate_dev_deploy_config.sh
       - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v6
         with:
+          aws-region: ${{ env.AWS_REGION }}
           role-to-assume: ${{ secrets.DEV_DEPLOY_ROLE_ARN }}
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+        with:
+          registries: ${{ env.ECR_ACCOUNT_ID }}
+      - name: Build image
+        uses: docker/build-push-action@v7
+        with:
+          push: true
+          tags: ${{ steps.login-ecr.outputs.registry }}/${{ env.IMAGE_NAME }}:dev
+      - name: Wait for Lambda
+        run: |
+          aws lambda wait function-updated \
+            --function-name "${{ env.FUNCTION_NAME }}" \
+            --region "${{ env.AWS_REGION }}"
 """
 
     def _run_guard(self, workflow):
@@ -130,35 +147,45 @@ jobs:
         self.assertNotEqual(0, result.returncode)
         self.assertIn("vars.DEV_AWS_REGION", result.stdout + result.stderr)
 
-    def test_hard_coded_ecr_account_fails(self):
+    def test_hard_coded_ecr_account_fails_even_when_var_mapping_remains(self):
         workflow = self.VALID_WORKFLOW.replace(
-            "ECR_ACCOUNT_ID: ${{ vars.DEV_ECR_ACCOUNT_ID }}",
-            "ECR_ACCOUNT_ID: 111111111111",
+            "registries: ${{ env.ECR_ACCOUNT_ID }}",
+            "registries: 111111111111",
         )
         result = self._run_guard(workflow)
 
         self.assertNotEqual(0, result.returncode)
-        self.assertIn("vars.DEV_ECR_ACCOUNT_ID", result.stdout + result.stderr)
+        self.assertIn("hard-coded aws account", (result.stdout + result.stderr).lower())
 
-    def test_hard_coded_repository_fails(self):
+    def test_hard_coded_repository_fails_even_when_var_mapping_remains(self):
         workflow = self.VALID_WORKFLOW.replace(
-            "IMAGE_NAME: ${{ vars.DEV_ECR_REPOSITORY }}",
-            "IMAGE_NAME: sample-worker",
+            "${{ steps.login-ecr.outputs.registry }}/${{ env.IMAGE_NAME }}:dev",
+            "${{ steps.login-ecr.outputs.registry }}/sample-worker:dev",
         )
         result = self._run_guard(workflow)
 
         self.assertNotEqual(0, result.returncode)
-        self.assertIn("vars.DEV_ECR_REPOSITORY", result.stdout + result.stderr)
+        self.assertIn("env.image_name", (result.stdout + result.stderr).lower())
 
-    def test_hard_coded_function_name_fails(self):
+    def test_hard_coded_function_name_fails_even_when_var_mapping_remains(self):
         workflow = self.VALID_WORKFLOW.replace(
-            "FUNCTION_NAME: ${{ vars.DEV_LAMBDA_FUNCTION_NAME }}",
-            "FUNCTION_NAME: dev-fn-sample",
+            '--function-name "${{ env.FUNCTION_NAME }}"',
+            '--function-name "dev-fn-sample"',
         )
         result = self._run_guard(workflow)
 
         self.assertNotEqual(0, result.returncode)
-        self.assertIn("vars.DEV_LAMBDA_FUNCTION_NAME", result.stdout + result.stderr)
+        self.assertIn("env.function_name", (result.stdout + result.stderr).lower())
+
+    def test_hard_coded_region_fails_even_when_var_mapping_remains(self):
+        workflow = self.VALID_WORKFLOW.replace(
+            '--region "${{ env.AWS_REGION }}"',
+            '--region "us-east-1"',
+        )
+        result = self._run_guard(workflow)
+
+        self.assertNotEqual(0, result.returncode)
+        self.assertIn("hard-coded aws account, region", (result.stdout + result.stderr).lower())
 
     def test_missing_fail_fast_validation_fails(self):
         workflow = self.VALID_WORKFLOW.replace(
@@ -169,7 +196,26 @@ jobs:
         result = self._run_guard(workflow)
 
         self.assertNotEqual(0, result.returncode)
-        self.assertIn("validate deployment configuration", (result.stdout + result.stderr).lower())
+        self.assertIn("validate_dev_deploy_config.sh", result.stdout + result.stderr)
+
+    def test_validation_after_aws_credentials_fails(self):
+        validation = (
+            "      - name: Validate deployment configuration\n"
+            "        run: ./scripts/validate_dev_deploy_config.sh\n"
+        )
+        workflow = self.VALID_WORKFLOW.replace(validation, "")
+        login_marker = (
+            "      - name: Login to Amazon ECR\n"
+            "        id: login-ecr\n"
+        )
+        workflow = workflow.replace(
+            login_marker,
+            validation + login_marker,
+        )
+        result = self._run_guard(workflow)
+
+        self.assertNotEqual(0, result.returncode)
+        self.assertIn("before the first aws credential step", (result.stdout + result.stderr).lower())
 
 
 if __name__ == "__main__":
