@@ -209,6 +209,83 @@ contains_required_literal() {
   grep -qF "$literal" "$file"
 }
 
+check_dev_deploy_metadata_is_indirect() {
+  local file="$1"
+  local violations=""
+  local key
+  local count
+
+  violations="$(
+    grep -En '(^|[^0-9])[0-9]{12}([^0-9]|$)|(^|[^a-z0-9])[a-z]{2}(-[a-z0-9]+)+-[0-9]([^a-z0-9]|$)|\.dkr\.ecr\.' "$file" || true
+  )"
+  if [[ -n "$violations" ]]; then
+    report_failure "$file must not contain hard-coded AWS account, region, or ECR registry metadata:"
+    echo "$violations"
+  fi
+
+  for key in AWS_REGION ECR_ACCOUNT_ID IMAGE_NAME FUNCTION_NAME; do
+    count="$(grep -Ec "^[[:space:]]*${key}:" "$file" || true)"
+    if [[ "$count" -ne 1 ]]; then
+      report_failure "$file must define ${key} exactly once through its approved environment-variable mapping."
+    fi
+  done
+
+  violations="$(
+    grep -En '^[[:space:]]*registries:' "$file" | grep -vF '${{ env.ECR_ACCOUNT_ID }}' || true
+  )"
+  if [[ -n "$violations" ]]; then
+    report_failure "$file must source ECR login registries from env.ECR_ACCOUNT_ID:"
+    echo "$violations"
+  fi
+
+  violations="$(
+    grep -En '\$\{\{[[:space:]]*steps\.login-ecr\.outputs\.registry[[:space:]]*\}\}' "$file" | grep -vF '${{ env.IMAGE_NAME }}' || true
+  )"
+  if [[ -n "$violations" ]]; then
+    report_failure "$file must build ECR image references with env.IMAGE_NAME:"
+    echo "$violations"
+  fi
+
+  violations="$(
+    grep -En -- '--function-name' "$file" | grep -vF '${{ env.FUNCTION_NAME }}' || true
+  )"
+  if [[ -n "$violations" ]]; then
+    report_failure "$file must source Lambda function arguments from env.FUNCTION_NAME:"
+    echo "$violations"
+  fi
+
+  violations="$(
+    grep -En -- '--region' "$file" | grep -vF '${{ env.AWS_REGION }}' || true
+  )"
+  if [[ -n "$violations" ]]; then
+    report_failure "$file must source AWS CLI region arguments from env.AWS_REGION:"
+    echo "$violations"
+  fi
+}
+
+check_dev_validation_precedes_aws_access() {
+  local file="$1"
+  local validation_line
+  local aws_credentials_line
+
+  validation_line="$(grep -nF './scripts/validate_dev_deploy_config.sh' "$file" | head -n 1 | cut -d: -f1 || true)"
+  aws_credentials_line="$(grep -nF 'aws-actions/configure-aws-credentials@' "$file" | head -n 1 | cut -d: -f1 || true)"
+
+  if [[ -z "$validation_line" ]]; then
+    report_failure "$file must run validate_dev_deploy_config.sh."
+    return
+  fi
+
+  if [[ -z "$aws_credentials_line" ]]; then
+    report_failure "$file must configure AWS credentials through the approved OIDC action."
+    return
+  fi
+
+  if (( validation_line >= aws_credentials_line )); then
+    report_failure "$file must validate deployment configuration before the first AWS credential step."
+  fi
+}
+
 check_no_forbidden_env_dumping() {
   local scope_name="$1"
   shift
@@ -367,10 +444,12 @@ done
 dev_workflow="${WORKFLOW_DIR}/deploy-dev-lambda.yml"
 if [[ -f "$dev_workflow" ]]; then
   contains_required_literal "$dev_workflow" "DEV_DEPLOY_ROLE_ARN" || report_failure "$dev_workflow must reference DEV_DEPLOY_ROLE_ARN."
-  contains_required_literal "$dev_workflow" "ap-southeast-2" || report_failure "$dev_workflow must use AWS region ap-southeast-2."
-  contains_required_literal "$dev_workflow" "262835400669" || report_failure "$dev_workflow must use ECR account 262835400669."
-  contains_required_literal "$dev_workflow" "notion-sync-gcal-lambda" || report_failure "$dev_workflow must use image name notion-sync-gcal-lambda."
-  contains_required_literal "$dev_workflow" "dev-fn-notion-sync-gcal" || report_failure "$dev_workflow must deploy only to dev-fn-notion-sync-gcal."
+  contains_required_literal "$dev_workflow" 'AWS_REGION: ${{ vars.DEV_AWS_REGION }}' || report_failure "$dev_workflow must source AWS_REGION from vars.DEV_AWS_REGION."
+  contains_required_literal "$dev_workflow" 'ECR_ACCOUNT_ID: ${{ vars.DEV_ECR_ACCOUNT_ID }}' || report_failure "$dev_workflow must source ECR_ACCOUNT_ID from vars.DEV_ECR_ACCOUNT_ID."
+  contains_required_literal "$dev_workflow" 'IMAGE_NAME: ${{ vars.DEV_ECR_REPOSITORY }}' || report_failure "$dev_workflow must source IMAGE_NAME from vars.DEV_ECR_REPOSITORY."
+  contains_required_literal "$dev_workflow" 'FUNCTION_NAME: ${{ vars.DEV_LAMBDA_FUNCTION_NAME }}' || report_failure "$dev_workflow must source FUNCTION_NAME from vars.DEV_LAMBDA_FUNCTION_NAME."
+  check_dev_deploy_metadata_is_indirect "$dev_workflow"
+  check_dev_validation_precedes_aws_access "$dev_workflow"
 else
   report_failure "$dev_workflow is missing."
 fi
@@ -386,9 +465,10 @@ else
   for file in "${production_workflows[@]}"; do
     is_workflow_dispatch_only "$file" || report_failure "$file must be triggered by workflow_dispatch only."
     contains_required_literal "$file" "PRD_DEPLOY_ROLE_ARN" || report_failure "$file must reference PRD_DEPLOY_ROLE_ARN."
-    contains_required_literal "$file" "ap-southeast-2" || report_failure "$file must use AWS region ap-southeast-2."
-    contains_required_literal "$file" "262835400669" || report_failure "$file must use ECR account 262835400669."
-    contains_required_literal "$file" "notion-sync-gcal-lambda" || report_failure "$file must use image name notion-sync-gcal-lambda."
+    contains_required_literal "$file" 'vars.PRD_AWS_REGION' || report_failure "$file must source its AWS region from an approved PRD environment variable."
+    contains_required_literal "$file" 'vars.PRD_ECR_ACCOUNT_ID' || report_failure "$file must source its ECR account from an approved PRD environment variable."
+    contains_required_literal "$file" 'vars.PRD_ECR_REPOSITORY' || report_failure "$file must source its ECR repository from an approved PRD environment variable."
+    contains_required_literal "$file" 'vars.PRD_FUNCTION_NAME' || report_failure "$file must source its Lambda function from an approved PRD environment variable."
   done
 fi
 
