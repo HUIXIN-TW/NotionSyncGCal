@@ -170,7 +170,6 @@ class MainCliOverrideTests(unittest.TestCase):
         self.assertEqual(result["statusCode"], 200)
         self.assertEqual(mock_sync.call_count, 2)
 
-
     def test_aggregate_source_results_preserves_clean_success(self):
         clean = {
             "statusCode": 200,
