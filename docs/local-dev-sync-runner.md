@@ -81,7 +81,7 @@ GOOGLE_CALENDAR_REFRESH_TOKEN=...
 
 `GOOGLE_CALENDAR_TOKEN_URI` and `GOOGLE_SCOPES` are optional. If omitted, the runtime uses the Google OAuth token endpoint and the app's default calendar/profile scopes.
 
-Fill `config/local.mapping-domain.json` with v2 settings, Task-source, Calendar-mapping, and provider property-ID records matching the tracked example.
+Fill `config/local.mapping-domain.json` with current mapping-domain settings, Task-source, Calendar-mapping, and provider property-ID records matching the tracked example.
 
 ## Generate Google Refresh Token
 
@@ -157,7 +157,7 @@ export AWS_SESSION_TOKEN=...
 export APP_REGION=ap-southeast-2
 
 # Optional account guard:
-export EXPECTED_AWS_ACCOUNT_ID=262835400669
+export EXPECTED_AWS_ACCOUNT_ID=YOUR_DEV_AWS_ACCOUNT_ID
 
 ./scripts/local-run-dev-sync.sh --mode cloud --uuid xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
 ```
@@ -242,7 +242,7 @@ uv run python scripts/local_invoke_sync_lambda.py --mode cloud --uuid <uuid>
 uv run python scripts/local_invoke_sync_lambda.py --mode local
 ```
 
-Cloud mode invokes the existing local Lambda path with an SQS-shaped event, preserving the dev UUID flow.
+Cloud mode invokes the local Lambda path with an SQS-shaped event and the supplied dev UUID.
 
 Local mode calls:
 
@@ -298,7 +298,7 @@ Make sure the file is in root `config/`, not `src/config/`.
 Set `EXPECTED_AWS_ACCOUNT_ID` when running cloud mode:
 
 ```bash
-export EXPECTED_AWS_ACCOUNT_ID=262835400669
+export EXPECTED_AWS_ACCOUNT_ID=YOUR_DEV_AWS_ACCOUNT_ID
 ```
 
 If the current caller account differs, the runner exits before loading config or invoking sync.
@@ -327,6 +327,6 @@ Local mode does not use UUID.
 - Never commit `.env.local`.
 - Never commit `config/local.mapping-domain.json`.
 - Never print secrets in shell scripts, docs, logs, or test fixtures.
-- `token/` is deprecated and must not be reintroduced.
+- `token/` is not a supported runtime input and must not be reintroduced.
 - Use short-lived AWS credentials for cloud mode.
 - Prefer `EXPECTED_AWS_ACCOUNT_ID` in cloud mode to prevent accidental non-dev runs.
