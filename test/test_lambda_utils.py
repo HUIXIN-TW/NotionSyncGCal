@@ -9,6 +9,7 @@ SRC_ROOT = Path(__file__).resolve().parents[1] / "src"
 sys.path.insert(0, str(SRC_ROOT))
 
 import utils.lambda_utils as lambda_utils  # noqa: E402
+from sync.contracts import classify_sync_result  # noqa: E402
 
 
 def _make_context(function_name="test-fn", aws_request_id="test-req-id"):
@@ -53,7 +54,7 @@ class TestProcessAndLogSyncResult(unittest.TestCase):
     def _call(self, uuid):
         return lambda_utils.process_and_log_sync_result(
             logger_obj=self.logger,
-            sync_result=_ok_sync_result(),
+            execution=classify_sync_result(_ok_sync_result()),
             context=self.ctx,
             uuid=uuid,
             lambda_start_time=self.start,
@@ -105,7 +106,7 @@ class TestProcessAndLogSyncResult(unittest.TestCase):
         with patch.object(lambda_utils, "_save_sync_logs") as mock_save:
             result = lambda_utils.process_and_log_sync_result(
                 logger_obj=self.logger,
-                sync_result=sync_result,
+                execution=classify_sync_result(sync_result),
                 context=self.ctx,
                 uuid="real-uuid",
                 lambda_start_time=self.start,
@@ -132,6 +133,29 @@ class TestProcessAndLogSyncResult(unittest.TestCase):
             "RuntimeError: raw provider payload with private content",
         )
 
+    def test_preserves_empty_message_in_persisted_payload(self):
+        sync_result = {
+            "statusCode": 200,
+            "body": {
+                "status": "sync_success",
+                "message": {},
+            },
+        }
+
+        with patch.object(lambda_utils, "_save_sync_logs") as mock_save:
+            result = lambda_utils.process_and_log_sync_result(
+                logger_obj=self.logger,
+                execution=classify_sync_result(sync_result),
+                context=self.ctx,
+                uuid="real-uuid",
+                lambda_start_time=self.start,
+                trigger_name="test",
+            )
+
+        saved_payload = mock_save.call_args[0][1]
+        self.assertEqual(result["message"], {})
+        self.assertEqual(saved_payload["message"], {})
+
     def test_normalizes_plaintext_5xx_failure_message_for_persisted_payload(self):
         sync_result = {
             "statusCode": 500,
@@ -143,7 +167,7 @@ class TestProcessAndLogSyncResult(unittest.TestCase):
         with patch.object(lambda_utils, "_save_sync_logs") as mock_save:
             result = lambda_utils.process_and_log_sync_result(
                 logger_obj=self.logger,
-                sync_result=sync_result,
+                execution=classify_sync_result(sync_result),
                 context=self.ctx,
                 uuid="real-uuid",
                 lambda_start_time=self.start,
@@ -273,6 +297,22 @@ class TestProcessSqsRecords(unittest.TestCase):
         self.assertEqual(result["success_count"], 0)
         self.assertEqual(result["failure_count"], 1)
         self.assertEqual(result["batchItemFailures"], [{"itemIdentifier": "msg-0"}])
+
+    def test_each_sqs_result_is_classified_once_before_adapters(self):
+        original_classifier = lambda_utils.classify_sync_result
+
+        with (
+            patch.object(
+                lambda_utils,
+                "classify_sync_result",
+                wraps=original_classifier,
+            ) as mock_classify,
+            patch.object(lambda_utils, "_save_sync_logs"),
+        ):
+            self._process(["uuid-once"])
+
+        # One classification for the record and one for the final batch summary.
+        self.assertEqual(mock_classify.call_count, 2)
 
     def test_retryable_task_error_is_not_counted_as_success(self):
         event = _make_sqs_event(["uuid-fail"])
@@ -488,6 +528,27 @@ class TestProcessEventBridgeEvent(unittest.TestCase):
                     lambda_start_time=self.start,
                 )
 
+    def test_eventbridge_classifies_sync_result_once(self):
+        original_classifier = lambda_utils.classify_sync_result
+
+        with (
+            patch.object(
+                lambda_utils,
+                "classify_sync_result",
+                wraps=original_classifier,
+            ) as mock_classify,
+            patch.object(lambda_utils, "_save_sync_logs"),
+        ):
+            lambda_utils.process_eventbridge_event(
+                logger_obj=self.logger,
+                event=self.event,
+                context=self.ctx,
+                run_sync=lambda uuid: _ok_sync_result(),  # noqa: ARG005
+                lambda_start_time=self.start,
+            )
+
+        self.assertEqual(mock_classify.call_count, 1)
+
     def test_non_retriable_result_returns_normally(self):
         with patch.object(lambda_utils, "_save_sync_logs"):
             result = lambda_utils.process_eventbridge_event(
@@ -499,6 +560,58 @@ class TestProcessEventBridgeEvent(unittest.TestCase):
             )
 
         self.assertEqual(result["statusCode"], 200)
+
+    def test_partial_non_retriable_result_returns_without_retry(self):
+        sync_result = {
+            "statusCode": 200,
+            "body": {
+                "status": "sync_success",
+                "message": {
+                    "errors": [
+                        {
+                            "error_code": "skipped_item",
+                            "retriable": False,
+                        }
+                    ]
+                },
+            },
+        }
+
+        with patch.object(lambda_utils, "_save_sync_logs"):
+            result = lambda_utils.process_eventbridge_event(
+                logger_obj=self.logger,
+                event=self.event,
+                context=self.ctx,
+                run_sync=lambda uuid: sync_result,  # noqa: ARG005
+                lambda_start_time=self.start,
+            )
+
+        self.assertEqual(result["statusCode"], 200)
+        self.assertEqual(result["status"], "sync_success")
+
+    def test_fatal_non_retriable_result_returns_without_retry(self):
+        sync_result = {
+            "statusCode": 409,
+            "body": {
+                "status": "sync_error",
+                "message": {
+                    "error_code": "sync_configuration_invalid",
+                    "retriable": False,
+                },
+            },
+        }
+
+        with patch.object(lambda_utils, "_save_sync_logs"):
+            result = lambda_utils.process_eventbridge_event(
+                logger_obj=self.logger,
+                event=self.event,
+                context=self.ctx,
+                run_sync=lambda uuid: sync_result,  # noqa: ARG005
+                lambda_start_time=self.start,
+            )
+
+        self.assertEqual(result["statusCode"], 409)
+        self.assertEqual(result["status"], "sync_error")
 
 
 if __name__ == "__main__":

@@ -1,3 +1,5 @@
+from dataclasses import dataclass
+from enum import Enum
 from typing import Any, TypedDict
 
 
@@ -38,6 +40,38 @@ class SyncResultBody(TypedDict):
 class SyncResult(TypedDict):
     statusCode: int
     body: SyncResultBody
+
+
+class SyncOutcomeKind(str, Enum):
+    SUCCESS = "success"
+    PARTIAL_NON_RETRIABLE = "partial_non_retriable"
+    RETRIABLE_FAILURE = "retriable_failure"
+    FATAL_FAILURE = "fatal_failure"
+
+
+@dataclass(frozen=True)
+class SyncOutcome:
+    kind: SyncOutcomeKind
+    status_code: int
+    status: str
+
+    @property
+    def requires_retry(self) -> bool:
+        return self.kind is SyncOutcomeKind.RETRIABLE_FAILURE
+
+    @property
+    def counts_as_batch_success(self) -> bool:
+        """Preserve the existing v2 batch-summary success-count semantics."""
+        return self.kind in {
+            SyncOutcomeKind.SUCCESS,
+            SyncOutcomeKind.PARTIAL_NON_RETRIABLE,
+        }
+
+
+@dataclass(frozen=True)
+class SyncExecutionResult:
+    result: dict[str, Any]
+    outcome: SyncOutcome
 
 
 def build_sync_error(
@@ -119,9 +153,11 @@ def build_capacity_limited_result(
 
 def get_result_status(sync_result: dict[str, Any] | None) -> str:
     if "status" in (sync_result or {}):
-        return sync_result.get("status", "lambda_unknown_error")
-    body = (sync_result or {}).get("body") or {}
-    return body.get("status", "lambda_unknown_error")
+        status = sync_result.get("status")
+    else:
+        body = (sync_result or {}).get("body") or {}
+        status = body.get("status")
+    return status if isinstance(status, str) and status else "lambda_unknown_error"
 
 
 def get_result_message(sync_result: dict[str, Any] | None) -> Any:
@@ -131,42 +167,75 @@ def get_result_message(sync_result: dict[str, Any] | None) -> Any:
     return body.get("message")
 
 
-def is_retryable_result(sync_result: dict[str, Any] | None) -> bool:
-    status_code = int((sync_result or {}).get("statusCode", 500))
-    if status_code >= 500:
+def _status_code(sync_result: dict[str, Any] | None) -> int:
+    try:
+        return int((sync_result or {}).get("statusCode", 500))
+    except (TypeError, ValueError):
+        return 500
+
+
+def _has_retriable_signal(message: Any) -> bool:
+    if not isinstance(message, dict):
+        return False
+    if message.get("retriable") is True:
         return True
 
-    message = get_result_message(sync_result)
-    if isinstance(message, dict):
-        if message.get("retriable") is True:
-            return True
-
-        errors = message.get("errors")
-        if isinstance(errors, list):
-            for error in errors:
-                if isinstance(error, dict) and error.get("retriable") is True:
-                    return True
-    return False
-
-
-def is_successful_result(sync_result: dict[str, Any] | None) -> bool:
-    status_code = int((sync_result or {}).get("statusCode", 500))
-    if status_code >= 400 or is_retryable_result(sync_result):
+    errors = message.get("errors")
+    if not isinstance(errors, list):
         return False
-    return get_result_status(sync_result) in {"sync_success", "batch_processed"}
+    return any(isinstance(error, dict) and error.get("retriable") is True for error in errors)
+
+
+def _has_non_retriable_partial_errors(message: Any) -> bool:
+    if not isinstance(message, dict):
+        return False
+    errors = message.get("errors")
+    return isinstance(errors, list) and bool(errors)
+
+
+def classify_sync_result(sync_result: dict[str, Any] | None) -> SyncExecutionResult:
+    """Classify one raw sync result once for all internal trigger/log adapters."""
+    result = sync_result or {}
+    status_code = _status_code(result)
+    status = get_result_status(result)
+    message = get_result_message(result)
+
+    if status_code >= 500 or _has_retriable_signal(message):
+        kind = SyncOutcomeKind.RETRIABLE_FAILURE
+    elif status_code >= 400 or status == "sync_error":
+        kind = SyncOutcomeKind.FATAL_FAILURE
+    elif status in {"sync_success", "batch_processed"}:
+        kind = (
+            SyncOutcomeKind.PARTIAL_NON_RETRIABLE
+            if _has_non_retriable_partial_errors(message)
+            else SyncOutcomeKind.SUCCESS
+        )
+    else:
+        kind = SyncOutcomeKind.FATAL_FAILURE
+
+    return SyncExecutionResult(
+        result=result,
+        outcome=SyncOutcome(
+            kind=kind,
+            status_code=status_code,
+            status=status,
+        ),
+    )
 
 
 __all__ = [
     "SYNC_CAPACITY_LIMIT_ERROR_CODE",
     "SyncErrorPayload",
+    "SyncExecutionResult",
+    "SyncOutcome",
+    "SyncOutcomeKind",
     "SyncResult",
     "SyncResultBody",
     "SyncSuccessMessage",
     "build_capacity_limited_result",
     "build_sync_error",
     "build_sync_result",
+    "classify_sync_result",
     "get_result_message",
     "get_result_status",
-    "is_retryable_result",
-    "is_successful_result",
 ]

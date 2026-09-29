@@ -11,6 +11,7 @@ sys.path.insert(0, str(SRC_ROOT))
 from sync import SYNC_CAPACITY_LIMIT_ERROR_CODE  # noqa: E402
 from sync.sync import synchronize_notion_and_google_calendar  # noqa: E402
 import utils.lambda_utils as lambda_utils  # noqa: E402
+from sync.contracts import classify_sync_result  # noqa: E402
 
 USER_SETTING = {
     "page_property": {
@@ -91,7 +92,7 @@ class SyncContractTests(unittest.TestCase):
         with patch.object(lambda_utils, "_save_sync_logs") as mock_save:
             lambda_utils.process_and_log_sync_result(
                 logger_obj=logger,
-                sync_result=sync_result,
+                execution=classify_sync_result(sync_result),
                 context=ctx,
                 uuid="real-uuid",
                 lambda_start_time=start,
