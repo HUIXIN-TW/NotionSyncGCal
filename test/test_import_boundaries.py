@@ -49,7 +49,9 @@ class ImportBoundaryTests(unittest.TestCase):
 
         result = lambda_utils.process_and_log_sync_result(
             logger_obj=MagicMock(level=20),
-            sync_result={"statusCode": 200, "body": {"status": "ok"}},
+            execution=lambda_utils.classify_sync_result(
+                {"statusCode": 200, "body": {"status": "ok"}}
+            ),
             context=MagicMock(function_name="fn", aws_request_id="req"),
             uuid=lambda_utils._BATCH_SUMMARY_UUID,
             lambda_start_time=datetime.now(timezone.utc),
@@ -71,7 +73,9 @@ class ImportBoundaryTests(unittest.TestCase):
         ):
             lambda_utils.process_and_log_sync_result(
                 logger_obj=MagicMock(level=20),
-                sync_result={"statusCode": 200, "body": {"status": "ok"}},
+                execution=lambda_utils.classify_sync_result(
+                    {"statusCode": 200, "body": {"status": "ok"}}
+                ),
                 context=MagicMock(function_name="fn", aws_request_id="req"),
                 uuid="real-uuid",
                 lambda_start_time=datetime.now(timezone.utc),

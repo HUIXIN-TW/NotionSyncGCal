@@ -55,3 +55,19 @@ Notes:
 - Optional runtime-only field `debug_detail` may appear in non-production API responses when
   `EXPOSE_DEBUG_SYNC_ERRORS=true`. It is intentionally excluded from persisted `lastSyncLog.message.errors[]`.
 - Contract changes must update this file and tests in `test/test_sync_log_contract.py`.
+
+
+## Internal outcome model
+
+The Worker classifies each sync execution once into an internal `SyncOutcome` before trigger adaptation and sync-log shaping.
+
+The internal outcome is not part of this persisted contract and must not be added to stored payloads without a separate contract decision.
+
+Current internal classifications are:
+
+- `success`;
+- `partial_non_retriable`;
+- `retriable_failure`;
+- `fatal_failure`.
+
+SQS retry/ack behavior, EventBridge retry behavior, batch summary counts, and the persisted `statusCode` / `status` values are derived from that classified execution. The persisted v2 field set and meanings remain unchanged.
