@@ -23,7 +23,7 @@ from gcal.gcal_token import (  # noqa: E402
     SettingError as GoogleTokenSettingError,
 )
 from gcal.gcal_service import GoogleService  # noqa: E402
-from sync.contracts import build_sync_result, is_retryable_result  # noqa: E402
+from sync.contracts import build_sync_result, classify_sync_result  # noqa: E402
 from utils.logging_utils import get_logger  # noqa: E402
 
 
@@ -143,16 +143,15 @@ def _aggregate_source_results(source_results):
     retryable = False
     failed = False
     for source_id, result in source_results:
-        status_code = int((result or {}).get("statusCode", 500))
-        body = (result or {}).get("body") or {}
-        status = body.get("status", "sync_error")
-        retryable = retryable or is_retryable_result(result)
-        failed = failed or status_code >= 400 or status == "sync_error"
+        execution = classify_sync_result(result)
+        outcome = execution.outcome
+        retryable = retryable or outcome.requires_retry
+        failed = failed or not outcome.counts_as_batch_success
         summaries.append(
             {
                 "source_id": source_id,
-                "status_code": status_code,
-                "status": status,
+                "status_code": outcome.status_code,
+                "status": outcome.status,
             }
         )
 
