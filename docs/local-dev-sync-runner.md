@@ -157,7 +157,7 @@ export AWS_SESSION_TOKEN=...
 export APP_REGION=ap-southeast-2
 
 # Optional account guard:
-export EXPECTED_AWS_ACCOUNT_ID=<dev-account-id>
+export EXPECTED_AWS_ACCOUNT_ID=YOUR_DEV_AWS_ACCOUNT_ID
 
 ./scripts/local-run-dev-sync.sh --mode cloud --uuid xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
 ```
@@ -298,7 +298,7 @@ Make sure the file is in root `config/`, not `src/config/`.
 Set `EXPECTED_AWS_ACCOUNT_ID` when running cloud mode:
 
 ```bash
-export EXPECTED_AWS_ACCOUNT_ID=<dev-account-id>
+export EXPECTED_AWS_ACCOUNT_ID=YOUR_DEV_AWS_ACCOUNT_ID
 ```
 
 If the current caller account differs, the runner exits before loading config or invoking sync.

@@ -50,9 +50,10 @@ Tokens may be plaintext or `enc:v1:` encrypted. Use `src/utils/token_crypto.py:d
 ### Request flow
 
 ```
-Lambda trigger (SQS / EventBridge)
+Lambda trigger
   └─ lambda_function.lambda_handler
-       ├─ validate an object payload with a non-empty `uuid`
+       ├─ SQS: parse JSON body object and require a non-empty `uuid`
+       ├─ EventBridge: require detail object with a non-empty `uuid`
        └─ src/main.main(uuid)
             ├─ generate_config(uuid)
             ├─ MappingDomainConfig → active source settings
