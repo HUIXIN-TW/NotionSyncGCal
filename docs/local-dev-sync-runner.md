@@ -298,7 +298,7 @@ Make sure the file is in root `config/`, not `src/config/`.
 Set `EXPECTED_AWS_ACCOUNT_ID` when running cloud mode:
 
 ```bash
-export EXPECTED_AWS_ACCOUNT_ID=262835400669
+export EXPECTED_AWS_ACCOUNT_ID=<dev-account-id>
 ```
 
 If the current caller account differs, the runner exits before loading config or invoking sync.
