@@ -105,13 +105,14 @@ def process_and_log_sync_result(
     extra: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
     try:
+        message = get_result_message(execution.result)
         payload: Dict[str, Any] = {
             "contract_version": SYNC_LOG_CONTRACT_VERSION,
             "trigger_by": trigger_name,
             "uuid": uuid,
             "statusCode": execution.outcome.status_code,
             "status": execution.outcome.status,
-            "message": get_result_message(execution.result) or "unknown",
+            "message": "unknown" if message is None else message,
             "lambda_name": getattr(context, "function_name", "unknown"),
             "aws_request_id": getattr(context, "aws_request_id", "unknown"),
             "log_level": logger_obj.level,
