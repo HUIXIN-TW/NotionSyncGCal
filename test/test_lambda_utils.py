@@ -133,6 +133,29 @@ class TestProcessAndLogSyncResult(unittest.TestCase):
             "RuntimeError: raw provider payload with private content",
         )
 
+    def test_preserves_empty_message_in_persisted_payload(self):
+        sync_result = {
+            "statusCode": 200,
+            "body": {
+                "status": "sync_success",
+                "message": {},
+            },
+        }
+
+        with patch.object(lambda_utils, "_save_sync_logs") as mock_save:
+            result = lambda_utils.process_and_log_sync_result(
+                logger_obj=self.logger,
+                execution=classify_sync_result(sync_result),
+                context=self.ctx,
+                uuid="real-uuid",
+                lambda_start_time=self.start,
+                trigger_name="test",
+            )
+
+        saved_payload = mock_save.call_args[0][1]
+        self.assertEqual(result["message"], {})
+        self.assertEqual(saved_payload["message"], {})
+
     def test_normalizes_plaintext_5xx_failure_message_for_persisted_payload(self):
         sync_result = {
             "statusCode": 500,
