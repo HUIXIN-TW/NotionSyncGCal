@@ -241,6 +241,7 @@ def process_sqs_records(
     batch_summary["batchItemFailures"] = batch_item_failures
     return batch_summary
 
+
 def process_eventbridge_event(
     logger_obj,
     event: Dict[str, Any],
