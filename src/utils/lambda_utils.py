@@ -207,9 +207,7 @@ def process_sqs_records(
     failure_count = retryable_failure_count + non_retriable_failure_count
 
     success_uuids = [result.get("uuid") for result, outcome in record_results if outcome.counts_as_batch_success]
-    failure_uuids = [
-        result.get("uuid") for result, outcome in record_results if not outcome.counts_as_batch_success
-    ]
+    failure_uuids = [result.get("uuid") for result, outcome in record_results if not outcome.counts_as_batch_success]
     batch_execution = classify_sync_result(
         build_sync_result(
             200,
