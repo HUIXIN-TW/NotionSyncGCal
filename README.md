@@ -35,7 +35,7 @@ The storage migration does not redefine the synchronization algorithm.
 
 Cloud execution reads the current mapping-domain records:
 
-- `NOTION_SETTINGS` supplies `timeZone` and `timeCode`;
+- `NOTION_SETTINGS` supplies `timeZone` and `timeCode`; the Worker treats `timeZone` as temporal authority and retains `timeCode` only as current contract/derived metadata, not as a date-specific runtime offset;
 - each active `NOTION_TASK_SOURCE#<sourceId>` supplies one Notion database, defaults, and semantic property bindings;
 - each active `CALENDAR_MAPPING#<mappingId>` supplies the persisted Notion Calendar select value (`calendarName`) and Google Calendar ID;
 - each source is converted into the current worker runtime setting using persisted Notion property IDs; mutable property names are not a runtime lookup fallback;

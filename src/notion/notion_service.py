@@ -1,7 +1,10 @@
 from notion_client import Client
 from notion_client.errors import APIResponseError
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
+
 import emoji
+
+from utils.timezone_utils import format_datetime_in_timezone, format_local_midnight
 
 
 NOTION_API_VERSION_2022 = "2022-06-28"
@@ -78,8 +81,17 @@ class NotionService:
     def get_notion_task(self):
 
         # TODO: Notion has no filter for start date and end date so add extra column: GCAL_END_DATE_NOTION_NAME
-        before_date_with_time_zone = self.setting["before_date"] + "T00:00:00.000" + self.setting["timecode"]
-        after_date_with_time_zone = self.setting["after_date"] + "T00:00:00.000" + self.setting["timecode"]
+        time_zone = self.setting["timezone"]
+        before_date_with_time_zone = format_local_midnight(
+            self.setting["before_date"],
+            time_zone,
+            milliseconds=True,
+        )
+        after_date_with_time_zone = format_local_midnight(
+            self.setting["after_date"],
+            time_zone,
+            milliseconds=True,
+        )
         date_range = f"from {self.setting['after_date']} (inclusive) to {self.setting['before_date']} (exclusive)"
         notion_summary = {
             "action": "get_notion_task",
@@ -293,17 +305,16 @@ class NotionService:
         self.logger.info(f"Event {page_id} marked as deletion in Notion successfully.")
 
     def parse_date_in_notion_format(self, date_obj):
-        """Helper function to notion format dates."""
+        """Format a datetime using the configured IANA timezone and date-specific offset."""
         try:
-            formatted_date = date_obj.strftime(f"%Y-%m-%dT%H:%M:%S{self.setting['timecode']}")
+            return format_datetime_in_timezone(date_obj, self.setting["timezone"])
         except Exception as e:
             self.logger.error(f"Error formatting date: {e}")
-            formatted_date = None
-        return formatted_date
+            return None
 
     def get_current_time(self):
-        """Helper function to get the current time in the Notion format."""
-        return self.parse_date_in_notion_format(datetime.now())
+        """Return the current instant formatted in the configured IANA timezone."""
+        return self.parse_date_in_notion_format(datetime.now(timezone.utc))
 
     def get_event_time(self, event, key):
         return event.get(key, {}).get("dateTime") or event.get(key, {}).get("date")
