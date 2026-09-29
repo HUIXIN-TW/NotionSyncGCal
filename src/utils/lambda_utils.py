@@ -206,9 +206,7 @@ def process_sqs_records(
     non_retriable_failure_count = len(record_results) - success_count - retryable_failure_count
     failure_count = retryable_failure_count + non_retriable_failure_count
 
-    success_uuids = [
-        result.get("uuid") for result, outcome in record_results if outcome.counts_as_batch_success
-    ]
+    success_uuids = [result.get("uuid") for result, outcome in record_results if outcome.counts_as_batch_success]
     failure_uuids = [
         result.get("uuid") for result, outcome in record_results if not outcome.counts_as_batch_success
     ]
