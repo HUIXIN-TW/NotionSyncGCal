@@ -171,5 +171,112 @@ class MainCliOverrideTests(unittest.TestCase):
         self.assertEqual(mock_sync.call_count, 2)
 
 
+    def test_aggregate_source_results_preserves_clean_success(self):
+        clean = {
+            "statusCode": 200,
+            "body": {
+                "status": "sync_success",
+                "message": {"summary": {}, "errors": []},
+            },
+        }
+
+        result = main_module._aggregate_source_results(
+            [("source-1", clean), ("source-2", clean)]
+        )
+
+        self.assertEqual(result["statusCode"], 200)
+        self.assertEqual(result["body"]["status"], "sync_success")
+        self.assertFalse(result["body"]["message"]["retriable"])
+
+    def test_aggregate_source_results_preserves_partial_non_retriable_success(self):
+        clean = {
+            "statusCode": 200,
+            "body": {
+                "status": "sync_success",
+                "message": {"summary": {}, "errors": []},
+            },
+        }
+        partial = {
+            "statusCode": 200,
+            "body": {
+                "status": "sync_success",
+                "message": {
+                    "errors": [
+                        {
+                            "error_code": "skipped_item",
+                            "retriable": False,
+                        }
+                    ]
+                },
+            },
+        }
+
+        result = main_module._aggregate_source_results(
+            [("source-1", clean), ("source-2", partial)]
+        )
+
+        self.assertEqual(result["statusCode"], 200)
+        self.assertEqual(result["body"]["status"], "sync_success")
+        self.assertFalse(result["body"]["message"]["retriable"])
+
+    def test_aggregate_source_results_maps_fatal_failure_to_non_retriable_error(self):
+        clean = {
+            "statusCode": 200,
+            "body": {
+                "status": "sync_success",
+                "message": {"summary": {}, "errors": []},
+            },
+        }
+        fatal = {
+            "statusCode": 409,
+            "body": {
+                "status": "sync_error",
+                "message": {
+                    "error_code": "sync_configuration_invalid",
+                    "retriable": False,
+                },
+            },
+        }
+
+        result = main_module._aggregate_source_results(
+            [("source-1", clean), ("source-2", fatal)]
+        )
+
+        self.assertEqual(result["statusCode"], 409)
+        self.assertEqual(result["body"]["status"], "sync_error")
+        self.assertFalse(result["body"]["message"]["retriable"])
+
+    def test_aggregate_source_results_maps_contradictory_retry_signal_to_failure(self):
+        clean = {
+            "statusCode": 200,
+            "body": {
+                "status": "sync_success",
+                "message": {"summary": {}, "errors": []},
+            },
+        }
+        retriable = {
+            "statusCode": 200,
+            "body": {
+                "status": "sync_success",
+                "message": {
+                    "errors": [
+                        {
+                            "error_code": "provider_write_failed",
+                            "retriable": True,
+                        }
+                    ]
+                },
+            },
+        }
+
+        result = main_module._aggregate_source_results(
+            [("source-1", clean), ("source-2", retriable)]
+        )
+
+        self.assertEqual(result["statusCode"], 500)
+        self.assertEqual(result["body"]["status"], "sync_error")
+        self.assertTrue(result["body"]["message"]["retriable"])
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -561,6 +561,58 @@ class TestProcessEventBridgeEvent(unittest.TestCase):
 
         self.assertEqual(result["statusCode"], 200)
 
+    def test_partial_non_retriable_result_returns_without_retry(self):
+        sync_result = {
+            "statusCode": 200,
+            "body": {
+                "status": "sync_success",
+                "message": {
+                    "errors": [
+                        {
+                            "error_code": "skipped_item",
+                            "retriable": False,
+                        }
+                    ]
+                },
+            },
+        }
+
+        with patch.object(lambda_utils, "_save_sync_logs"):
+            result = lambda_utils.process_eventbridge_event(
+                logger_obj=self.logger,
+                event=self.event,
+                context=self.ctx,
+                run_sync=lambda uuid: sync_result,  # noqa: ARG005
+                lambda_start_time=self.start,
+            )
+
+        self.assertEqual(result["statusCode"], 200)
+        self.assertEqual(result["status"], "sync_success")
+
+    def test_fatal_non_retriable_result_returns_without_retry(self):
+        sync_result = {
+            "statusCode": 409,
+            "body": {
+                "status": "sync_error",
+                "message": {
+                    "error_code": "sync_configuration_invalid",
+                    "retriable": False,
+                },
+            },
+        }
+
+        with patch.object(lambda_utils, "_save_sync_logs"):
+            result = lambda_utils.process_eventbridge_event(
+                logger_obj=self.logger,
+                event=self.event,
+                context=self.ctx,
+                run_sync=lambda uuid: sync_result,  # noqa: ARG005
+                lambda_start_time=self.start,
+            )
+
+        self.assertEqual(result["statusCode"], 409)
+        self.assertEqual(result["status"], "sync_error")
+
 
 if __name__ == "__main__":
     unittest.main()
