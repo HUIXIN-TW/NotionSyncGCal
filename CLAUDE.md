@@ -36,7 +36,7 @@ prettier --write .
 
 `src/config/config.py:generate_config()` is the single branch point. `APP_MODE` must be set explicitly.
 
-- **Local** (`APP_MODE=local`): loads the v2 mapping-domain document from `config/local.mapping-domain.json`; secrets are loaded from environment variables.
+- **Local** (`APP_MODE=local`): loads the current mapping-domain document from `config/local.mapping-domain.json`; secrets are loaded from environment variables.
 - **Cloud** (`APP_MODE=cloud`): requires a UUID, reads settings/Task sources/Calendar mappings from the mapping-domain table, and reads OAuth tokens from their UUID-keyed tables.
 
 Do not infer mode from UUID. Do not fallback to `token/*.json`. Do not commit secrets.
@@ -45,14 +45,14 @@ Local configuration/credentials live in `.env.local`: `NOTION_TOKEN`, `GOOGLE_CA
 
 Tokens may be plaintext or `enc:v1:` encrypted. Use `src/utils/token_crypto.py:decrypt_token_if_encrypted()` at token read boundaries; `decrypt_token()` stays strict. In cloud mode, token encryption keys are resolved from SSM via `TOKEN_ENCRYPTION_KEY_SSM_PATH`; local mode may still use plaintext `TOKEN_ENCRYPTION_KEY`.
 
-`MappingDomainConfig` is the only configuration boundary. It returns one current-contract runtime setting per active Task source, including the normalized Calendar-name mapping, explicit default Calendar, and worker-required stable Notion property IDs. It fails closed on missing, malformed, cross-owner, duplicate-Calendar-name, or incomplete configuration. Runtime property lookup must use `propertyId` only; do not add mutable-name fallbacks.
+`MappingDomainConfig` is the only configuration boundary. It returns one current-contract runtime setting per active Task source, including the normalized Calendar-name mapping, explicit default Calendar, and worker-required stable Notion property IDs. It fails closed on missing, malformed, cross-owner, duplicate-Calendar-name, or incomplete configuration. Runtime property lookup must use `propertyId` only; do not add mutable-name fallbacks. `timeZone` is the temporal source of truth; `timeCode` remains current-contract metadata and must not drive date-specific runtime offsets.
 
 ### Request flow
 
 ```
 Lambda trigger (SQS / EventBridge)
   └─ lambda_function.lambda_handler
-       ├─ reject superseded `execution` payloads
+       ├─ validate an object payload with a non-empty `uuid`
        └─ src/main.main(uuid)
             ├─ generate_config(uuid)
             ├─ MappingDomainConfig → active source settings
@@ -62,7 +62,7 @@ Lambda trigger (SQS / EventBridge)
 
 ### Sync logic (`src/sync/sync.py`)
 
-The mapping-domain migration preserves the existing event-ID-based synchronization algorithm.
+The worker uses the event-ID-based synchronization algorithm:
 
 1. Fetch Notion tasks and Google Calendar events for the configured source/window.
 2. Read the task's persisted `GCal Event Id` and configured Calendar value.
@@ -73,7 +73,7 @@ The mapping-domain migration preserves the existing event-ID-based synchronizati
 7. The existing Google → Notion path and force modes remain available.
 8. Multiple Task sources are handled by invoking the same sync implementation once per current-contract source setting.
 
-Do not introduce deterministic provider event identity, provider ownership metadata, or a new sync direction as part of this configuration migration.
+Do not introduce deterministic provider event identity, provider ownership metadata, or a new sync direction without a separate architecture decision.
 
 ### DynamoDB tables
 
@@ -85,7 +85,7 @@ Runtime tables (set via env vars):
 - `DYNAMODB_NOTION_OAUTH_TOKEN_TABLE` — Notion API token (encrypted as `enc:v1:…`)
 - `DYNAMODB_SYNC_LOGS_TABLE` — sync result logs with TTL
 
-The worker consumes normalized mapping-domain records and uses persisted provider property IDs directly. It does not fall back to mutable Notion property names or legacy configuration shapes. `GCal Event Id` / `GCal Sync Time` semantics remain unchanged. Distinct Task sources may share a Google Calendar; configuration identity does not redefine provider event identity.
+The worker consumes only the current mapping-domain configuration shape and uses persisted provider property IDs directly. It does not fall back to mutable Notion property names. `GCal Event Id` / `GCal Sync Time` semantics are the current synchronization contract. Distinct Task sources may share a Google Calendar; configuration identity does not redefine provider event identity.
 
 ### Token encryption
 

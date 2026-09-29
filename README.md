@@ -5,7 +5,7 @@
 
 AWS Lambda container and local developer runner for synchronizing Notion tasks with Google Calendar.
 
-The mapping-domain cutover changes how configuration is stored and loaded. It does not replace the existing event-ID-based synchronization algorithm. Validate configuration and run against test data first.
+The worker loads configuration from the mapping-domain contract and uses the event-ID-based synchronization algorithm described below. Validate configuration and run against test data first.
 
 Releases: https://github.com/HUIXIN-TW/NotionSyncGCal/releases
 
@@ -13,23 +13,23 @@ Releases: https://github.com/HUIXIN-TW/NotionSyncGCal/releases
 
 - Loads normalized settings, Task sources, and Calendar mappings from the mapping-domain table.
 - Expands one current-contract runtime setting per active Notion Task source.
-- Runs the existing Notion/Google synchronization logic independently for each source.
-- Preserves the existing Notion `GCal Event Id` and `GCal Sync Time` semantics while resolving those properties strictly by persisted Notion property ID.
+- Runs the Notion/Google synchronization logic independently for each source.
+- Uses the Notion `GCal Event Id` and `GCal Sync Time` fields while resolving those properties strictly by persisted Notion property ID.
 - Supports multiple first-class Task sources and normalized Calendar-name → Calendar-ID mappings.
 - Persists cloud sync logs in DynamoDB.
 
 ## Sync Behavior
 
-The storage migration does not redefine the synchronization algorithm.
+Synchronization is event-ID-based:
 
-- Existing event matching still uses the Notion `GCal Event Id` field.
-- Creating a Google event still writes the provider event ID back to Notion.
-- Existing update/delete/move behavior still uses that provider event ID.
-- Existing timestamp comparison and `GCal Sync Time` behavior remains in `src/sync/sync.py`.
-- The existing Google → Notion and Notion → Google force modes remain available.
-- The existing default-Calendar behavior is preserved through explicit `defaultCalendarName` configuration.
+- Event matching uses the Notion `GCal Event Id` field.
+- Creating a Google event writes the provider event ID back to Notion.
+- Update, delete, and move behavior uses that provider event ID.
+- Timestamp comparison and `GCal Sync Time` behavior are implemented in `src/sync/sync.py`.
+- Google → Notion and Notion → Google force modes are available.
+- Default-Calendar behavior is driven by explicit `defaultCalendarName` configuration.
 - CLI date-range flags are in-memory execution overrides only and do not rewrite configuration.
-- Multiple active Task sources are orchestrated by running the same existing sync function once per source.
+- Multiple active Task sources are orchestrated by running the same sync function once per source.
 
 ## Mapping-Domain Consumer Contract
 
@@ -43,7 +43,7 @@ Cloud execution reads the current mapping-domain records:
 
 The worker requires the semantic bindings used by the existing synchronization implementation, including task/date, Calendar, location, extra info, `GCal End Date`, `GCal Deleted?`, `GCal Event Id`, `GCal Sync Time`, and `GCal Icon`.
 
-Configuration fails closed when owner identity, lifecycle, required property bindings, Calendar-name uniqueness, default Calendar, or normalized record shape is invalid. Runtime property lookup uses `propertyId` only; there is no property-name fallback. SQS/EventBridge remain UUID-scoped and reject the superseded `execution` payload.
+Configuration fails closed when owner identity, lifecycle, required property bindings, Calendar-name uniqueness, default Calendar, or normalized record shape is invalid. Runtime property lookup uses `propertyId` only; there is no property-name fallback. SQS and EventBridge require UUID-scoped payloads with a non-empty `uuid` and fail closed on unsupported payload shapes.
 
 ## Current Architecture
 
@@ -116,7 +116,7 @@ Requires a `uuid` and AWS access.
   - Google OAuth token table
   - Notion OAuth token table
   - sync logs table
-- The Users table remains only for the existing `lastSyncLog` write; it is not a configuration source.
+- `DYNAMODB_USER_TABLE` is used only for sync-log summary persistence; it is not a configuration source.
 - Lambda environment includes SSM parameter paths:
   - `GOOGLE_CALENDAR_CLIENT_SECRET_SSM_PATH`
   - `TOKEN_ENCRYPTION_KEY_SSM_PATH`
