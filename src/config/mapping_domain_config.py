@@ -1,6 +1,6 @@
 import json
 from copy import deepcopy
-from datetime import date, timedelta
+from datetime import timedelta
 from decimal import Decimal
 
 from contracts.notica_mapping_domain import (
@@ -12,6 +12,12 @@ from contracts.notica_mapping_domain import (
     TASK_SOURCE_FIELD_SPECS,
     TASK_SOURCE_PROPERTY_MAPPING_FIELD_SPECS,
     TASK_SOURCE_SEMANTIC_PROPERTY_SPECS,
+)
+from utils.timezone_utils import (
+    InvalidTimeZoneError,
+    format_local_midnight,
+    local_date_at,
+    resolve_timezone,
 )
 
 
@@ -154,19 +160,27 @@ def _validate_owner(record, owner_user_uuid, label):
         raise SettingError(f"{label} does not belong to the requested owner.")
 
 
-def apply_date_range(setting, goback_days, goforward_days):
-    """Preserve the existing worker date-window calculation."""
-    today = date.today()
+def apply_date_range(setting, goback_days, goforward_days, *, now=None):
+    """Apply the sync window using the configured IANA timezone as temporal truth."""
     goback_days = _require_int(goback_days, "goBackDays", minimum=0)
     goforward_days = _require_int(goforward_days, "goForwardDays", minimum=0)
-    timecode = _require_string(setting.get("timecode"), "timecode")
+    time_zone = _require_string(setting.get("timezone"), "timezone")
+
+    try:
+        today = local_date_at(time_zone, now)
+        after_date = today - timedelta(days=goback_days)
+        before_date = today + timedelta(days=goforward_days)
+        google_timemin = format_local_midnight(after_date, time_zone)
+        google_timemax = format_local_midnight(before_date, time_zone)
+    except (InvalidTimeZoneError, ValueError) as exc:
+        raise SettingError(f"Invalid worker timezone '{time_zone}': {exc}") from exc
 
     setting["goback_days"] = goback_days
     setting["goforward_days"] = goforward_days
-    setting["after_date"] = (today + timedelta(days=-goback_days)).strftime("%Y-%m-%d")
-    setting["before_date"] = (today + timedelta(days=goforward_days)).strftime("%Y-%m-%d")
-    setting["google_timemin"] = (today + timedelta(days=-goback_days)).strftime(f"%Y-%m-%dT%H:%M:%S{timecode}")
-    setting["google_timemax"] = (today + timedelta(days=goforward_days)).strftime(f"%Y-%m-%dT%H:%M:%S{timecode}")
+    setting["after_date"] = after_date.isoformat()
+    setting["before_date"] = before_date.isoformat()
+    setting["google_timemin"] = google_timemin
+    setting["google_timemax"] = google_timemax
     return setting
 
 
@@ -217,6 +231,10 @@ class MappingDomainConfig:
         _validate_contract_fields(settings, NOTION_SETTINGS_FIELD_SPECS, "settings")
         _validate_owner(settings, owner, "settings")
         timezone = _require_string(settings.get("timeZone"), "settings.timeZone")
+        try:
+            resolve_timezone(timezone)
+        except InvalidTimeZoneError as exc:
+            raise SettingError(f"settings.timeZone is invalid: {timezone}") from exc
         timecode = _require_string(settings.get("timeCode"), "settings.timeCode")
 
         validated_sources = {}

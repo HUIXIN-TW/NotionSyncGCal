@@ -3,6 +3,7 @@ import json
 import sys
 import tempfile
 import unittest
+from datetime import datetime, timezone
 from pathlib import Path
 from unittest import mock
 
@@ -13,6 +14,7 @@ from config.mapping_domain_config import (  # noqa: E402
     MappingDomainConfig,
     SettingError,
     _validate_contract_fields,
+    apply_date_range,
 )
 from contracts.notica_mapping_domain import TASK_SOURCE_FIELD_SPECS  # noqa: E402
 
@@ -305,6 +307,53 @@ class MappingDomainConfigTests(unittest.TestCase):
         payload["calendarMappings"][0]["ownerUserUuid"] = "other-user"
         with self.assertRaisesRegex(SettingError, "requested owner"):
             self.load(payload)
+
+    def test_rejects_unknown_iana_timezone(self):
+        payload = build_payload()
+        payload["settings"]["timeZone"] = "Mars/Olympus_Mons"
+
+        with self.assertRaisesRegex(SettingError, "settings.timeZone is invalid"):
+            self.load(payload)
+
+    def test_date_range_uses_configured_local_calendar_date(self):
+        setting = {
+            "timezone": "Australia/Perth",
+            "timecode": "+08:00",
+        }
+        instant = datetime(2026, 1, 1, 18, 30, tzinfo=timezone.utc)
+
+        apply_date_range(setting, 0, 0, now=instant)
+
+        self.assertEqual(setting["after_date"], "2026-01-02")
+        self.assertEqual(setting["before_date"], "2026-01-02")
+        self.assertEqual(setting["google_timemin"], "2026-01-02T00:00:00+08:00")
+        self.assertEqual(setting["google_timemax"], "2026-01-02T00:00:00+08:00")
+
+    def test_date_range_derives_each_dst_boundary_offset_independently(self):
+        setting = {
+            "timezone": "America/New_York",
+            "timecode": "-05:00",
+        }
+        instant = datetime(2026, 3, 8, 16, 0, tzinfo=timezone.utc)
+
+        apply_date_range(setting, 1, 1, now=instant)
+
+        self.assertEqual(setting["after_date"], "2026-03-07")
+        self.assertEqual(setting["before_date"], "2026-03-09")
+        self.assertEqual(setting["google_timemin"], "2026-03-07T00:00:00-05:00")
+        self.assertEqual(setting["google_timemax"], "2026-03-09T00:00:00-04:00")
+
+    def test_stale_timecode_does_not_control_summer_offset(self):
+        setting = {
+            "timezone": "America/New_York",
+            "timecode": "-05:00",
+        }
+        instant = datetime(2026, 7, 1, 16, 0, tzinfo=timezone.utc)
+
+        apply_date_range(setting, 0, 0, now=instant)
+
+        self.assertTrue(setting["google_timemin"].endswith("-04:00"))
+        self.assertTrue(setting["google_timemax"].endswith("-04:00"))
 
 
 if __name__ == "__main__":
