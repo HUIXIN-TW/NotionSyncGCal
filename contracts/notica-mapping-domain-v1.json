@@ -28,6 +28,10 @@
           "sourceId": {
             "required": true,
             "type": "string"
+          },
+          "version": {
+            "required": true,
+            "type": "number"
           }
         }
       },
@@ -100,6 +104,10 @@
           "propertyMappings": {
             "required": true,
             "type": "object"
+          },
+          "version": {
+            "required": true,
+            "type": "number"
           }
         },
         "propertyMappingFields": {
@@ -201,7 +209,7 @@
   "schemaVersion": 1,
   "sourceArtifact": {
     "artifactKind": "notica-mapping-domain-contract",
-    "sha256": "2c3bacf9f59c4d88509742b26f8d447ae656266736864e078f97130d834587c6"
+    "sha256": "ea105b825b82459cdb5d411372238b8d1ea69546fae37c1a38c03e255798193f"
   },
   "workerStorageRead": {
     "calendarMappingSortKeyPrefix": "CALENDAR_MAPPING#",
@@ -219,7 +227,8 @@
         "id",
         "lifecycle",
         "ownerUserUuid",
-        "sourceId"
+        "sourceId",
+        "version"
       ],
       "notionSettings": [
         "ownerUserUuid",
@@ -232,7 +241,8 @@
         "id",
         "lifecycle",
         "ownerUserUuid",
-        "propertyMappings"
+        "propertyMappings",
+        "version"
       ]
     },
     "taskSourceSortKeyPrefix": "NOTION_TASK_SOURCE#"
