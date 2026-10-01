@@ -6,6 +6,10 @@ from sync.contracts import (
     build_sync_error,
     build_sync_result,
 )
+from sync.mapping_write_fence import (
+    MappingWriteFenceError,
+    assert_current_google_write_route,
+)
 from utils.logging_utils import build_debug_exception_detail, get_logger  # noqa: E402
 from notion.notion_properties import get_checkbox, get_rich_text, get_select, get_title
 
@@ -192,6 +196,11 @@ def synchronize_notion_and_google_calendar(
                         continue
                     action = "create_gcal"
                     logger.debug("Creating a new event in Google Calendar for a Notion task.")
+                    assert_current_google_write_route(
+                        user_setting,
+                        notion_gcal_cal_name,
+                        notion_gcal_cal_id,
+                    )
                     new_gcal_event_id = google_service.create_gcal_event(notion_task, notion_gcal_cal_id)
                     notion_service.update_notion_task_for_new_gcal_event_id(notion_task_page_id, new_gcal_event_id)
                     continue
@@ -200,6 +209,11 @@ def synchronize_notion_and_google_calendar(
                 if notion_deletion and notion_gcal_event_id is not None:
                     action = "delete_gcal"
                     logger.debug("Deleting a Google Calendar event for a Notion task.")
+                    assert_current_google_write_route(
+                        user_setting,
+                        notion_gcal_cal_name,
+                        notion_gcal_cal_id,
+                    )
                     google_service.delete_gcal_event(notion_gcal_cal_id, notion_gcal_event_id)
 
                     notion_service.delete_notion_task(notion_task_page_id)
@@ -261,6 +275,11 @@ def synchronize_notion_and_google_calendar(
                             )
                             logger.debug("Updating the Google Calendar event from Notion.")
                             if notion_gcal_cal_id == gcal_cal_id:
+                                assert_current_google_write_route(
+                                    user_setting,
+                                    notion_gcal_cal_name,
+                                    notion_gcal_cal_id,
+                                )
                                 google_service.update_gcal_event(
                                     notion_task,
                                     notion_gcal_cal_id,
@@ -271,11 +290,30 @@ def synchronize_notion_and_google_calendar(
                                     "Moving Google Calendar event_id=%s to the configured calendar.",
                                     gcal_event_id,
                                 )
-                                google_service.move_and_update_gcal_event(
-                                    notion_task,
+                                assert_current_google_write_route(
+                                    user_setting,
+                                    gcal_cal_name,
+                                    gcal_cal_id,
+                                )
+                                assert_current_google_write_route(
+                                    user_setting,
+                                    notion_gcal_cal_name,
+                                    notion_gcal_cal_id,
+                                )
+                                google_service.move_gcal_event(
                                     notion_gcal_event_id,
                                     notion_gcal_cal_id,
                                     gcal_cal_id,
+                                )
+                                assert_current_google_write_route(
+                                    user_setting,
+                                    notion_gcal_cal_name,
+                                    notion_gcal_cal_id,
+                                )
+                                google_service.update_gcal_event(
+                                    notion_task,
+                                    notion_gcal_cal_id,
+                                    notion_gcal_event_id,
                                 )
                             notion_service.update_notion_task_for_new_gcal_sync_time(
                                 notion_task_page_id, current_gcal_sync_time
@@ -327,6 +365,21 @@ def synchronize_notion_and_google_calendar(
                         remove_gcal_event_from_list(gcal_event_list, gcal_event, gcal_event_summary)
                         break
 
+            except MappingWriteFenceError as exc:
+                logger.warning(
+                    "Blocked stale Google provider write: action=%s reason=%s",
+                    action,
+                    exc.reason,
+                )
+                return build_sync_result(
+                    409,
+                    "sync_error",
+                    {
+                        "error_code": "mapping_write_fence_blocked",
+                        "reason": exc.reason,
+                        "retriable": False,
+                    },
+                )
             except SyncAbortError:
                 raise
             except Exception as e:
