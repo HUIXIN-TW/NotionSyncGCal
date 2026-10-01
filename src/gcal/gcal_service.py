@@ -143,9 +143,8 @@ class GoogleService:
         event_id = gcal_event.get("id")
         return event_id
 
-    def move_and_update_gcal_event(
+    def move_gcal_event(
         self,
-        notion_task,
         existing_gcal_event_id,
         new_gcal_calendar_id,
         existing_gcal_cal_id,
@@ -155,6 +154,19 @@ class GoogleService:
             eventId=existing_gcal_event_id,
             destination=new_gcal_calendar_id,
         ).execute()
+
+    def move_and_update_gcal_event(
+        self,
+        notion_task,
+        existing_gcal_event_id,
+        new_gcal_calendar_id,
+        existing_gcal_cal_id,
+    ):
+        self.move_gcal_event(
+            existing_gcal_event_id,
+            new_gcal_calendar_id,
+            existing_gcal_cal_id,
+        )
         self.update_gcal_event(notion_task, new_gcal_calendar_id, existing_gcal_event_id)
 
     def delete_gcal_event(self, gcal_calendar_id, gcal_event_id):
