@@ -162,9 +162,9 @@ class MappingDomainRefactorIntegrationTests(unittest.TestCase):
         self.assertEqual(
             setting["gcal_route_by_name"]["Learning"],
             {
-                "mapping_id": "mapping-learning",
+                "mapping_id": "mapping-0",
                 "mapping_version": 1,
-                "calendar_id": "learning@example.com",
+                "calendar_id": "calendar-0@example.com",
             },
         )
         self.assertEqual(
