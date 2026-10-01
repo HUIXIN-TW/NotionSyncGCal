@@ -129,6 +129,8 @@ class MappingDomainConfigTests(unittest.TestCase):
         self.assertEqual(setting["database_id"], "notion-db-1")
         self.assertEqual(setting["timezone"], "Asia/Taipei")
         self.assertEqual(setting["timecode"], "+08:00")
+        self.assertEqual(setting["mapping_domain_mode"], "local")
+        self.assertEqual(setting["source_version"], 1)
         self.assertEqual(setting["goback_days"], 1)
         self.assertEqual(setting["goforward_days"], 2)
         self.assertEqual(setting["default_event_length"], 60)
@@ -157,6 +159,22 @@ class MappingDomainConfigTests(unittest.TestCase):
         )
         self.assertEqual(setting["gcal_default_name"], "Learning")
         self.assertEqual(setting["gcal_default_id"], "learning@example.com")
+        self.assertEqual(
+            setting["gcal_route_by_name"]["Learning"],
+            {
+                "mapping_id": "mapping-learning",
+                "mapping_version": 1,
+                "calendar_id": "learning@example.com",
+            },
+        )
+        self.assertEqual(
+            setting["gcal_route_by_name"]["Job"],
+            {
+                "mapping_id": "mapping-job",
+                "mapping_version": 1,
+                "calendar_id": "job@example.com",
+            },
+        )
         self.assertTrue(setting["google_timemin"].endswith("+08:00"))
         self.assertTrue(setting["google_timemax"].endswith("+08:00"))
 
