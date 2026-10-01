@@ -153,10 +153,20 @@ class MappingDomainRefactorIntegrationTests(unittest.TestCase):
 
         setting = notion_service_cls.call_args.args[1]
         self.assertEqual(setting["source_id"], "source-1")
+        self.assertEqual(setting["source_version"], 1)
+        self.assertEqual(setting["mapping_domain_mode"], "cloud")
         self.assertEqual(setting["database_id"], "05482e3c-4aca-40e0-9527-9ff2f2630e66")
         self.assertEqual(setting["timezone"], "Asia/Taipei")
         self.assertEqual(setting["timecode"], "+08:00")
         self.assertEqual(setting["gcal_default_name"], "Learning")
+        self.assertEqual(
+            setting["gcal_route_by_name"]["Learning"],
+            {
+                "mapping_id": "mapping-learning",
+                "mapping_version": 1,
+                "calendar_id": "learning@example.com",
+            },
+        )
         self.assertEqual(
             list(setting["gcal_name_dict"]),
             ["Learning", "Job", "Life", "Mission", "Other", "Registered Event", "School"],
