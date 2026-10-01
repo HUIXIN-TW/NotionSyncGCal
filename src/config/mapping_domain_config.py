@@ -307,6 +307,11 @@ class MappingDomainConfig:
 
     def _to_source_setting(self, source, mappings, timezone, timecode):
         source_id = source["id"]
+        source_version = _require_int(
+            source.get("version"),
+            f"taskSource[{source_id}].version",
+            minimum=1,
+        )
         database = _require_dict(source.get("database"), f"taskSource[{source_id}].database")
         defaults = _require_dict(source.get("defaults"), f"taskSource[{source_id}].defaults")
         property_mappings = _require_dict(
@@ -337,11 +342,24 @@ class MappingDomainConfig:
             )
 
         calendar_by_name = {}
+        calendar_route_by_name = {}
         for mapping in mappings:
+            mapping_id = _require_string(mapping.get("id"), "calendarMapping.id")
             calendar_name = _require_string(mapping.get("calendarName"), "calendarMapping.calendarName")
             if calendar_name in calendar_by_name:
                 raise SettingError(f"Duplicate Calendar name for Task source {source_id}: {calendar_name}")
-            calendar_by_name[calendar_name] = _require_string(mapping.get("calendarId"), "calendarMapping.calendarId")
+            calendar_id = _require_string(mapping.get("calendarId"), "calendarMapping.calendarId")
+            mapping_version = _require_int(
+                mapping.get("version"),
+                f"calendarMapping[{mapping_id}].version",
+                minimum=1,
+            )
+            calendar_by_name[calendar_name] = calendar_id
+            calendar_route_by_name[calendar_name] = {
+                "mapping_id": mapping_id,
+                "mapping_version": mapping_version,
+                "calendar_id": calendar_id,
+            }
 
         default_calendar_name = _require_string(
             defaults.get("defaultCalendarName"),
@@ -360,7 +378,9 @@ class MappingDomainConfig:
 
         setting = {
             "owner_user_uuid": self.owner_user_uuid,
+            "mapping_domain_mode": self.mode,
             "source_id": source_id,
+            "source_version": source_version,
             "database_id": _require_string(
                 database.get("externalId"),
                 "taskSource.database.externalId",
@@ -381,6 +401,7 @@ class MappingDomainConfig:
             "page_property": page_property,
             "gcal_name_dict": gcal_name_dict,
             "gcal_id_dict": gcal_id_dict,
+            "gcal_route_by_name": calendar_route_by_name,
             "gcal_default_name": default_calendar_name,
             "gcal_default_id": gcal_name_dict[default_calendar_name],
             "notion_api_version": "2022-06-28",
