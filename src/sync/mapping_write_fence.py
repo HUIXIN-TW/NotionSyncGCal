@@ -118,10 +118,7 @@ def assert_current_google_write_route(user_setting, calendar_name, calendar_id):
         raise MappingWriteFenceError("mapping_source_changed")
     if mapping.get("lifecycle") != "active":
         raise MappingWriteFenceError("mapping_inactive")
-    if (
-        _require_version(mapping.get("version"), "mapping_version_invalid")
-        != route["mapping_version"]
-    ):
+    if _require_version(mapping.get("version"), "mapping_version_invalid") != route["mapping_version"]:
         raise MappingWriteFenceError("mapping_version_changed")
     if mapping.get("calendarId") != calendar_id:
         raise MappingWriteFenceError("calendar_target_changed")
