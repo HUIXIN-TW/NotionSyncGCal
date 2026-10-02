@@ -74,7 +74,12 @@ GOOGLE_CREATED_EVENT = {
 }
 
 
-def _make_notion_task(gcal_event_id, last_edited_time="2026-10-02T09:00:00.000Z"):
+def _make_notion_task(
+    gcal_event_id,
+    last_edited_time="2026-10-02T09:00:00.000Z",
+    *,
+    deleted=False,
+):
     props = USER_SETTING["page_property"]
     return {
         "id": "notion-page-001",
@@ -90,7 +95,7 @@ def _make_notion_task(gcal_event_id, last_edited_time="2026-10-02T09:00:00.000Z"
             },
             "Delete": {
                 "id": props["Delete_Notion_Name"],
-                "checkbox": False,
+                "checkbox": deleted,
             },
             "GCal Event ID": {
                 "id": props["GCal_EventId_Notion_Name"],
@@ -184,6 +189,57 @@ class TestGoogleOriginatedCreationContract(unittest.TestCase):
 
         notion_service.create_notion_task.assert_not_called()
         google_service.create_gcal_event.assert_not_called()
+
+    def test_persisted_provider_id_updates_same_google_event_when_notion_is_newer(self):
+        event = {**GOOGLE_CREATED_EVENT}
+        notion_task = _make_notion_task(
+            event["id"],
+            last_edited_time="2026-10-02T11:00:00.000Z",
+        )
+
+        notion_service, google_service, result = _run_sync(
+            gcal_events=[event],
+            notion_tasks=[notion_task],
+        )
+
+        self.assertEqual(result["statusCode"], 200)
+        google_service.update_gcal_event.assert_called_once_with(
+            notion_task,
+            CALENDAR_ID,
+            event["id"],
+        )
+        notion_service.update_notion_task_for_new_gcal_sync_time.assert_called_once()
+        notion_service.update_notion_task.assert_not_called()
+        notion_service.create_notion_task.assert_not_called()
+        google_service.create_gcal_event.assert_not_called()
+
+    def test_delete_uses_persisted_provider_id_without_creating_replacement(self):
+        event = {**GOOGLE_CREATED_EVENT}
+        notion_task = _make_notion_task(event["id"], deleted=True)
+        notion_service = MagicMock()
+        google_service = MagicMock()
+
+        notion_service.get_notion_task.return_value = ({}, [notion_task])
+        notion_service.get_notion_task_by_gcal_event_id.return_value = []
+        google_service.get_gcal_event.return_value = [event]
+
+        result = synchronize_notion_and_google_calendar(
+            user_setting={**USER_SETTING},
+            notion_service=notion_service,
+            google_service=google_service,
+            compare_time=True,
+            should_update_notion_tasks=True,
+            should_update_google_events=True,
+        )
+
+        self.assertEqual(result["statusCode"], 200)
+        google_service.delete_gcal_event.assert_called_once_with(
+            CALENDAR_ID,
+            event["id"],
+        )
+        notion_service.delete_notion_task.assert_called_once_with(notion_task["id"])
+        google_service.create_gcal_event.assert_not_called()
+        notion_service.create_notion_task.assert_not_called()
 
     def test_unowned_google_event_does_not_create_notion_task(self):
         event = {
