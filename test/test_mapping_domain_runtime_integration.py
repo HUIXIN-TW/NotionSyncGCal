@@ -33,7 +33,6 @@ def _cloud_rows(owner="user-1"):
         "extraInfo": _property("extra-id", "Extra Info", "rich_text"),
         "googleCalendarEndDate": _property("end-id", "GCal End Date", "formula"),
         "googleCalendarDeleted": _property("deleted-id", "GCal Deleted?", "checkbox"),
-        "googleCalendarEventId": _property("event-id", "GCal Event Id", "rich_text"),
         "googleCalendarSyncTime": _property("sync-id", "GCal Sync Time", "rich_text"),
         "googleCalendarIcon": _property("icon-id", "GCal Icon", "formula"),
     }
@@ -171,7 +170,6 @@ class MappingDomainRefactorIntegrationTests(unittest.TestCase):
             list(setting["gcal_name_dict"]),
             ["Learning", "Job", "Life", "Mission", "Other", "Registered Event", "School"],
         )
-        self.assertEqual(setting["page_property"]["GCal_EventId_Notion_Name"], "event-id")
         self.assertEqual(setting["page_property"]["GCal_Sync_Time_Notion_Name"], "sync-id")
 
         sync_fn.assert_called_once()
