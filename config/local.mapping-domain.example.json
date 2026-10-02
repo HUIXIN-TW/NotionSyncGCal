@@ -60,11 +60,6 @@
           "propertyName": "GCal Deleted?",
           "propertyType": "checkbox"
         },
-        "googleCalendarEventId": {
-          "propertyId": "event-id-property-id",
-          "propertyName": "GCal Event Id",
-          "propertyType": "rich_text"
-        },
         "googleCalendarSyncTime": {
           "propertyId": "sync-time-property-id",
           "propertyName": "GCal Sync Time",
