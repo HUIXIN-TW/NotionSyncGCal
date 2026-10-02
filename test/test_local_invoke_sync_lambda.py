@@ -75,7 +75,7 @@ class ReadOnlyCloudConfigCheckTests(unittest.TestCase):
         self.assertTrue(message["read_only"])
         self.assertEqual(message["source_count"], 1)
         self.assertEqual(message["sources"][0]["default_calendar_name"], "Learning")
-        self.assertNotIn("GCal_EventId_Notion_Name", message["sources"][0]["property_ids"])
+        self.assertEqual(message["sources"][0]["property_ids"], {"GCal_Sync_Time_Notion_Name": "sync-id"})
         self.assertNotIn("calendar-id", str(message))
         self.assertNotIn("token", str(message).lower())
 
