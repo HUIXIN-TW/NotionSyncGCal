@@ -41,7 +41,7 @@ Cloud execution reads the current mapping-domain records:
 - each source is converted into the current worker runtime setting using persisted Notion property IDs; mutable property names are not a runtime lookup fallback;
 - each source is executed independently and results are aggregated at the user job boundary.
 
-The worker requires the semantic bindings used by the current synchronization implementation, including task/date, Calendar, location, extra info, `GCal End Date`, `GCal Deleted?`, `GCal Sync Time`, and `GCal Icon`. `GCal Event Id` is not a runtime/configuration binding.
+The worker requires the semantic bindings used by the current synchronization implementation, including task/date, Calendar, location, extra info, `GCal End Date`, `GCal Deleted?`, `GCal Sync Time`, and `GCal Icon`. The legacy provider-event mirror is not a runtime/configuration binding.
 
 Configuration fails closed when owner identity, lifecycle, required property bindings, Calendar-name uniqueness, default Calendar, or normalized record shape is invalid. Runtime property lookup uses `propertyId` only; there is no property-name fallback. SQS and EventBridge require UUID-scoped payloads with a non-empty `uuid` and fail closed on unsupported payload shapes.
 
