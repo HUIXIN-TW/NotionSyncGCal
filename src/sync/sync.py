@@ -11,7 +11,7 @@ from sync.mapping_write_fence import (
     assert_current_google_write_route,
 )
 from utils.logging_utils import build_debug_exception_detail, get_logger  # noqa: E402
-from notion.notion_properties import get_checkbox, get_rich_text, get_select, get_title
+from notion.notion_properties import get_checkbox, get_rich_text, get_select
 
 # Configure logging
 logger = get_logger(__name__)
