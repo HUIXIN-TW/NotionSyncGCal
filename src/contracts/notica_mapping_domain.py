@@ -3,8 +3,8 @@
 from urllib.parse import quote
 
 MAPPING_DOMAIN_SCHEMA_VERSION = 1
-PUBLIC_PROJECTION_SHA256 = "1567a118085ec48668409a786fba9efe0ee948a5f1b42ab270c4f204133f170a"
-SOURCE_MAPPING_DOMAIN_SHA256 = "2c3bacf9f59c4d88509742b26f8d447ae656266736864e078f97130d834587c6"
+PUBLIC_PROJECTION_SHA256 = "bb588dc6ec9343ed27941ebc62f138160f9d6d979f3c21633b7fef38d80a48a9"
+SOURCE_MAPPING_DOMAIN_SHA256 = "ea105b825b82459cdb5d411372238b8d1ea69546fae37c1a38c03e255798193f"
 CONFIG_LIFECYCLES = frozenset(
     (
         "active",
@@ -18,6 +18,7 @@ TASK_SOURCE_FIELD_SPECS = {
     "lifecycle": ("string", True),
     "ownerUserUuid": ("string", True),
     "propertyMappings": ("object", True),
+    "version": ("number", True),
 }
 TASK_SOURCE_DATABASE_FIELD_SPECS = {
     "externalId": ("string", True),
@@ -55,6 +56,7 @@ CALENDAR_MAPPING_FIELD_SPECS = {
     "lifecycle": ("string", True),
     "ownerUserUuid": ("string", True),
     "sourceId": ("string", True),
+    "version": ("number", True),
 }
 NOTION_SETTINGS_FIELD_SPECS = {
     "ownerUserUuid": ("string", True),
@@ -75,6 +77,7 @@ TASK_SOURCE_REQUIRED_FIELDS = frozenset(
         "lifecycle",
         "ownerUserUuid",
         "propertyMappings",
+        "version",
     )
 )
 CALENDAR_MAPPING_REQUIRED_FIELDS = frozenset(
@@ -85,6 +88,7 @@ CALENDAR_MAPPING_REQUIRED_FIELDS = frozenset(
         "lifecycle",
         "ownerUserUuid",
         "sourceId",
+        "version",
     )
 )
 NOTION_SETTINGS_REQUIRED_FIELDS = frozenset(

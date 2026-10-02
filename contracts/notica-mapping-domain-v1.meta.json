@@ -1,6 +1,6 @@
 {
   "producerRepository": "whatnow-studio/notica-backend",
   "schemaVersion": 1,
-  "publicProjectionSha256": "1567a118085ec48668409a786fba9efe0ee948a5f1b42ab270c4f204133f170a",
-  "sourceMappingDomainSha256": "2c3bacf9f59c4d88509742b26f8d447ae656266736864e078f97130d834587c6"
+  "publicProjectionSha256": "bb588dc6ec9343ed27941ebc62f138160f9d6d979f3c21633b7fef38d80a48a9",
+  "sourceMappingDomainSha256": "ea105b825b82459cdb5d411372238b8d1ea69546fae37c1a38c03e255798193f"
 }
