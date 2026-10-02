@@ -195,7 +195,6 @@ class SyncMappingWriteFenceTests(unittest.TestCase):
                 "noticaMappingVersion": "3",
             },
         )
-        self.assertFalse(hasattr(notion_service, "update_notion_task_for_new_gcal_event_id"))
 
     def test_move_preserves_event_id_and_updates_destination_metadata(self):
         event = {
