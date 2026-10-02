@@ -56,6 +56,8 @@ def get_current_time_in_iso_format():
 
 
 def remove_gcal_event_from_list(gcal_event_list, gcal_event, gcal_event_summary):
+    if gcal_event not in gcal_event_list:
+        return
     gcal_event_list.remove(gcal_event)
     logger.debug(
         f"Google Calendar: Event '{gcal_event_summary}' removed from the list, {len(gcal_event_list)} events remaining\n"  # noqa: E501
@@ -70,6 +72,55 @@ def get_gcal_event_from_list(gcal_event_list, gcal_event_id):
 
     logger.debug(f"Google Calendar event '{gcal_event_id}' not found in the provided list")
     return None
+
+
+def _configured_google_calendar_ids(user_setting):
+    gcal_name_dict = user_setting.get("gcal_name_dict")
+    if not isinstance(gcal_name_dict, dict):
+        raise ValueError("gcal_name_dict must be available for provider identity resolution.")
+
+    calendar_ids = []
+    for calendar_id in gcal_name_dict.values():
+        if not isinstance(calendar_id, str) or not calendar_id.strip():
+            raise ValueError("Configured Google calendar IDs must be non-empty strings.")
+        calendar_id = calendar_id.strip()
+        if calendar_id not in calendar_ids:
+            calendar_ids.append(calendar_id)
+
+    if not calendar_ids:
+        raise ValueError("At least one configured Google calendar is required.")
+    return calendar_ids
+
+
+def _resolve_google_event_location(user_setting, google_service, gcal_event_list, gcal_event_id):
+    """Resolve one deterministic event to its actual configured Google calendar."""
+    configured_calendar_ids = _configured_google_calendar_ids(user_setting)
+    listed_matches = [event for event in gcal_event_list if event.get("id") == gcal_event_id]
+
+    if len(listed_matches) > 1:
+        raise SyncAbortError("Deterministic Google event identity resolves to multiple listed events.")
+
+    if listed_matches:
+        event = listed_matches[0]
+        calendar_id = event.get("_notica_calendar_id") or (event.get("organizer") or {}).get("email")
+        if calendar_id in configured_calendar_ids:
+            return event, calendar_id
+
+    lookup = getattr(google_service, "get_gcal_event_by_id", None)
+    if not callable(lookup):
+        return None, None
+
+    provider_matches = []
+    for calendar_id in configured_calendar_ids:
+        event = lookup(calendar_id, gcal_event_id)
+        if isinstance(event, dict):
+            provider_matches.append((event, calendar_id))
+
+    if len(provider_matches) > 1:
+        raise SyncAbortError("Deterministic Google event identity resolves to multiple configured calendars.")
+    if provider_matches:
+        return provider_matches[0]
+    return None, None
 
 
 def _exception_error_code(exc: Exception) -> str:
@@ -198,7 +249,9 @@ def synchronize_notion_and_google_calendar(
                     notion_page_property["GCal_Sync_Time_Notion_Name"],
                 )
                 notion_task_last_edited_time = notion_task.get("last_edited_time")
-                gcal_event = get_gcal_event_from_list(
+                gcal_event, gcal_event_calendar_id = _resolve_google_event_location(
+                    user_setting,
+                    google_service,
                     gcal_event_list,
                     notion_gcal_event_id,
                 )
@@ -217,15 +270,21 @@ def synchronize_notion_and_google_calendar(
                         notion_gcal_event_id,
                         notion_task_page_id,
                     )
-                    assert_current_google_write_route(
-                        user_setting,
-                        notion_gcal_cal_name,
-                        notion_gcal_cal_id,
-                    )
-                    google_service.delete_gcal_event(
-                        notion_gcal_cal_id,
-                        notion_gcal_event_id,
-                    )
+                    if gcal_event is not None:
+                        gcal_event_calendar_name = gcal_id_dict.get(gcal_event_calendar_id)
+                        if not gcal_event_calendar_name:
+                            raise SyncAbortError(
+                                "Deterministic Google event resolved outside the configured calendar routes."
+                            )
+                        assert_current_google_write_route(
+                            user_setting,
+                            gcal_event_calendar_name,
+                            gcal_event_calendar_id,
+                        )
+                        google_service.delete_gcal_event(
+                            gcal_event_calendar_id,
+                            notion_gcal_event_id,
+                        )
                     notion_service.delete_notion_task(notion_task_page_id)
                     if gcal_event is not None:
                         remove_gcal_event_from_list(
@@ -262,8 +321,12 @@ def synchronize_notion_and_google_calendar(
 
                 gcal_event_summary = gcal_event.get("summary", "")
                 gcal_event_updated_time = gcal_event.get("updated")
-                gcal_cal_id = gcal_event.get("organizer", {}).get("email")
+                gcal_cal_id = gcal_event_calendar_id
                 gcal_cal_name = gcal_id_dict.get(gcal_cal_id)
+                if not gcal_cal_name:
+                    raise SyncAbortError(
+                        "Deterministic Google event resolved outside the configured calendar routes."
+                    )
 
                 if compare_time:
                     if not notion_task_last_edited_time or not gcal_event_updated_time:
