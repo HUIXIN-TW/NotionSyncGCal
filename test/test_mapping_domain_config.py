@@ -181,7 +181,7 @@ class MappingDomainConfigTests(unittest.TestCase):
 
     def test_event_id_binding_is_not_required(self):
         [setting] = self.load(build_payload())
-        self.assertNotIn("GCal_EventId_Notion_Name", setting["page_property"])
+        self.assertEqual(len(setting["page_property"]), 9)
 
     def test_rejects_duplicate_calendar_names(self):
         payload = build_payload()
