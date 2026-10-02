@@ -72,9 +72,6 @@ def build_payload():
                     "googleCalendarDeleted": property_mapping(
                         "deleted-id", "GCal Deleted?", "checkbox"
                     ),
-                    "googleCalendarEventId": property_mapping(
-                        "event-id", "GCal Event Id", "rich_text"
-                    ),
                     "googleCalendarSyncTime": property_mapping(
                         "sync-id", "GCal Sync Time", "rich_text"
                     ),
@@ -138,10 +135,6 @@ class MappingDomainConfigTests(unittest.TestCase):
 
         self.assertEqual(setting["page_property"]["Task_Notion_Name"], "task-id")
         self.assertEqual(
-            setting["page_property"]["GCal_EventId_Notion_Name"],
-            "event-id",
-        )
-        self.assertEqual(
             setting["page_property"]["GCal_Sync_Time_Notion_Name"],
             "sync-id",
         )
@@ -186,11 +179,9 @@ class MappingDomainConfigTests(unittest.TestCase):
             "Date",
         )
 
-    def test_rejects_missing_event_id_binding(self):
-        payload = build_payload()
-        del payload["taskSources"][0]["propertyMappings"]["googleCalendarEventId"]
-        with self.assertRaisesRegex(SettingError, "googleCalendarEventId"):
-            self.load(payload)
+    def test_event_id_binding_is_not_required(self):
+        [setting] = self.load(build_payload())
+        self.assertNotIn("GCal_EventId_Notion_Name", setting["page_property"])
 
     def test_rejects_duplicate_calendar_names(self):
         payload = build_payload()
