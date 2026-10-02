@@ -681,6 +681,14 @@ class TestProviderAssociationDeleteContract(unittest.TestCase):
 
         notion_service.get_notion_task.return_value = ({}, [notion_task])
         google_service.get_gcal_event.return_value = []
+        provider_event = {
+            **GOOGLE_CREATED_EVENT,
+            "id": event_id,
+            "_notica_calendar_id": CALENDAR_ID,
+        }
+        google_service.get_gcal_event_by_id.side_effect = (
+            lambda calendar_id, _: provider_event if calendar_id == CALENDAR_ID else None
+        )
         google_service.delete_gcal_event.side_effect = RuntimeError("google delete failed")
 
         result = synchronize_notion_and_google_calendar(
