@@ -406,6 +406,40 @@ class TestGoogleOriginatedCreationContract(unittest.TestCase):
         self.assertEqual(errors[0]["action"], "update_gcal")
         self.assertEqual(errors[0]["gcal_event_id"], event["id"])
         self.assertTrue(errors[0]["retriable"])
+        notion_service.create_notion_task.assert_not_called()
+
+    def test_google_to_notion_update_failure_does_not_materialize_duplicate_task(self):
+        event = {
+            **GOOGLE_CREATED_EVENT,
+            "_notica_calendar_id": CALENDAR_ID,
+        }
+        notion_task = _make_notion_task(
+            event["id"],
+            last_edited_time="2026-10-02T09:00:00.000Z",
+        )
+        notion_service = MagicMock()
+        google_service = MagicMock()
+        notion_service.get_notion_task.return_value = ({}, [notion_task])
+        notion_service.update_notion_task.side_effect = RuntimeError("notion update failed")
+        google_service.get_gcal_event.return_value = [event]
+
+        result = synchronize_notion_and_google_calendar(
+            user_setting={**USER_SETTING},
+            notion_service=notion_service,
+            google_service=google_service,
+            compare_time=True,
+            should_update_notion_tasks=True,
+            should_update_google_events=True,
+        )
+
+        self.assertEqual(result["statusCode"], 200)
+        notion_service.create_notion_task.assert_not_called()
+        google_service.create_gcal_event.assert_not_called()
+        errors = result["body"]["message"]["errors"]
+        self.assertEqual(len(errors), 1)
+        self.assertEqual(errors[0]["action"], "update_notion")
+        self.assertEqual(errors[0]["gcal_event_id"], event["id"])
+        self.assertTrue(errors[0]["retriable"])
 
     def test_move_provider_failure_preserves_existing_provider_association(self):
         event_id = "provider-move-failure-001"
@@ -443,6 +477,7 @@ class TestGoogleOriginatedCreationContract(unittest.TestCase):
         self.assertEqual(errors[0]["action"], "update_gcal")
         self.assertEqual(errors[0]["gcal_event_id"], event_id)
         self.assertTrue(errors[0]["retriable"])
+        notion_service.create_notion_task.assert_not_called()
 
     def test_delete_uses_persisted_provider_id_without_creating_replacement(self):
         event = {**GOOGLE_CREATED_EVENT}
