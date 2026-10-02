@@ -12,7 +12,7 @@ class BlackSyncDiagnosticTests(unittest.TestCase):
         formatted = black.format_file_contents(
             current,
             fast=False,
-            mode=black.FileMode(),
+            mode=black.FileMode(line_length=120),
         )
         if current != formatted:
             diff = "".join(
