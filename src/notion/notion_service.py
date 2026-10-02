@@ -126,12 +126,26 @@ class NotionService:
             self.logger.error(error_message)
             raise SettingError(error_message)
 
+    def get_notion_task_by_gcal_event_id(self, gcal_event_id):
+        try:
+            self.logger.info(f"Reading Notion database by Google event ID: {gcal_event_id}")
+            return self._query_database_with_pagination(
+                database_id=self.setting["database_id"],
+                filter={
+                    "property": self.page_property["GCal_EventId_Notion_Name"],
+                    "rich_text": {"equals": gcal_event_id},
+                },
+            )
+        except Exception as e:
+            self.logger.error(f"Error reading Notion table: {e}")
+            return None
+
     def update_notion_task(self, page_id, gcal_event, gcal_cal_name, new_gcal_sync_time):
         """
         Update a Notion task with Google Calendar event details.
 
         Notes:
-            - The function updates the task's title, date, location, sync time, and calendar selection.
+            - The function updates the task's title, date, location, and Google Calendar event ID.
             - It also updates the current calendar name.
             - The function handles exceptions and logs errors if any occur.
 
@@ -176,8 +190,23 @@ class NotionService:
                     "type": "rich_text",
                     "rich_text": [{"text": {"content": new_gcal_sync_time}}],
                 },
+                self.page_property["GCal_EventId_Notion_Name"]: {
+                    "type": "rich_text",
+                    "rich_text": [{"text": {"content": gcal_event.get("id", "")}}],
+                },
                 self.page_property["GCal_Name_Notion_Name"]: {
                     "select": {"name": gcal_cal_name},
+                },
+            },
+        )
+
+    def update_notion_task_for_new_gcal_event_id(self, page_id, new_gcal_event_id):
+        self.client.pages.update(
+            page_id=page_id,
+            properties={
+                self.page_property["GCal_EventId_Notion_Name"]: {
+                    "type": "rich_text",
+                    "rich_text": [{"text": {"content": new_gcal_event_id}}],
                 },
             },
         )
@@ -247,6 +276,10 @@ class NotionService:
                         "address": gcal_event.get("location", ""),
                     },
                 },
+                self.page_property["GCal_EventId_Notion_Name"]: {
+                    "type": "rich_text",
+                    "rich_text": [{"text": {"content": gcal_event.get("id")}}],
+                },
                 self.page_property["GCal_Name_Notion_Name"]: {
                     "select": {"name": gcal_cal_name},
                 },
@@ -260,6 +293,10 @@ class NotionService:
             properties={
                 self.page_property["Delete_Notion_Name"]: {"checkbox": True},
                 self.page_property["GCal_Sync_Time_Notion_Name"]: {
+                    "type": "rich_text",
+                    "rich_text": [{"text": {"content": ""}}],
+                },
+                self.page_property["GCal_EventId_Notion_Name"]: {
                     "type": "rich_text",
                     "rich_text": [{"text": {"content": ""}}],
                 },

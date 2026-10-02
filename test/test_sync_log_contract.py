@@ -18,6 +18,7 @@ USER_SETTING = {
         "Task_Notion_Name": "Task Name",
         "Date_Notion_Name": "Date",
         "GCal_Name_Notion_Name": "Calendar",
+        "GCal_EventId_Notion_Name": "GCal Event Id",
         "GCal_Sync_Time_Notion_Name": "GCal Sync Time",
         "Delete_Notion_Name": "Delete",
         "GCal_End_Date_Notion_Name": "End Date",

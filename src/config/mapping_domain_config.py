@@ -32,6 +32,7 @@ TASK_PROPERTY_POLICY = {
     "calendarName": ("GCal_Name_Notion_Name", "select"),
     "googleCalendarEndDate": ("GCal_End_Date_Notion_Name", "formula"),
     "googleCalendarDeleted": ("Delete_Notion_Name", "checkbox"),
+    "googleCalendarEventId": ("GCal_EventId_Notion_Name", "rich_text"),
     "googleCalendarSyncTime": ("GCal_Sync_Time_Notion_Name", "rich_text"),
     "googleCalendarIcon": ("CompleteIcon_Notion_Name", "formula"),
 }
@@ -45,6 +46,7 @@ SYNC_REQUIRED_PROPERTIES = frozenset(
         "extraInfo",
         "googleCalendarEndDate",
         "googleCalendarDeleted",
+        "googleCalendarEventId",
         "googleCalendarSyncTime",
         "googleCalendarIcon",
     }
