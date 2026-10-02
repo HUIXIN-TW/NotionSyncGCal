@@ -168,6 +168,46 @@ Validation-only:
 ./scripts/local-run-dev-sync.sh --mode cloud --uuid dummy-uuid --dry-run
 ```
 
+### One-Pair Provider Canary
+
+Use the one-pair canary only with an existing Notion task that already has a persisted `GCal Event Id`. The page ID must be supplied twice as an explicit mutation confirmation.
+
+Normal existing-pair update:
+
+```bash
+./scripts/local-run-dev-sync.sh \
+  --mode cloud \
+  --uuid <uuid> \
+  --canary-page-id <notion-page-id> \
+  --confirm-canary-page-id <notion-page-id>
+```
+
+Moved-Calendar validation for the provider-location fallback introduced by #140:
+
+```bash
+./scripts/local-run-dev-sync.sh \
+  --mode cloud \
+  --uuid <uuid> \
+  --canary-page-id <notion-page-id> \
+  --confirm-canary-page-id <notion-page-id> \
+  --allow-canary-calendar-move
+```
+
+The moved-Calendar flag is intentionally opt-in. Without it, the runner refuses a selected pair when the actual provider Calendar differs from the Calendar configured on the Notion task.
+
+The canary:
+
+- refuses pages without `GCal Event Id` so it cannot enter the create path;
+- refuses pages marked for deletion;
+- resolves the existing provider event from the normal preload first and falls back to direct `events.get` across configured Calendars when the event is outside the preload window;
+- preserves an out-of-window condition inside the scoped sync so the fallback path is actually exercised instead of silently injecting the event into preload;
+- verifies the same provider event ID still exists after sync;
+- verifies the Notion `GCal Event Id` is unchanged;
+- verifies the provider event converged to the Calendar selected on the Notion task;
+- verifies the aggregate preloaded event count did not change.
+
+Use `--allow-canary-calendar-move` only after intentionally moving the selected existing event to another configured dev Calendar. It does not authorize create, delete, provider backfill, or event-ID replacement.
+
 Cloud mode validates:
 
 - `AWS_ACCESS_KEY_ID` is set.

@@ -22,6 +22,7 @@ CHECK_CONFIG=0
 CHECK_PROVIDER_MATCH=0
 CANARY_PAGE_ID=""
 CONFIRM_CANARY_PAGE_ID=""
+ALLOW_CANARY_CALENDAR_MOVE=0
 VERBOSE=0
 
 usage() {
@@ -29,7 +30,7 @@ usage() {
 Usage:
   $(basename "$0") --mode local [--dry-run] [--verbose]
   $(basename "$0") --mode cloud --uuid UUID [--check-config | --check-provider-match] [--dry-run] [--verbose]
-  $(basename "$0") --mode cloud --uuid UUID --canary-page-id PAGE_ID --confirm-canary-page-id PAGE_ID [--verbose]
+  $(basename "$0") --mode cloud --uuid UUID --canary-page-id PAGE_ID --confirm-canary-page-id PAGE_ID [--allow-canary-calendar-move] [--verbose]
 
 Runs the Notion-GCal sync locally using the explicit APP_MODE flow.
 
@@ -47,6 +48,8 @@ Options:
                    Cloud only: run one existing Notion -> Google pair through the sync update path.
   --confirm-canary-page-id PAGE_ID
                    Must exactly match --canary-page-id; prevents accidental provider mutation.
+  --allow-canary-calendar-move
+                   Canary only: explicitly allow the existing event to move back to the Calendar configured in Notion.
   --dry-run        Validate prerequisites without reading config or running the sync.
   --verbose        Enable DEBUG-level logging in the Python helper.
   -h, --help       Show this message.
@@ -55,6 +58,7 @@ Examples:
   ./scripts/local-run-dev-sync.sh --mode local
   ./scripts/local-run-dev-sync.sh --mode cloud --uuid xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx --check-config
   ./scripts/local-run-dev-sync.sh --mode cloud --uuid xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx --check-provider-match
+  ./scripts/local-run-dev-sync.sh --mode cloud --uuid xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx --canary-page-id PAGE_ID --confirm-canary-page-id PAGE_ID --allow-canary-calendar-move
   ./scripts/local-run-dev-sync.sh --mode cloud --uuid xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
 EOF
   exit 0
@@ -146,6 +150,10 @@ parse_args() {
         CONFIRM_CANARY_PAGE_ID="$2"
         shift 2
         ;;
+      --allow-canary-calendar-move)
+        ALLOW_CANARY_CALENDAR_MOVE=1
+        shift
+        ;;
       --dry-run)
         DRY_RUN=1
         shift
@@ -179,6 +187,9 @@ parse_args() {
     [[ -n "${CANARY_PAGE_ID}" && -n "${CONFIRM_CANARY_PAGE_ID}" ]] || fail "both canary page-id flags are required."
     [[ "${CANARY_PAGE_ID}" == "${CONFIRM_CANARY_PAGE_ID}" ]] || fail "canary page-id confirmation does not match."
     [[ "${CHECK_CONFIG}" -eq 0 && "${CHECK_PROVIDER_MATCH}" -eq 0 ]] || fail "provider canary cannot be combined with read-only check modes."
+  fi
+  if [[ "${ALLOW_CANARY_CALENDAR_MOVE}" -eq 1 ]]; then
+    [[ -n "${CANARY_PAGE_ID}" && -n "${CONFIRM_CANARY_PAGE_ID}" ]] || fail "--allow-canary-calendar-move requires the confirmed provider canary flags."
   fi
 }
 
@@ -336,6 +347,7 @@ run_helper() {
   if [[ -n "${CANARY_PAGE_ID}" ]]; then
     invoke_args+=("--canary-page-id" "${CANARY_PAGE_ID}")
     invoke_args+=("--confirm-canary-page-id" "${CONFIRM_CANARY_PAGE_ID}")
+    [[ "${ALLOW_CANARY_CALENDAR_MOVE}" -eq 1 ]] && invoke_args+=("--allow-canary-calendar-move")
   fi
   [[ "${VERBOSE}" -eq 1 ]] && invoke_args+=("--verbose")
 
