@@ -105,6 +105,8 @@ class GoogleService:
                                 f"Exceeded Google Calendar event limit for calendar ID {cal_id}: "
                                 f"{MAX_GCAL_EVENTS_PER_CALENDAR} events"
                             )
+                        item = dict(item)
+                        item["_notica_calendar_id"] = cal_id
                         events.append(item)
                         cal_fetched += 1
 
@@ -128,6 +130,34 @@ class GoogleService:
             self.logger.exception("Error retrieving Google Calendar events")
             raise
 
+    def get_gcal_event_by_id(self, gcal_calendar_id, gcal_event_id):
+        """Fetch one provider event by its persisted event ID from one configured calendar."""
+        try:
+            event = (
+                self.service.events()
+                .get(
+                    calendarId=gcal_calendar_id,
+                    eventId=gcal_event_id,
+                )
+                .execute()
+            )
+            if not event:
+                return None
+            event = dict(event)
+            event["_notica_calendar_id"] = gcal_calendar_id
+            return event
+        except HttpError as e:
+            status_code = getattr(getattr(e, "resp", None), "status", None)
+            if status_code in (404, 410):
+                return None
+            self.logger.error(
+                "Error reading Google Calendar event_id=%s from calendar_id=%s: %s",
+                gcal_event_id,
+                gcal_calendar_id,
+                e,
+            )
+            raise
+
     def update_gcal_event(self, notion_task, existing_gcal_cal_id, existing_gcal_event_id):
         event = self.make_event_body(notion_task)
         self.service.events().patch(
@@ -139,9 +169,10 @@ class GoogleService:
             new_gcal_calendar_id = self.notion_setting["gcal_default_id"]
         event = self.make_event_body(notion_task)
         gcal_event = self.service.events().insert(calendarId=new_gcal_calendar_id, body=event).execute()
-        # get the event id and update the notion task by query page id
         event_id = gcal_event.get("id")
-        return event_id
+        if not isinstance(event_id, str) or not event_id.strip():
+            raise RuntimeError("Google Calendar create response did not include a valid event ID.")
+        return event_id.strip()
 
     def move_gcal_event(
         self,

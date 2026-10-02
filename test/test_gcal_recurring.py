@@ -587,6 +587,138 @@ class TestGetGcalEventLimit(unittest.TestCase):
             gs.get_gcal_event()
 
 
+class TestProviderEventLookup(unittest.TestCase):
+    def _make_service(self):
+        mock_service = MagicMock()
+        logger = MagicMock()
+        with patch("gcal.gcal_service.build", return_value=mock_service):
+            gs = GoogleService(MINIMAL_USER_SETTING, MagicMock(), logger)
+        gs.service = mock_service
+        gs.logger = logger
+        return gs, mock_service, logger
+
+    def test_preloaded_event_records_actual_calendar_location(self):
+        event = {**SINGLE_TIMED_EVENT}
+        gs, mock_service, _ = self._make_service()
+        mock_service.events.return_value.list.return_value.execute.return_value = {
+            "items": [event],
+        }
+
+        result = gs.get_gcal_event()
+
+        self.assertEqual(len(result), 1)
+        self.assertEqual(
+            result[0]["_notica_calendar_id"],
+            "cal@group.calendar.google.com",
+        )
+        self.assertNotIn("_notica_calendar_id", event)
+
+    def test_get_event_by_id_returns_actual_calendar_location(self):
+        provider_event = {**SINGLE_TIMED_EVENT, "id": "evt-lookup"}
+        gs, mock_service, _ = self._make_service()
+        mock_service.events.return_value.get.return_value.execute.return_value = provider_event
+
+        result = gs.get_gcal_event_by_id(
+            "cal@group.calendar.google.com",
+            "evt-lookup",
+        )
+
+        self.assertEqual(result["id"], "evt-lookup")
+        self.assertEqual(
+            result["_notica_calendar_id"],
+            "cal@group.calendar.google.com",
+        )
+        mock_service.events.return_value.get.assert_called_once_with(
+            calendarId="cal@group.calendar.google.com",
+            eventId="evt-lookup",
+        )
+
+    def test_get_event_by_id_404_returns_none(self):
+        gs, mock_service, _ = self._make_service()
+
+        class _Resp:
+            status = 404
+            reason = "Not Found"
+
+        mock_service.events.return_value.get.return_value.execute.side_effect = HttpError(
+            _Resp(),
+            b'{"error":{"message":"Not found"}}',
+        )
+
+        self.assertIsNone(
+            gs.get_gcal_event_by_id(
+                "cal@group.calendar.google.com",
+                "evt-404",
+            )
+        )
+
+    def test_get_event_by_id_410_returns_none(self):
+        gs, mock_service, _ = self._make_service()
+
+        class _Resp:
+            status = 410
+            reason = "Gone"
+
+        mock_service.events.return_value.get.return_value.execute.side_effect = HttpError(
+            _Resp(),
+            b'{"error":{"message":"Gone"}}',
+        )
+
+        self.assertIsNone(
+            gs.get_gcal_event_by_id(
+                "cal@group.calendar.google.com",
+                "evt-410",
+            )
+        )
+
+    def test_get_event_by_id_500_is_raised(self):
+        gs, mock_service, logger = self._make_service()
+
+        class _Resp:
+            status = 500
+            reason = "Internal Server Error"
+
+        mock_service.events.return_value.get.return_value.execute.side_effect = HttpError(
+            _Resp(),
+            b'{"error":{"message":"Internal Server Error"}}',
+        )
+
+        with self.assertRaises(HttpError):
+            gs.get_gcal_event_by_id(
+                "cal@group.calendar.google.com",
+                "evt-500",
+            )
+
+        logger.error.assert_called_once()
+
+    def test_create_without_provider_event_id_fails(self):
+        notion_task = {
+            "id": "page-1",
+            "url": "https://www.notion.so/page-1",
+            "properties": {
+                "Name": {"id": "task-id", "title": [{"plain_text": "Task"}]},
+                "Date": {
+                    "id": "date-id",
+                    "date": {
+                        "start": "2026-05-30T09:00:00+08:00",
+                        "end": "2026-05-30T10:00:00+08:00",
+                    },
+                },
+                "Location": {"id": "location-id", "place": {"address": "Perth"}},
+                "Extra": {"id": "extra-id", "rich_text": []},
+                "Icon": {"id": "icon-id", "formula": {"string": ""}},
+            },
+        }
+        gs, mock_service, _ = self._make_service()
+        mock_service.events.return_value.insert.return_value.execute.return_value = {}
+
+        with self.assertRaises(RuntimeError):
+            gs.create_gcal_event(
+                notion_task,
+                "cal@group.calendar.google.com",
+            )
+
+
 class TestDeleteHandling(unittest.TestCase):
     def _make_delete_task(self):
         notion_task = _make_notion_task("abc123_20260530T020000Z")
@@ -602,6 +734,12 @@ class TestDeleteHandling(unittest.TestCase):
 
         notion_service.get_notion_task.return_value = ({}, [notion_task])
         google_service.get_gcal_event.return_value = []
+        provider_event = {
+            "id": "abc123_20260530T020000Z",
+            "organizer": {"email": "cal@group.calendar.google.com"},
+            "_notica_calendar_id": "cal@group.calendar.google.com",
+        }
+        google_service.get_gcal_event_by_id.return_value = provider_event
         google_service.delete_gcal_event.side_effect = RuntimeError("google delete failed")
 
         result = synchronize_notion_and_google_calendar(

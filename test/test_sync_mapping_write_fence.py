@@ -54,14 +54,13 @@ class SyncMappingWriteFenceTests(unittest.TestCase):
             patch("sync.sync.get_select", return_value=calendar_name),
             patch("sync.sync.get_rich_text", side_effect=[event_id, ""]),
             patch("sync.sync.get_checkbox", return_value=deleted),
-            patch("sync.sync.get_title", return_value="Task"),
         )
 
     def test_create_is_blocked_before_google_mutation(self):
         notion_service, google_service = services()
         patches = self._patch_notion_values(event_id=None)
 
-        with patches[0], patches[1], patches[2], patches[3], patch(
+        with patches[0], patches[1], patches[2], patch(
             "sync.sync.assert_current_google_write_route",
             side_effect=MappingWriteFenceError("mapping_version_changed"),
         ):
@@ -80,10 +79,16 @@ class SyncMappingWriteFenceTests(unittest.TestCase):
         google_service.create_gcal_event.assert_not_called()
 
     def test_delete_is_blocked_before_google_mutation(self):
-        notion_service, google_service = services()
+        event = {
+            "id": "event-1",
+            "summary": "Task",
+            "organizer": {"email": "learning@example.com"},
+            "_notica_calendar_id": "learning@example.com",
+        }
+        notion_service, google_service = services([event])
         patches = self._patch_notion_values(event_id="event-1", deleted=True)
 
-        with patches[0], patches[1], patches[2], patches[3], patch(
+        with patches[0], patches[1], patches[2], patch(
             "sync.sync.assert_current_google_write_route",
             side_effect=MappingWriteFenceError("mapping_inactive"),
         ):
@@ -108,7 +113,7 @@ class SyncMappingWriteFenceTests(unittest.TestCase):
         notion_service, google_service = services([event])
         patches = self._patch_notion_values(event_id="event-1")
 
-        with patches[0], patches[1], patches[2], patches[3], patch(
+        with patches[0], patches[1], patches[2], patch(
             "sync.sync.assert_current_google_write_route",
             side_effect=MappingWriteFenceError("source_version_changed"),
         ):
@@ -132,7 +137,7 @@ class SyncMappingWriteFenceTests(unittest.TestCase):
         notion_service, google_service = services([event])
         patches = self._patch_notion_values(event_id="event-1", calendar_name="Learning")
 
-        with patches[0], patches[1], patches[2], patches[3], patch(
+        with patches[0], patches[1], patches[2], patch(
             "sync.sync.assert_current_google_write_route",
             side_effect=[None, MappingWriteFenceError("mapping_version_changed")],
         ):
@@ -152,7 +157,7 @@ class SyncMappingWriteFenceTests(unittest.TestCase):
         google_service.create_gcal_event.return_value = "event-new"
         patches = self._patch_notion_values(event_id=None)
 
-        with patches[0], patches[1], patches[2], patches[3], patch(
+        with patches[0], patches[1], patches[2], patch(
             "sync.sync.assert_current_google_write_route",
             return_value=None,
         ) as fence:
