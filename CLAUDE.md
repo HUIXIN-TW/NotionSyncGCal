@@ -85,7 +85,7 @@ Runtime tables (set via env vars):
 - `DYNAMODB_NOTION_OAUTH_TOKEN_TABLE` — Notion API token (encrypted as `enc:v1:…`)
 - `DYNAMODB_SYNC_LOGS_TABLE` — sync result logs with TTL
 
-The worker consumes only the current mapping-domain configuration shape and uses persisted provider property IDs directly. It does not fall back to mutable Notion property names. `GCal Event Id` is not runtime state or a configuration requirement; `GCal Sync Time` remains timestamp-reconciliation state. Distinct Task sources may share a Google Calendar; provider identity is derived from source + Notion page identity and intentionally excludes Calendar Mapping identity.
+The worker consumes only the current mapping-domain configuration shape and uses persisted provider property IDs directly. It does not fall back to mutable Notion property names. The legacy provider-event mirror is not runtime state or a configuration requirement; `GCal Sync Time` remains timestamp-reconciliation state. Distinct Task sources may share a Google Calendar; provider identity is derived from source + Notion page identity and intentionally excludes Calendar Mapping identity.
 
 ### Token encryption
 
