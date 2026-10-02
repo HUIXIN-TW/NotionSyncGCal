@@ -307,6 +307,14 @@ def synchronize_notion_and_google_calendar(
                         )
                     continue
 
+                if notion_deletion and not should_update_google_events:
+                    logger.debug(
+                        "Skipping deletion for task_id=%s because Google writes are disabled.",
+                        notion_task_page_id,
+                    )
+                    continue
+
+                action = "delete_gcal" if notion_deletion else "resolve_gcal"
                 gcal_event, gcal_event_calendar_id = _resolve_google_event_location(
                     user_setting,
                     google_service,
@@ -314,15 +322,18 @@ def synchronize_notion_and_google_calendar(
                     notion_gcal_event_id,
                 )
 
+                # A resolved persisted association is never an unmatched Google event.
+                # Remove it before downstream mutations so a retryable update/move/delete
+                # failure cannot materialize a duplicate Notion task later in this run.
+                if gcal_event is not None:
+                    remove_gcal_event_from_list(
+                        gcal_event_list,
+                        gcal_event,
+                        gcal_event.get("summary", notion_gcal_event_id),
+                    )
+
                 # Notion Task with deletion flag - Delete the actual provider event location.
                 if notion_deletion:
-                    if not should_update_google_events:
-                        logger.debug(
-                            "Skipping deletion for task_id=%s because Google writes are disabled.",
-                            notion_task_page_id,
-                        )
-                        continue
-
                     action = "delete_gcal"
                     logger.debug(
                         "Deleting Google Calendar event_id=%s for task_id=%s.",
@@ -364,12 +375,6 @@ def synchronize_notion_and_google_calendar(
                                 duplicate_notion_task_page_id
                             )
 
-                    if gcal_event is not None:
-                        remove_gcal_event_from_list(
-                            gcal_event_list,
-                            gcal_event,
-                            notion_gcal_event_id,
-                        )
                     continue
 
                 # A persisted provider association outside the preload window is resolved
@@ -522,12 +527,6 @@ def synchronize_notion_and_google_calendar(
                         )
                 else:
                     logger.debug("Notion task and Google event are already in sync.")
-
-                remove_gcal_event_from_list(
-                    gcal_event_list,
-                    gcal_event,
-                    gcal_event_summary,
-                )
 
             except MappingWriteFenceError as exc:
                 logger.warning(
