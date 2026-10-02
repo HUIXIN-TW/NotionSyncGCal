@@ -324,9 +324,7 @@ def synchronize_notion_and_google_calendar(
                 gcal_cal_id = gcal_event_calendar_id
                 gcal_cal_name = gcal_id_dict.get(gcal_cal_id)
                 if not gcal_cal_name:
-                    raise SyncAbortError(
-                        "Deterministic Google event resolved outside the configured calendar routes."
-                    )
+                    raise SyncAbortError("Deterministic Google event resolved outside the configured calendar routes.")
 
                 if compare_time:
                     if not notion_task_last_edited_time or not gcal_event_updated_time:
@@ -495,8 +493,7 @@ def synchronize_notion_and_google_calendar(
                         notion_task_id=notion_task_page_id,
                         gcal_event_id=notion_gcal_event_id,
                         gcal_event_start=(
-                            gcal_event.get("start", {}).get("dateTime")
-                            or gcal_event.get("start", {}).get("date")
+                            gcal_event.get("start", {}).get("dateTime") or gcal_event.get("start", {}).get("date")
                             if gcal_event is not None
                             else None
                         ),
