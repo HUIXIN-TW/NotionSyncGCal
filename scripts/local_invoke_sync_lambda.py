@@ -46,6 +46,14 @@ def _parse_args():
         "--confirm-canary-page-id",
         help="Must exactly match --canary-page-id before the one-pair provider mutation can run.",
     )
+    parser.add_argument(
+        "--allow-canary-calendar-move",
+        action="store_true",
+        help=(
+            "Cloud canary only: explicitly allow the selected existing provider event "
+            "to move back to the Calendar configured on the Notion task."
+        ),
+    )
     parser.add_argument("--verbose", action="store_true", help="Enable DEBUG-level logging")
     return parser.parse_args()
 
@@ -287,25 +295,65 @@ class _ScopedNotionService:
 
 
 class _ScopedGoogleService:
-    """Delegate all writes to the real service but expose exactly one event to the sync algorithm."""
+    """Delegate provider operations while constraining preload visibility for one-pair canaries."""
 
-    def __init__(self, delegate, event):
+    def __init__(self, delegate, event, *, include_in_preload=True):
         self._delegate = delegate
         self._event = event
+        self._include_in_preload = include_in_preload
 
     def get_gcal_event(self):
-        return [self._event]
+        return [self._event] if self._include_in_preload else []
 
     def __getattr__(self, name):
         return getattr(self._delegate, name)
+
+
+def _resolve_canary_provider_event(setting, google_service, google_events, event_id):
+    """Resolve one persisted provider event without mutating Google state."""
+    configured_calendar_ids = []
+    for calendar_id in setting["gcal_name_dict"].values():
+        if calendar_id not in configured_calendar_ids:
+            configured_calendar_ids.append(calendar_id)
+
+    listed_matches = [event for event in google_events if event.get("id") == event_id]
+    if len(listed_matches) > 1:
+        return None, None, None, "Provider event ID is duplicated in the preload result."
+    if listed_matches:
+        event = listed_matches[0]
+        calendar_id = event.get("_notica_calendar_id") or (event.get("organizer") or {}).get("email")
+        if calendar_id not in configured_calendar_ids:
+            return None, None, None, "Provider event resolved outside configured Calendars."
+        return event, calendar_id, "preload", None
+
+    provider_matches = []
+    for calendar_id in configured_calendar_ids:
+        event = google_service.get_gcal_event_by_id(calendar_id, event_id)
+        if isinstance(event, dict):
+            provider_matches.append((event, calendar_id))
+
+    if len(provider_matches) > 1:
+        return None, None, None, "Provider event ID resolved in multiple configured Calendars."
+    if not provider_matches:
+        return None, None, None, "Persisted GCal Event Id did not resolve in any configured Calendar."
+
+    event, calendar_id = provider_matches[0]
+    return event, calendar_id, "direct_lookup", None
 
 
 def _normalize_notion_id(value: str | None) -> str:
     return (value or "").replace("-", "").lower()
 
 
-def _run_cloud_canary(uuid: str, page_id: str, confirm_page_id: str, logger: logging.Logger):
-    """Run one explicitly confirmed existing Notion -> Google update through the existing sync algorithm."""
+def _run_cloud_canary(
+    uuid: str,
+    page_id: str,
+    confirm_page_id: str,
+    logger: logging.Logger,
+    *,
+    allow_calendar_move: bool = False,
+):
+    """Run one explicitly confirmed existing pair through the provider-association update path."""
     if not uuid:
         print("ERROR: --uuid is required in cloud mode.", file=sys.stderr)
         sys.exit(1)
@@ -396,46 +444,81 @@ def _run_cloud_canary(uuid: str, page_id: str, confirm_page_id: str, logger: log
 
         google_service = GoogleService(setting, google_token, logger)
         google_events_before = google_service.get_gcal_event()
-        matching_events = [event for event in google_events_before if event.get("id") == event_id]
-        if len(matching_events) != 1:
+        existing_event, current_calendar_id, resolution_source, resolution_error = _resolve_canary_provider_event(
+            setting,
+            google_service,
+            google_events_before,
+            event_id,
+        )
+        if resolution_error:
             return {
                 "statusCode": 409,
                 "body": {
                     "status": "canary_refused",
-                    "message": "Expected exactly one existing Google event for the selected GCal Event Id.",
+                    "message": resolution_error,
                 },
             }
 
-        existing_event = matching_events[0]
-        current_calendar_id = (existing_event.get("organizer") or {}).get("email")
-        if current_calendar_id != expected_calendar_id:
+        calendar_move_expected = current_calendar_id != expected_calendar_id
+        if calendar_move_expected and not allow_calendar_move:
             return {
                 "statusCode": 409,
                 "body": {
                     "status": "canary_refused",
-                    "message": "Selected pair would move Calendars; choose a pair already in its configured Calendar.",
+                    "message": (
+                        "Selected pair would move Calendars. Re-run with "
+                        "--allow-canary-calendar-move only after intentionally moving this existing event."
+                    ),
                 },
             }
 
         result = sync.force_update_google_event_by_notion_task_and_ignore_time(
             user_setting=setting,
             notion_service=_ScopedNotionService(notion_service, page),
-            google_service=_ScopedGoogleService(google_service, existing_event),
+            google_service=_ScopedGoogleService(
+                google_service,
+                existing_event,
+                include_in_preload=resolution_source == "preload",
+            ),
         )
         if int((result or {}).get("statusCode", 500)) >= 400:
             return result
 
         google_events_after = google_service.get_gcal_event()
-        matching_after = [event for event in google_events_after if event.get("id") == event_id]
+        event_after, calendar_id_after, _, resolution_error_after = _resolve_canary_provider_event(
+            setting,
+            google_service,
+            google_events_after,
+            event_id,
+        )
+        page_after = notion_service.client.pages.retrieve(page_id=page_id)
+        event_id_after = get_rich_text(
+            page_after.get("properties", {}),
+            setting["page_property"]["GCal_EventId_Notion_Name"],
+        )
+
         event_count_unchanged = len(google_events_after) == len(google_events_before)
-        same_event_preserved = len(matching_after) == 1
-        if not event_count_unchanged or not same_event_preserved:
+        same_event_preserved = event_after is not None and event_after.get("id") == event_id
+        association_preserved = event_id_after == event_id
+        calendar_converged = calendar_id_after == expected_calendar_id
+
+        if (
+            resolution_error_after
+            or not event_count_unchanged
+            or not same_event_preserved
+            or not association_preserved
+            or not calendar_converged
+        ):
             return {
                 "statusCode": 409,
                 "body": {
                     "status": "canary_verification_failed",
                     "message": {
                         "same_event_preserved": same_event_preserved,
+                        "gcal_event_id_preserved": association_preserved,
+                        "calendar_converged": calendar_converged,
+                        "calendar_move_expected": calendar_move_expected,
+                        "provider_resolution_before": resolution_source,
                         "google_event_count_before": len(google_events_before),
                         "google_event_count_after": len(google_events_after),
                     },
@@ -453,7 +536,11 @@ def _run_cloud_canary(uuid: str, page_id: str, confirm_page_id: str, logger: log
                     "notion_page_id": page_id,
                     "event_id_suffix": event_id[-8:],
                     "calendar_name": calendar_name,
+                    "provider_resolution_before": resolution_source,
+                    "calendar_move_expected": calendar_move_expected,
+                    "calendar_move_verified": calendar_converged,
                     "same_event_preserved": True,
+                    "gcal_event_id_preserved": True,
                     "google_event_count_before": len(google_events_before),
                     "google_event_count_after": len(google_events_after),
                     "sync_status": (result.get("body") or {}).get("status"),
@@ -560,6 +647,9 @@ def main():
     if (args.canary_page_id or args.confirm_canary_page_id) and (args.check_config or args.check_provider_match):
         print("ERROR: provider canary cannot be combined with read-only check modes.", file=sys.stderr)
         sys.exit(1)
+    if args.allow_canary_calendar_move and not (args.canary_page_id and args.confirm_canary_page_id):
+        print("ERROR: --allow-canary-calendar-move requires the confirmed one-pair canary flags.", file=sys.stderr)
+        sys.exit(1)
 
     log_level = logging.DEBUG if args.verbose else logging.INFO
     logging.basicConfig(
@@ -581,6 +671,7 @@ def main():
                     args.canary_page_id,
                     args.confirm_canary_page_id,
                     logger,
+                    allow_calendar_move=args.allow_canary_calendar_move,
                 )
             else:
                 result = _invoke_cloud(args.uuid, logger)
