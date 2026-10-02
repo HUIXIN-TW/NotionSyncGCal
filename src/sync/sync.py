@@ -59,6 +59,7 @@ def remove_gcal_event_from_list(gcal_event_list, gcal_event, gcal_event_summary)
         f"Google Calendar: Event '{gcal_event_summary}' removed from the list, {len(gcal_event_list)} events remaining\n"  # noqa: E501
     )
 
+
 def get_gcal_event_from_list(gcal_event_list, gcal_event_id):
     """Return the Google Calendar event with the given ID from the list."""
     for gcal_event in gcal_event_list:
