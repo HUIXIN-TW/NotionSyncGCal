@@ -105,6 +105,8 @@ class GoogleService:
                                 f"Exceeded Google Calendar event limit for calendar ID {cal_id}: "
                                 f"{MAX_GCAL_EVENTS_PER_CALENDAR} events"
                             )
+                        item = dict(item)
+                        item["_notica_calendar_id"] = cal_id
                         events.append(item)
                         cal_fetched += 1
 
@@ -126,6 +128,34 @@ class GoogleService:
 
         except Exception:
             self.logger.exception("Error retrieving Google Calendar events")
+            raise
+
+    def get_gcal_event_by_id(self, gcal_calendar_id, gcal_event_id):
+        """Fetch one event by deterministic ID from a specific configured calendar."""
+        try:
+            event = (
+                self.service.events()
+                .get(
+                    calendarId=gcal_calendar_id,
+                    eventId=gcal_event_id,
+                )
+                .execute()
+            )
+            if not event:
+                return None
+            event = dict(event)
+            event["_notica_calendar_id"] = gcal_calendar_id
+            return event
+        except HttpError as e:
+            status_code = getattr(getattr(e, "resp", None), "status", None)
+            if status_code in (404, 410):
+                return None
+            self.logger.error(
+                "Error reading Google Calendar event_id=%s from calendar_id=%s: %s",
+                gcal_event_id,
+                gcal_calendar_id,
+                e,
+            )
             raise
 
     def update_gcal_event(
