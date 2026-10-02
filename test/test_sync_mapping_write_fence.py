@@ -80,13 +80,7 @@ class SyncMappingWriteFenceTests(unittest.TestCase):
         google_service.create_gcal_event.assert_not_called()
 
     def test_delete_is_blocked_before_google_mutation(self):
-        event = {
-            "id": "event-1",
-            "summary": "Task",
-            "organizer": {"email": "learning@example.com"},
-            "_notica_calendar_id": "learning@example.com",
-        }
-        notion_service, google_service = services([event])
+        notion_service, google_service = services()
         patches = self._patch_notion_values(event_id="event-1", deleted=True)
 
         with patches[0], patches[1], patches[2], patches[3], patch(
