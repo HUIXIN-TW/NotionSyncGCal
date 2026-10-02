@@ -558,6 +558,14 @@ class TestDeleteHandling(unittest.TestCase):
 
         notion_service.get_notion_task.return_value = ({}, [notion_task])
         google_service.get_gcal_event.return_value = []
+        expected_event_id = deterministic_google_event_id("source-1", "page-delete")
+        google_service.get_gcal_event_by_id.return_value = {
+            "id": expected_event_id,
+            "summary": "Task",
+            "updated": "2026-05-01T00:00:00.000Z",
+            "organizer": {"email": "cal@group.calendar.google.com"},
+            "_notica_calendar_id": "cal@group.calendar.google.com",
+        }
         google_service.delete_gcal_event.side_effect = RuntimeError("google delete failed")
 
         result = synchronize_notion_and_google_calendar(
@@ -569,7 +577,6 @@ class TestDeleteHandling(unittest.TestCase):
             should_update_google_events=True,
         )
 
-        expected_event_id = deterministic_google_event_id("source-1", "page-delete")
         google_service.delete_gcal_event.assert_called_once_with(
             "cal@group.calendar.google.com",
             expected_event_id,
