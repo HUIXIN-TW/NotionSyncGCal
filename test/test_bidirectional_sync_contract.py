@@ -479,6 +479,97 @@ class TestGoogleOriginatedCreationContract(unittest.TestCase):
         self.assertTrue(errors[0]["retriable"])
         notion_service.create_notion_task.assert_not_called()
 
+    def test_preload_provider_location_wins_over_organizer_for_update(self):
+        event_id = "provider-location-vs-organizer"
+        notion_task = _make_notion_task(
+            event_id,
+            last_edited_time="2026-10-02T11:00:00.000Z",
+            calendar_name=CALENDAR_NAME,
+        )
+        event = {
+            **GOOGLE_CREATED_EVENT,
+            "id": event_id,
+            "updated": "2026-10-02T10:00:00.000Z",
+            "organizer": {"email": OTHER_CALENDAR_ID},
+            "_notica_calendar_id": CALENDAR_ID,
+        }
+
+        notion_service, google_service, result = _run_sync(
+            gcal_events=[event],
+            notion_tasks=[notion_task],
+        )
+
+        self.assertEqual(result["statusCode"], 200)
+        google_service.update_gcal_event.assert_called_once_with(
+            notion_task,
+            CALENDAR_ID,
+            event_id,
+        )
+        google_service.move_gcal_event.assert_not_called()
+
+    def test_direct_provider_lookup_failure_is_retryable_and_preserves_association(self):
+        event_id = "provider-lookup-failure-001"
+        notion_task = _make_notion_task(
+            event_id,
+            last_edited_time="2026-10-02T11:00:00.000Z",
+        )
+        notion_service = MagicMock()
+        google_service = MagicMock()
+        notion_service.get_notion_task.return_value = ({}, [notion_task])
+        google_service.get_gcal_event.return_value = []
+        google_service.get_gcal_event_by_id.side_effect = RuntimeError(
+            "provider lookup failed"
+        )
+
+        result = synchronize_notion_and_google_calendar(
+            user_setting={**USER_SETTING},
+            notion_service=notion_service,
+            google_service=google_service,
+            compare_time=True,
+            should_update_notion_tasks=True,
+            should_update_google_events=True,
+        )
+
+        self.assertEqual(result["statusCode"], 200)
+        google_service.create_gcal_event.assert_not_called()
+        google_service.update_gcal_event.assert_not_called()
+        google_service.move_gcal_event.assert_not_called()
+        google_service.delete_gcal_event.assert_not_called()
+        notion_service.update_notion_task_for_new_gcal_event_id.assert_not_called()
+        notion_service.delete_notion_task.assert_not_called()
+        notion_service.create_notion_task.assert_not_called()
+        errors = result["body"]["message"]["errors"]
+        self.assertEqual(len(errors), 1)
+        self.assertEqual(errors[0]["action"], "resolve_gcal")
+        self.assertEqual(errors[0]["gcal_event_id"], event_id)
+        self.assertTrue(errors[0]["retriable"])
+
+    def test_delete_converges_when_persisted_provider_event_is_already_absent(self):
+        event_id = "provider-already-absent-001"
+        notion_task = _make_notion_task(event_id, deleted=True)
+        notion_service = MagicMock()
+        google_service = MagicMock()
+        notion_service.get_notion_task.return_value = ({}, [notion_task])
+        notion_service.get_notion_task_by_gcal_event_id.return_value = []
+        google_service.get_gcal_event.return_value = []
+        google_service.get_gcal_event_by_id.return_value = None
+
+        result = synchronize_notion_and_google_calendar(
+            user_setting={**USER_SETTING},
+            notion_service=notion_service,
+            google_service=google_service,
+            compare_time=True,
+            should_update_notion_tasks=True,
+            should_update_google_events=True,
+        )
+
+        self.assertEqual(result["statusCode"], 200)
+        google_service.delete_gcal_event.assert_not_called()
+        notion_service.delete_notion_task.assert_called_once_with(
+            notion_task["id"]
+        )
+        notion_service.update_notion_task_for_new_gcal_event_id.assert_not_called()
+
     def test_delete_uses_persisted_provider_id_without_creating_replacement(self):
         event = {**GOOGLE_CREATED_EVENT}
         notion_task = _make_notion_task(event["id"], deleted=True)
