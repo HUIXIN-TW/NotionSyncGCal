@@ -1,7 +1,7 @@
 import sys
 import unittest
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, call, patch
 
 SRC_ROOT = Path(__file__).resolve().parents[1] / "src"
 sys.path.insert(0, str(SRC_ROOT))
@@ -61,6 +61,7 @@ def services(events=None):
     notion_service.get_notion_task.return_value = ({}, [notion_task()])
     google_service = MagicMock()
     google_service.get_gcal_event.return_value = events or []
+    google_service.get_gcal_event_by_id.return_value = None
     return notion_service, google_service
 
 
@@ -219,6 +220,95 @@ class SyncMappingWriteFenceTests(unittest.TestCase):
             )
 
         self.assertEqual(result["statusCode"], 200)
+        google_service.move_gcal_event.assert_called_once_with(
+            event_id(),
+            "learning@example.com",
+            "job@example.com",
+        )
+        google_service.update_gcal_event.assert_called_once_with(
+            notion_task(),
+            "learning@example.com",
+            event_id(),
+            {
+                "noticaSourceId": "source-1",
+                "noticaMappingId": "mapping-learning",
+                "noticaMappingVersion": "3",
+            },
+        )
+
+
+    def test_delete_uses_actual_provider_calendar_when_notion_calendar_changed(self):
+        event = {
+            "id": event_id(),
+            "summary": "Task",
+            "updated": "2026-10-01T00:00:00+00:00",
+            "organizer": {"email": "job@example.com"},
+        }
+        notion_service, google_service = services([event])
+        patches = self._patch_notion_values(deleted=True, calendar_name="Learning")
+
+        with patches[0], patches[1], patches[2], patch(
+            "sync.sync.assert_current_google_write_route",
+            return_value=None,
+        ) as fence:
+            result = synchronize_notion_and_google_calendar(
+                user_setting(),
+                notion_service,
+                google_service,
+                compare_time=False,
+            )
+
+        self.assertEqual(result["statusCode"], 200)
+        fence.assert_called_once_with(
+            user_setting(),
+            "Job",
+            "job@example.com",
+        )
+        google_service.delete_gcal_event.assert_called_once_with(
+            "job@example.com",
+            event_id(),
+        )
+        notion_service.delete_notion_task.assert_called_once_with("page-1")
+
+    def test_out_of_window_event_is_resolved_before_move(self):
+        event = {
+            "id": event_id(),
+            "summary": "Task",
+            "updated": "2026-10-01T00:00:00+00:00",
+            "organizer": {"email": "job@example.com"},
+            "_notica_calendar_id": "job@example.com",
+        }
+        notion_service, google_service = services()
+        patches = self._patch_notion_values(calendar_name="Learning")
+
+        def lookup(calendar_id, provider_event_id):
+            self.assertEqual(provider_event_id, event_id())
+            if calendar_id == "job@example.com":
+                return event
+            return None
+
+        google_service.get_gcal_event_by_id.side_effect = lookup
+
+        with patches[0], patches[1], patches[2], patch(
+            "sync.sync.assert_current_google_write_route",
+            return_value=None,
+        ):
+            result = synchronize_notion_and_google_calendar(
+                user_setting(),
+                notion_service,
+                google_service,
+                compare_time=False,
+                should_update_notion_tasks=False,
+            )
+
+        self.assertEqual(result["statusCode"], 200)
+        self.assertEqual(
+            google_service.get_gcal_event_by_id.call_args_list,
+            [
+                call("learning@example.com", event_id()),
+                call("job@example.com", event_id()),
+            ],
+        )
         google_service.move_gcal_event.assert_called_once_with(
             event_id(),
             "learning@example.com",
