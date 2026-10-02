@@ -8,9 +8,11 @@ These tests intentionally lock product behaviour that must survive refactors:
   creating a duplicate Notion task.
 - A Notion-originated Google event writes the provider-generated event ID back to Notion.
 - Events from calendars/routes not owned by the configured user do not materialize tasks.
+- Disabling one sync direction does not mutate that provider.
+- Failed Google or Notion creates do not persist a false cross-provider association.
 
 The provider association is part of the current sync contract. Removing it requires an
-explicit replacement design that preserves both creation directions.
+explicit replacement design that preserves both creation directions and the failure semantics.
 """
 
 import sys
@@ -106,7 +108,13 @@ def _make_notion_task(gcal_event_id, last_edited_time="2026-10-02T09:00:00.000Z"
     }
 
 
-def _run_sync(gcal_events, notion_tasks):
+def _run_sync(
+    gcal_events,
+    notion_tasks,
+    *,
+    should_update_notion_tasks=True,
+    should_update_google_events=True,
+):
     notion_service = MagicMock()
     google_service = MagicMock()
 
@@ -118,8 +126,8 @@ def _run_sync(gcal_events, notion_tasks):
         notion_service=notion_service,
         google_service=google_service,
         compare_time=True,
-        should_update_notion_tasks=True,
-        should_update_google_events=True,
+        should_update_notion_tasks=should_update_notion_tasks,
+        should_update_google_events=should_update_google_events,
     )
     return notion_service, google_service, result
 
@@ -196,6 +204,74 @@ class TestGoogleOriginatedCreationContract(unittest.TestCase):
         self.assertEqual(errors[0]["action"], "create_notion")
         self.assertEqual(errors[0]["error_code"], "gcal_event_not_owned")
 
+    def test_google_to_notion_direction_disabled_does_not_create_notion_task(self):
+        event = {**GOOGLE_CREATED_EVENT}
+
+        notion_service, google_service, result = _run_sync(
+            gcal_events=[event],
+            notion_tasks=[],
+            should_update_notion_tasks=False,
+        )
+
+        self.assertEqual(result["statusCode"], 200)
+        notion_service.create_notion_task.assert_not_called()
+        google_service.create_gcal_event.assert_not_called()
+        self.assertEqual(result["body"]["message"]["errors"], [])
+
+    def test_notion_create_failure_keeps_google_event_and_reports_retryable_error(self):
+        event = {**GOOGLE_CREATED_EVENT}
+        notion_service = MagicMock()
+        google_service = MagicMock()
+
+        notion_service.get_notion_task.return_value = ({}, [])
+        notion_service.create_notion_task.side_effect = RuntimeError("notion write failed")
+        google_service.get_gcal_event.return_value = [event]
+
+        result = synchronize_notion_and_google_calendar(
+            user_setting={**USER_SETTING},
+            notion_service=notion_service,
+            google_service=google_service,
+            compare_time=True,
+            should_update_notion_tasks=True,
+            should_update_google_events=True,
+        )
+
+        self.assertEqual(result["statusCode"], 200)
+        notion_service.create_notion_task.assert_called_once_with(event, CALENDAR_NAME)
+        google_service.create_gcal_event.assert_not_called()
+        google_service.update_gcal_event.assert_not_called()
+        google_service.delete_gcal_event.assert_not_called()
+
+        errors = result["body"]["message"]["errors"]
+        self.assertEqual(len(errors), 1)
+        self.assertEqual(errors[0]["action"], "create_notion")
+        self.assertEqual(errors[0]["error_code"], "runtime_error")
+        self.assertEqual(errors[0]["gcal_event_id"], event["id"])
+        self.assertTrue(errors[0]["retriable"])
+
+    def test_google_event_with_oversized_description_is_not_materialized(self):
+        event = {
+            **GOOGLE_CREATED_EVENT,
+            "id": "too-long-001",
+            "description": "x" * 2001,
+        }
+
+        notion_service, google_service, result = _run_sync(
+            gcal_events=[event],
+            notion_tasks=[],
+        )
+
+        self.assertEqual(result["statusCode"], 200)
+        notion_service.create_notion_task.assert_not_called()
+        google_service.create_gcal_event.assert_not_called()
+
+        errors = result["body"]["message"]["errors"]
+        self.assertEqual(len(errors), 1)
+        self.assertEqual(errors[0]["action"], "create_notion")
+        self.assertEqual(errors[0]["error_code"], "gcal_description_too_long")
+        self.assertEqual(errors[0]["gcal_event_id"], event["id"])
+        self.assertFalse(errors[0]["retriable"])
+
 
 class TestNotionOriginatedCreationContract(unittest.TestCase):
     def test_provider_generated_event_id_is_written_back_to_notion(self):
@@ -225,6 +301,53 @@ class TestNotionOriginatedCreationContract(unittest.TestCase):
             notion_task["id"],
             "provider-created-001",
         )
+
+    def test_notion_to_google_direction_disabled_does_not_create_or_write_provider_id(self):
+        notion_task = _make_notion_task("")
+
+        notion_service, google_service, result = _run_sync(
+            gcal_events=[],
+            notion_tasks=[notion_task],
+            should_update_google_events=False,
+        )
+
+        self.assertEqual(result["statusCode"], 200)
+        google_service.create_gcal_event.assert_not_called()
+        notion_service.update_notion_task_for_new_gcal_event_id.assert_not_called()
+        self.assertEqual(result["body"]["message"]["errors"], [])
+
+    def test_google_create_failure_does_not_write_false_provider_association(self):
+        notion_task = _make_notion_task("")
+        notion_service = MagicMock()
+        google_service = MagicMock()
+
+        notion_service.get_notion_task.return_value = ({}, [notion_task])
+        google_service.get_gcal_event.return_value = []
+        google_service.create_gcal_event.side_effect = RuntimeError("google write failed")
+
+        result = synchronize_notion_and_google_calendar(
+            user_setting={**USER_SETTING},
+            notion_service=notion_service,
+            google_service=google_service,
+            compare_time=True,
+            should_update_notion_tasks=True,
+            should_update_google_events=True,
+        )
+
+        self.assertEqual(result["statusCode"], 200)
+        google_service.create_gcal_event.assert_called_once_with(
+            notion_task,
+            CALENDAR_ID,
+        )
+        notion_service.update_notion_task_for_new_gcal_event_id.assert_not_called()
+
+        errors = result["body"]["message"]["errors"]
+        self.assertEqual(len(errors), 1)
+        self.assertEqual(errors[0]["action"], "create_gcal")
+        self.assertEqual(errors[0]["error_code"], "runtime_error")
+        self.assertEqual(errors[0]["notion_task_id"], notion_task["id"])
+        self.assertIsNone(errors[0]["gcal_event_id"])
+        self.assertTrue(errors[0]["retriable"])
 
 
 if __name__ == "__main__":
