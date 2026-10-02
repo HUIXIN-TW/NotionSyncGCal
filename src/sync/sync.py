@@ -228,13 +228,6 @@ def synchronize_notion_and_google_calendar(
                     notion_task["properties"],
                     notion_page_property["Delete_Notion_Name"],
                 )
-                notion_task_name = (
-                    get_title(
-                        notion_task["properties"],
-                        notion_page_property["Task_Notion_Name"],
-                    )
-                    or ""
-                )
                 notion_gcal_sync_time = get_rich_text(
                     notion_task["properties"],
                     notion_page_property["GCal_Sync_Time_Notion_Name"],
