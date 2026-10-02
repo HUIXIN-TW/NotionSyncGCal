@@ -27,7 +27,6 @@ BASE_SETTING = {
         "Task_Notion_Name": "task-id",
         "Date_Notion_Name": "date-id",
         "GCal_Name_Notion_Name": "calendar-id",
-        "GCal_EventId_Notion_Name": "event-id",
         "GCal_Sync_Time_Notion_Name": "sync-id",
         "Delete_Notion_Name": "deleted-id",
         "GCal_End_Date_Notion_Name": "end-id",
@@ -100,10 +99,6 @@ class MainCliOverrideTests(unittest.TestCase):
         )
 
         self.assertEqual(result["statusCode"], 200)
-        self.assertEqual(
-            setting["page_property"]["GCal_EventId_Notion_Name"],
-            "event-id",
-        )
         self.assertIs(mock_sync.call_args.kwargs["user_setting"], setting)
 
     def test_timestamp_flag_applies_date_range_in_memory(self):

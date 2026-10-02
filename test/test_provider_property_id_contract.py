@@ -25,7 +25,6 @@ SETTING = {
         "ExtraInfo_Notion_Name": "extra-id",
         "Location_Notion_Name": "location-id",
         "GCal_Sync_Time_Notion_Name": "sync-id",
-        "GCal_EventId_Notion_Name": "event-id",
         "GCal_Name_Notion_Name": "calendar-id",
         "Delete_Notion_Name": "delete-id",
         "CompleteIcon_Notion_Name": "icon-id",

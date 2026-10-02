@@ -21,6 +21,7 @@ from googleapiclient.errors import HttpError
 SRC_ROOT = Path(__file__).resolve().parents[1] / "src"
 sys.path.insert(0, str(SRC_ROOT))
 
+from gcal.event_identity import deterministic_google_event_id  # noqa: E402
 from gcal.gcal_service import GoogleService  # noqa: E402
 from notion.notion_service import NotionService  # noqa: E402
 
@@ -30,11 +31,11 @@ from notion.notion_service import NotionService  # noqa: E402
 # ---------------------------------------------------------------------------
 
 MINIMAL_USER_SETTING = {
+    "source_id": "source-1",
     "page_property": {
         "Task_Notion_Name": "task-id",
         "Date_Notion_Name": "date-id",
         "GCal_End_Date_Notion_Name": "end-id",
-        "GCal_EventId_Notion_Name": "event-id",
         "GCal_Name_Notion_Name": "calendar-id",
         "GCal_Sync_Time_Notion_Name": "sync-id",
         "Delete_Notion_Name": "delete-id",
@@ -156,17 +157,13 @@ def _make_notion_service():
     return ns
 
 
-def _make_notion_task(gcal_event_id, last_edited_time="2026-04-01T00:00:00.000Z"):
-    """Return a minimal Notion task dict whose GCal event ID matches gcal_event_id."""
+def _make_notion_task(page_id="notion-page-1", last_edited_time="2026-04-01T00:00:00.000Z"):
+    """Return a minimal Notion task without any persisted Google event ID."""
     pp = MINIMAL_USER_SETTING["page_property"]
     return {
-        "id": f"notion-page-{gcal_event_id}",
+        "id": page_id,
         "last_edited_time": last_edited_time,
         "properties": {
-            "GCal Event ID": {
-                "id": pp["GCal_EventId_Notion_Name"],
-                "rich_text": [{"plain_text": gcal_event_id}],
-            },
             "Calendar": {
                 "id": pp["GCal_Name_Notion_Name"],
                 "select": {"name": "My Calendar"},
@@ -429,27 +426,19 @@ class TestGetGcalEventPagination(unittest.TestCase):
 
 
 class TestRecurringEventIdentity(unittest.TestCase):
-    """
-    Each expanded GCal recurring instance is an independent event identified
-    by its own instance ID.  recurringEventId must never be used as the sync
-    key, and no extra Notion queries may be issued per recurring instance.
-    """
+    """Verify recurring provider data cannot redefine Notica task identity."""
 
     def _run_sync(self, gcal_events, notion_tasks=None):
-        """Drive synchronize_notion_and_google_calendar and return (notion_service, result)."""
         import sync.sync as sync_module
         from sync.sync import synchronize_notion_and_google_calendar
 
-        if notion_tasks is None:
-            notion_tasks = []
-
         notion_service = MagicMock()
         google_service = MagicMock()
-        notion_service.get_notion_task.return_value = ({}, notion_tasks)
+        notion_service.get_notion_task.return_value = ({}, notion_tasks or [])
         google_service.get_gcal_event.return_value = gcal_events
 
-        for ev in gcal_events:
-            ev.setdefault("organizer", {"email": "cal@group.calendar.google.com"})
+        for event in gcal_events:
+            event.setdefault("organizer", {"email": "cal@group.calendar.google.com"})
 
         orig_logger = sync_module.logger
         sync_module.logger = MagicMock()
@@ -464,83 +453,50 @@ class TestRecurringEventIdentity(unittest.TestCase):
             )
         finally:
             sync_module.logger = orig_logger
-        return notion_service, result
+        return notion_service, google_service, result
 
-    # --- date correctness ---
-
-    def test_single_event_creates_task_with_correct_date(self):
-        ns, result = self._run_sync([{**SINGLE_TIMED_EVENT}])
-        ns.create_notion_task.assert_called_once()
-        passed_event = ns.create_notion_task.call_args[0][0]
-        self.assertEqual(passed_event["start"]["dateTime"], "2026-05-15T10:00:00+08:00")
-
-    def test_recurring_expanded_instance_creates_task_with_occurrence_date(self):
-        # Must use 2026-05-30, not the master's first-occurrence 2026-04-26.
-        ns, _ = self._run_sync([{**RECURRING_EXPANDED_INSTANCE}])
-        ns.create_notion_task.assert_called_once()
-        passed_event = ns.create_notion_task.call_args[0][0]
-        self.assertEqual(passed_event["start"]["dateTime"], "2026-05-30T10:00:00+08:00")
-
-    def test_moved_recurring_instance_creates_task_with_actual_start_not_original(self):
-        # Instance moved from 2026-05-30 to 2026-05-31; must use the rescheduled start.
-        ns, _ = self._run_sync([{**RECURRING_MOVED_INSTANCE}])
-        ns.create_notion_task.assert_called_once()
-        passed_event = ns.create_notion_task.call_args[0][0]
-        self.assertEqual(passed_event["start"]["dateTime"], "2026-05-31T14:00:00+08:00")
-        self.assertNotEqual(passed_event["start"]["dateTime"], "2026-05-30T10:00:00+08:00")
-
-    # --- identity: instance IDs, not master ID ---
-
-    def test_two_instances_same_series_create_two_separate_tasks(self):
-        # Two instances share recurringEventId "abc123" but have distinct instance IDs.
-        # Each must become its own Notion task.
-        ns, result = self._run_sync([{**RECURRING_EXPANDED_INSTANCE}, {**RECURRING_INSTANCE_JUN6}])
-        self.assertEqual(ns.create_notion_task.call_count, 2)
-        created_events = [c[0][0] for c in ns.create_notion_task.call_args_list]
-        created_ids = {e["id"] for e in created_events}
-        self.assertEqual(created_ids, {"abc123_20260530T020000Z", "abc123_20260606T020000Z"})
-
-    def test_instance_matched_by_instance_id_not_master_id(self):
-        # One Notion task already exists, keyed by the instance ID of the may-30 occurrence.
-        # The may-30 GCal instance should trigger an update (not a create); the jun-6
-        # instance has no match and should be created.
-        may30_task = _make_notion_task(
-            "abc123_20260530T020000Z",
-            last_edited_time="2026-04-01T00:00:00.000Z",  # older than GCal updated below
+    def test_unmanaged_recurring_instances_do_not_create_notion_tasks(self):
+        notion_service, google_service, result = self._run_sync(
+            [{**RECURRING_EXPANDED_INSTANCE}, {**RECURRING_INSTANCE_JUN6}]
         )
-        # GCal may30 is newer → update_notion path
-        may30_gcal = {
+
+        self.assertEqual(result["statusCode"], 200)
+        notion_service.create_notion_task.assert_not_called()
+        notion_service.update_notion_task.assert_not_called()
+        google_service.update_gcal_event.assert_not_called()
+        google_service.create_gcal_event.assert_not_called()
+
+    def test_unmanaged_single_event_does_not_create_notion_task(self):
+        notion_service, _, result = self._run_sync([{**SINGLE_TIMED_EVENT}])
+
+        self.assertEqual(result["statusCode"], 200)
+        notion_service.create_notion_task.assert_not_called()
+
+    def test_managed_event_matches_deterministic_task_identity(self):
+        page_id = "notion-page-recurring"
+        notion_task = _make_notion_task(
+            page_id,
+            last_edited_time="2026-04-01T00:00:00.000Z",
+        )
+        managed_event = {
             **RECURRING_EXPANDED_INSTANCE,
+            "id": deterministic_google_event_id("source-1", page_id),
             "organizer": {"email": "cal@group.calendar.google.com"},
             "updated": "2026-05-01T00:00:00.000Z",
         }
-        jun6_gcal = {**RECURRING_INSTANCE_JUN6}
 
-        ns, result = self._run_sync(
-            gcal_events=[may30_gcal, jun6_gcal],
-            notion_tasks=[may30_task],
+        notion_service, _, result = self._run_sync(
+            [managed_event],
+            [notion_task],
         )
-        # The matched may-30 instance → update_notion (GCal is newer)
-        ns.update_notion_task.assert_called_once()
-        updated_page_id = ns.update_notion_task.call_args[0][0]
-        self.assertEqual(updated_page_id, may30_task["id"])
-        # The unmatched jun-6 instance → create
-        ns.create_notion_task.assert_called_once()
-        created_event = ns.create_notion_task.call_args[0][0]
-        self.assertEqual(created_event["id"], "abc123_20260606T020000Z")
+
         self.assertEqual(result["statusCode"], 200)
-
-    # --- no N+1 queries ---
-
-    def test_no_notion_query_per_recurring_instance(self):
-        # get_notion_task_by_gcal_event_id must NOT be called for recurring instances
-        # that arrive in the create_notion path — only event["id"] matching is used.
-        ns, _ = self._run_sync([{**RECURRING_EXPANDED_INSTANCE}, {**RECURRING_INSTANCE_JUN6}])
-        ns.get_notion_task_by_gcal_event_id.assert_not_called()
-
-    def test_no_notion_query_for_non_recurring_event_either(self):
-        ns, _ = self._run_sync([{**SINGLE_TIMED_EVENT}])
-        ns.get_notion_task_by_gcal_event_id.assert_not_called()
+        notion_service.update_notion_task.assert_called_once()
+        self.assertEqual(
+            notion_service.update_notion_task.call_args[0][0],
+            page_id,
+        )
+        notion_service.create_notion_task.assert_not_called()
 
 
 # ---------------------------------------------------------------------------
@@ -589,7 +545,7 @@ class TestGetGcalEventLimit(unittest.TestCase):
 
 class TestDeleteHandling(unittest.TestCase):
     def _make_delete_task(self):
-        notion_task = _make_notion_task("abc123_20260530T020000Z")
+        notion_task = _make_notion_task("page-delete")
         notion_task["properties"]["Delete"]["checkbox"] = True
         return notion_task
 
@@ -602,6 +558,14 @@ class TestDeleteHandling(unittest.TestCase):
 
         notion_service.get_notion_task.return_value = ({}, [notion_task])
         google_service.get_gcal_event.return_value = []
+        expected_event_id = deterministic_google_event_id("source-1", "page-delete")
+        google_service.get_gcal_event_by_id.return_value = {
+            "id": expected_event_id,
+            "summary": "Task",
+            "updated": "2026-05-01T00:00:00.000Z",
+            "organizer": {"email": "cal@group.calendar.google.com"},
+            "_notica_calendar_id": "cal@group.calendar.google.com",
+        }
         google_service.delete_gcal_event.side_effect = RuntimeError("google delete failed")
 
         result = synchronize_notion_and_google_calendar(
@@ -615,10 +579,9 @@ class TestDeleteHandling(unittest.TestCase):
 
         google_service.delete_gcal_event.assert_called_once_with(
             "cal@group.calendar.google.com",
-            "abc123_20260530T020000Z",
+            expected_event_id,
         )
         notion_service.delete_notion_task.assert_not_called()
-        notion_service.get_notion_task_by_gcal_event_id.assert_not_called()
         self.assertEqual(result["statusCode"], 200)
         self.assertEqual(result["body"]["status"], "sync_success")
         self.assertEqual(len(result["body"]["message"]["errors"]), 1)
@@ -631,7 +594,7 @@ class TestDeleteHandling(unittest.TestCase):
         )
         self.assertTrue(error["retriable"])
         self.assertEqual(error["notion_task_id"], notion_task["id"])
-        self.assertEqual(error["gcal_event_id"], "abc123_20260530T020000Z")
+        self.assertEqual(error["gcal_event_id"], expected_event_id)
 
 
 class TestDeleteGcalEventApiErrors(unittest.TestCase):

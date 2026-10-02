@@ -14,7 +14,7 @@ Releases: https://github.com/HUIXIN-TW/NotionSyncGCal/releases
 - Loads normalized settings, Task sources, and Calendar mappings from the mapping-domain table.
 - Expands one current-contract runtime setting per active Notion Task source.
 - Runs the Notion/Google synchronization logic independently for each source.
-- Uses the Notion `GCal Event Id` and `GCal Sync Time` fields while resolving those properties strictly by persisted Notion property ID.
+- Derives each managed Google event ID from the Task Source `sourceId` plus immutable Notion page ID; `GCal Sync Time` remains the timestamp-reconciliation field.
 - Supports multiple first-class Task sources and normalized Calendar-name → Calendar-ID mappings.
 - Persists cloud sync logs in DynamoDB.
 
@@ -22,8 +22,8 @@ Releases: https://github.com/HUIXIN-TW/NotionSyncGCal/releases
 
 Synchronization is event-ID-based:
 
-- Event matching uses the Notion `GCal Event Id` field.
-- Creating a Google event writes the provider event ID back to Notion.
+- Event matching uses deterministic provider identity; no Google event ID is persisted back to Notion.
+- Creating a Google event supplies the deterministic ID at insert time and stores only source/mapping routing metadata in Google private extended properties.
 - Update, delete, and move behavior uses that provider event ID.
 - Timestamp comparison and `GCal Sync Time` behavior are implemented in `src/sync/sync.py`.
 - Google → Notion and Notion → Google force modes are available.
@@ -41,7 +41,7 @@ Cloud execution reads the current mapping-domain records:
 - each source is converted into the current worker runtime setting using persisted Notion property IDs; mutable property names are not a runtime lookup fallback;
 - each source is executed independently and results are aggregated at the user job boundary.
 
-The worker requires the semantic bindings used by the existing synchronization implementation, including task/date, Calendar, location, extra info, `GCal End Date`, `GCal Deleted?`, `GCal Event Id`, `GCal Sync Time`, and `GCal Icon`.
+The worker requires the semantic bindings used by the current synchronization implementation, including task/date, Calendar, location, extra info, `GCal End Date`, `GCal Deleted?`, `GCal Sync Time`, and `GCal Icon`. The legacy provider-event mirror is not a runtime/configuration binding.
 
 Configuration fails closed when owner identity, lifecycle, required property bindings, Calendar-name uniqueness, default Calendar, or normalized record shape is invalid. Runtime property lookup uses `propertyId` only; there is no property-name fallback. SQS and EventBridge require UUID-scoped payloads with a non-empty `uuid` and fail closed on unsupported payload shapes.
 
