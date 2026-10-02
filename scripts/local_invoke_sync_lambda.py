@@ -31,6 +31,11 @@ def _parse_args():
         help="Read and validate cloud mapping-domain configuration without loading provider tokens or running sync.",
     )
     parser.add_argument(
+        "--check-provider-match",
+        action="store_true",
+        help="Read Notion/Google provider data and verify existing GCal Event Id matches without sync mutations.",
+    )
+    parser.add_argument(
         "--canary-page-id",
         help=(
             "Cloud only: force one existing Notion page -> its existing Google event "
@@ -149,6 +154,124 @@ def _check_cloud_config(uuid: str, logger: logging.Logger):
     return _build_safe_config_summary(uuid, source_settings)
 
 
+def _check_cloud_provider_match(uuid: str, logger: logging.Logger):
+    """Verify existing Notion GCal Event Id values resolve to provider events without sync mutations."""
+    if not uuid:
+        print("ERROR: --uuid is required in cloud mode.", file=sys.stderr)
+        sys.exit(1)
+
+    _set_and_validate_mode("cloud")
+    _require_env(
+        [
+            "DYNAMODB_MAPPING_DOMAIN_TABLE",
+            "DYNAMODB_GOOGLE_OAUTH_TOKEN_TABLE",
+            "DYNAMODB_NOTION_OAUTH_TOKEN_TABLE",
+            "TOKEN_ENCRYPTION_KEY_SSM_PATH",
+            "GOOGLE_CALENDAR_CLIENT_ID",
+            "GOOGLE_CALENDAR_CLIENT_SECRET_SSM_PATH",
+            "APP_REGION",
+        ]
+    )
+
+    from collections import Counter
+
+    from config.config import generate_config
+    from config.mapping_domain_config import MappingDomainConfig
+    from gcal.gcal_service import GoogleService
+    from gcal.gcal_token import GoogleToken
+    from notion.notion_properties import get_rich_text
+    from notion.notion_service import NotionService
+    from notion.notion_token import NotionToken
+
+    logger.info("Mode: cloud provider match check (no sync mutations)")
+    logger.info("UUID: %s", uuid)
+
+    config = generate_config(uuid)
+    source_settings = MappingDomainConfig(config, logger).get()
+    notion_token = NotionToken(config, logger).get()
+    google_token = GoogleToken(config, logger)
+
+    source_summaries = []
+    total_with_event_id = 0
+    total_matched = 0
+    total_missing = 0
+    total_duplicates = 0
+
+    for setting in source_settings:
+        notion_service = NotionService(notion_token, setting, logger)
+        google_service = GoogleService(setting, google_token, logger)
+
+        _, notion_tasks = notion_service.get_notion_task()
+        google_events = google_service.get_gcal_event()
+
+        event_id_property = setting["page_property"]["GCal_EventId_Notion_Name"]
+        notion_event_ids = [
+            event_id
+            for task in notion_tasks
+            if (event_id := get_rich_text(task.get("properties", {}), event_id_property))
+        ]
+        google_event_ids = {
+            event.get("id")
+            for event in google_events
+            if isinstance(event.get("id"), str) and event.get("id")
+        }
+
+        counts = Counter(notion_event_ids)
+        duplicate_event_ids = sum(1 for count in counts.values() if count > 1)
+        matched = sum(1 for event_id in notion_event_ids if event_id in google_event_ids)
+        missing = len(notion_event_ids) - matched
+
+        total_with_event_id += len(notion_event_ids)
+        total_matched += matched
+        total_missing += missing
+        total_duplicates += duplicate_event_ids
+
+        source_summaries.append(
+            {
+                "source_id": setting["source_id"],
+                "notion_task_count": len(notion_tasks),
+                "google_event_count": len(google_events),
+                "notion_tasks_with_event_id": len(notion_event_ids),
+                "matched_event_ids": matched,
+                "missing_event_ids": missing,
+                "duplicate_notion_event_ids": duplicate_event_ids,
+            }
+        )
+
+    if total_with_event_id == 0:
+        return {
+            "statusCode": 409,
+            "body": {
+                "status": "provider_match_not_proven",
+                "message": {
+                    "read_only_provider_data": True,
+                    "oauth_token_refresh_may_persist": True,
+                    "reason": "No Notion task with GCal Event Id was found in the configured sync window.",
+                    "source_count": len(source_summaries),
+                    "sources": source_summaries,
+                },
+            },
+        }
+
+    status_code = 200 if total_missing == 0 and total_duplicates == 0 else 409
+    return {
+        "statusCode": status_code,
+        "body": {
+            "status": "provider_match_valid" if status_code == 200 else "provider_match_conflict",
+            "message": {
+                "read_only_provider_data": True,
+                "oauth_token_refresh_may_persist": True,
+                "source_count": len(source_summaries),
+                "notion_tasks_with_event_id": total_with_event_id,
+                "matched_event_ids": total_matched,
+                "missing_event_ids": total_missing,
+                "duplicate_notion_event_ids": total_duplicates,
+                "sources": source_summaries,
+            },
+        },
+    }
+
+
 class _ScopedNotionService:
     """Delegate all writes to the real service but expose exactly one task to the sync algorithm."""
 
@@ -208,10 +331,9 @@ def _run_cloud_canary(uuid: str, page_id: str, confirm_page_id: str, logger: log
 
     from config.config import generate_config
     from config.mapping_domain_config import MappingDomainConfig
-    from gcal.event_identity import deterministic_google_event_id
     from gcal.gcal_service import GoogleService
     from gcal.gcal_token import GoogleToken
-    from notion.notion_properties import get_checkbox, get_select
+    from notion.notion_properties import get_checkbox, get_rich_text, get_select
     from notion.notion_service import NotionService
     from notion.notion_token import NotionToken
     from sync import sync
@@ -233,10 +355,18 @@ def _run_cloud_canary(uuid: str, page_id: str, confirm_page_id: str, logger: log
             continue
 
         page_properties = page.get("properties", {})
-        event_id = deterministic_google_event_id(
-            setting["source_id"],
-            page.get("id"),
+        event_id = get_rich_text(
+            page_properties,
+            setting["page_property"]["GCal_EventId_Notion_Name"],
         )
+        if not event_id:
+            return {
+                "statusCode": 409,
+                "body": {
+                    "status": "canary_refused",
+                    "message": "Selected Notion page has no GCal Event Id; refusing create-path canary.",
+                },
+            }
 
         if get_checkbox(
             page_properties,
@@ -272,7 +402,7 @@ def _run_cloud_canary(uuid: str, page_id: str, confirm_page_id: str, logger: log
                 "statusCode": 409,
                 "body": {
                     "status": "canary_refused",
-                    "message": "Expected exactly one existing Google event for the selected deterministic event ID.",
+                    "message": "Expected exactly one existing Google event for the selected GCal Event Id.",
                 },
             }
 
@@ -418,11 +548,17 @@ def main():
     if args.check_config and args.mode != "cloud":
         print("ERROR: --check-config is supported only in cloud mode.", file=sys.stderr)
         sys.exit(1)
+    if args.check_provider_match and args.mode != "cloud":
+        print("ERROR: --check-provider-match is supported only in cloud mode.", file=sys.stderr)
+        sys.exit(1)
+    if args.check_config and args.check_provider_match:
+        print("ERROR: --check-config and --check-provider-match are mutually exclusive.", file=sys.stderr)
+        sys.exit(1)
     if (args.canary_page_id or args.confirm_canary_page_id) and args.mode != "cloud":
         print("ERROR: provider canary is supported only in cloud mode.", file=sys.stderr)
         sys.exit(1)
-    if (args.canary_page_id or args.confirm_canary_page_id) and args.check_config:
-        print("ERROR: provider canary cannot be combined with configuration check mode.", file=sys.stderr)
+    if (args.canary_page_id or args.confirm_canary_page_id) and (args.check_config or args.check_provider_match):
+        print("ERROR: provider canary cannot be combined with read-only check modes.", file=sys.stderr)
         sys.exit(1)
 
     log_level = logging.DEBUG if args.verbose else logging.INFO
@@ -437,6 +573,8 @@ def main():
         if args.mode == "cloud":
             if args.check_config:
                 result = _check_cloud_config(args.uuid, logger)
+            elif args.check_provider_match:
+                result = _check_cloud_provider_match(args.uuid, logger)
             elif args.canary_page_id or args.confirm_canary_page_id:
                 result = _run_cloud_canary(
                     args.uuid,
@@ -455,6 +593,8 @@ def main():
 
     if args.check_config:
         heading = "\n=== Configuration Check Result ==="
+    elif args.check_provider_match:
+        heading = "\n=== Provider Match Check Result ==="
     elif args.canary_page_id or args.confirm_canary_page_id:
         heading = "\n=== One-Pair Provider Canary Result ==="
     else:
@@ -468,6 +608,8 @@ def main():
 
     if args.check_config:
         success_message = "\n[SUCCESS] Configuration is valid and no provider sync was run."
+    elif args.check_provider_match:
+        success_message = "\n[SUCCESS] Existing GCal Event Id values matched provider events; no sync mutations ran."
     elif args.canary_page_id or args.confirm_canary_page_id:
         success_message = "\n[SUCCESS] One existing provider pair was updated without creating a duplicate event."
     else:

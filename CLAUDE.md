@@ -63,17 +63,18 @@ Lambda trigger
 
 ### Sync logic (`src/sync/sync.py`)
 
-The worker uses deterministic provider identity for Notion-owned tasks:
+The worker uses the event-ID-based synchronization algorithm:
 
 1. Fetch Notion tasks and Google Calendar events for the configured source/window.
-2. Derive each managed Google event ID from the stable Task Source `sourceId` plus immutable Notion page ID using versioned length-prefixed byte framing and a one-way digest.
-3. Create supplies that deterministic ID to Google at insert time; update/delete/move resolve the same ID without reading Notion mirror state.
-4. Google private extended properties contain only source ID, mapping ID, and mapping version for routing/reconciliation.
-5. Calendar Mapping ID is not part of provider identity, so moving a task between configured Calendar mappings preserves the Google event ID while refreshing destination metadata.
-6. The mapping/source/version stale-write fence is revalidated immediately before every Google provider mutation.
-7. `GCal Sync Time` remains part of timestamp reconciliation.
-8. Unmatched Google events are not materialized into Notion because Notion is authoritative task state and those events have no deterministic Notica task identity.
-9. Multiple Task sources are handled by invoking the same sync implementation once per current-contract source setting.
+2. Read the task's persisted `GCal Event Id` and configured Calendar value.
+3. If a Notion task has no Google event ID, create the Google event and write the returned provider event ID back to Notion.
+4. If a task is marked deleted, delete the matching Google event by its stored provider event ID and apply the existing Notion cleanup behavior.
+5. If a task already has an event ID, compare Notion/Google timestamps and execute the existing update or Calendar-move behavior.
+6. `GCal Sync Time` remains part of timestamp reconciliation.
+7. The existing Google → Notion path and force modes remain available.
+8. Multiple Task sources are handled by invoking the same sync implementation once per current-contract source setting.
+
+Do not introduce deterministic provider event identity, provider ownership metadata, or a new sync direction without a separate architecture decision.
 
 ### DynamoDB tables
 
@@ -85,7 +86,7 @@ Runtime tables (set via env vars):
 - `DYNAMODB_NOTION_OAUTH_TOKEN_TABLE` — Notion API token (encrypted as `enc:v1:…`)
 - `DYNAMODB_SYNC_LOGS_TABLE` — sync result logs with TTL
 
-The worker consumes only the current mapping-domain configuration shape and uses persisted provider property IDs directly. It does not fall back to mutable Notion property names. The legacy provider-event mirror is not runtime state or a configuration requirement; `GCal Sync Time` remains timestamp-reconciliation state. Distinct Task sources may share a Google Calendar; provider identity is derived from source + Notion page identity and intentionally excludes Calendar Mapping identity.
+The worker consumes only the current mapping-domain configuration shape and uses persisted provider property IDs directly. It does not fall back to mutable Notion property names. `GCal Event Id` / `GCal Sync Time` semantics are the current synchronization contract. Distinct Task sources may share a Google Calendar; configuration identity does not redefine provider event identity.
 
 ### Token encryption
 
