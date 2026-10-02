@@ -242,7 +242,6 @@ class SyncMappingWriteFenceTests(unittest.TestCase):
             },
         )
 
-
     def test_delete_uses_actual_provider_calendar_when_notion_calendar_changed(self):
         event = {
             "id": event_id(),
@@ -330,6 +329,7 @@ class SyncMappingWriteFenceTests(unittest.TestCase):
                 "noticaMappingVersion": "3",
             },
         )
+
 
 if __name__ == "__main__":
     unittest.main()
