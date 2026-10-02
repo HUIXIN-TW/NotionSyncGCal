@@ -198,6 +198,7 @@ class TestGoogleOriginatedCreationContract(unittest.TestCase):
 
         notion_service.create_notion_task.assert_not_called()
         google_service.create_gcal_event.assert_not_called()
+        google_service.get_gcal_event_by_id.assert_not_called()
 
     def test_persisted_provider_id_updates_same_google_event_when_notion_is_newer(self):
         event = {**GOOGLE_CREATED_EVENT}
@@ -642,6 +643,7 @@ class TestGoogleOriginatedCreationContract(unittest.TestCase):
 
         self.assertEqual(result["statusCode"], 200)
         google_service.delete_gcal_event.assert_not_called()
+        google_service.get_gcal_event_by_id.assert_not_called()
         notion_service.delete_notion_task.assert_not_called()
         notion_service.get_notion_task_by_gcal_event_id.assert_not_called()
 
