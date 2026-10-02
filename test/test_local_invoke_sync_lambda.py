@@ -1,4 +1,5 @@
 import os
+import subprocess
 import sys
 import unittest
 from pathlib import Path
@@ -8,6 +9,52 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT))
 
 import scripts.local_invoke_sync_lambda as local_invoke  # noqa: E402
+
+
+class LocalRunDevSyncShellTests(unittest.TestCase):
+    def test_shell_runner_syntax_and_help_include_calendar_move_canary(self):
+        script = REPO_ROOT / "scripts" / "local-run-dev-sync.sh"
+
+        syntax = subprocess.run(
+            ["bash", "-n", str(script)],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        self.assertEqual(syntax.returncode, 0, syntax.stderr)
+
+        help_result = subprocess.run(
+            ["bash", str(script), "--help"],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        self.assertEqual(help_result.returncode, 0, help_result.stderr)
+        self.assertIn("--allow-canary-calendar-move", help_result.stdout)
+
+    def test_shell_runner_rejects_move_opt_in_without_confirmed_canary(self):
+        script = REPO_ROOT / "scripts" / "local-run-dev-sync.sh"
+
+        result = subprocess.run(
+            [
+                "bash",
+                str(script),
+                "--mode",
+                "cloud",
+                "--uuid",
+                "test-user",
+                "--allow-canary-calendar-move",
+            ],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn(
+            "--allow-canary-calendar-move requires the confirmed provider canary flags",
+            result.stderr,
+        )
 
 
 class LocalInvokeCloudEnvValidationTests(unittest.TestCase):
