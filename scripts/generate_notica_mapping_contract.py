@@ -69,6 +69,7 @@ def _validate_lock(lock, artifact, digest):
     release_version = _require_string(lock, "releaseVersion")
     release_asset = _require_string(lock, "releaseAsset")
     manifest_asset = _require_string(lock, "manifestAsset")
+    artifact_set_version = _require_string(lock, "artifactSetVersion")
     artifact_sha256 = _require_string(lock, "sha256")
     source_sha256 = _require_string(lock, "sourceMappingDomainSha256")
     producer_repository = _require_string(lock, "producerRepository")
@@ -86,6 +87,8 @@ def _validate_lock(lock, artifact, digest):
         raise ValueError("Pinned release version must use exact x.y.z form.")
     if release_tag != f"mapping-domain-v{release_version}":
         raise ValueError("Pinned release tag does not match release version.")
+    if artifact.get("artifactSetVersion") != artifact_set_version:
+        raise ValueError("Pinned artifact-set version does not match artifact.")
     if not SHA256_PATTERN.fullmatch(artifact_sha256):
         raise ValueError("Pinned public artifact SHA-256 is invalid.")
     if not SHA256_PATTERN.fullmatch(source_sha256):
