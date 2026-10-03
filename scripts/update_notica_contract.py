@@ -32,6 +32,7 @@ COMMIT_PATTERN = re.compile(r"^[0-9a-f]{40}$")
 RELEASE_BASE_URL = (
     f"https://github.com/{EXPECTED_DISTRIBUTION_REPOSITORY}/releases/download"
 )
+TAG_BASE_URL = f"https://raw.githubusercontent.com/{EXPECTED_DISTRIBUTION_REPOSITORY}"
 
 
 def _fetch_bytes(url):
@@ -166,12 +167,31 @@ def _run_contract_tests():
 
 
 def update_contract(release_tag, fetch_bytes=_fetch_bytes, run_tests=True):
-    manifest_url = f"{RELEASE_BASE_URL}/{release_tag}/{EXPECTED_MANIFEST_ASSET}"
-    artifact_url = f"{RELEASE_BASE_URL}/{release_tag}/{EXPECTED_RELEASE_ASSET}"
+    tag_manifest_url = f"{TAG_BASE_URL}/{release_tag}/manifest.json"
+    tag_artifact_url = f"{TAG_BASE_URL}/{release_tag}/mapping-domain/v1.json"
+    release_manifest_url = (
+        f"{RELEASE_BASE_URL}/{release_tag}/{EXPECTED_MANIFEST_ASSET}"
+    )
+    release_artifact_url = (
+        f"{RELEASE_BASE_URL}/{release_tag}/{EXPECTED_RELEASE_ASSET}"
+    )
 
-    manifest_bytes = fetch_bytes(manifest_url)
-    artifact_bytes = fetch_bytes(artifact_url)
-    lock = build_lock_from_release(release_tag, manifest_bytes, artifact_bytes)
+    tag_manifest_bytes = fetch_bytes(tag_manifest_url)
+    tag_artifact_bytes = fetch_bytes(tag_artifact_url)
+    release_manifest_bytes = fetch_bytes(release_manifest_url)
+    release_artifact_bytes = fetch_bytes(release_artifact_url)
+
+    if release_manifest_bytes != tag_manifest_bytes:
+        raise ValueError("Release manifest bytes differ from protected tag contents.")
+    if release_artifact_bytes != tag_artifact_bytes:
+        raise ValueError("Release artifact bytes differ from protected tag contents.")
+
+    artifact_bytes = tag_artifact_bytes
+    lock = build_lock_from_release(
+        release_tag,
+        tag_manifest_bytes,
+        artifact_bytes,
+    )
     lock_text = _serialize_lock(lock)
 
     with tempfile.TemporaryDirectory() as tmp:
