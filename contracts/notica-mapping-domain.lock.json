@@ -4,6 +4,7 @@
   "releaseVersion": "1.0.0",
   "releaseAsset": "mapping-domain-v1.json",
   "manifestAsset": "manifest.json",
+  "artifactSetVersion": "1.0.0",
   "schemaVersion": 1,
   "sha256": "bb588dc6ec9343ed27941ebc62f138160f9d6d979f3c21633b7fef38d80a48a9",
   "sourceMappingDomainSha256": "ea105b825b82459cdb5d411372238b8d1ea69546fae37c1a38c03e255798193f",
