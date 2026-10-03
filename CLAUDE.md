@@ -56,7 +56,7 @@ The Backend remains authoritative, but this public Worker consumes only the publ
 - generated adapter: `src/contracts/notica_mapping_domain.py`
 - explicit updater: `uv run python scripts/update_notica_contract.py <mapping-domain-vX.Y.Z>`
 
-Normal runtime and ordinary CI are offline with respect to contract distribution. They must validate the committed lock/artifact/adapter and must not fetch the Backend, GitHub Releases, mutable branches, or `latest`. Network access is allowed only for an explicit contract-update operation.
+Normal runtime and ordinary CI are offline with respect to contract distribution. They must validate the committed lock/artifact/adapter and must not fetch the Backend, GitHub Releases, mutable branches, or `latest`. Network access is allowed only for an explicit contract-update operation. The updater must anchor downloaded Release assets to the same bytes committed under the protected version tag before accepting them.
 
 The lock pins the public distribution repository, exact release tag/version and asset, schema/artifact-set identity, artifact SHA-256, source mapping-domain SHA-256, and Backend producer provenance. Preserve `googleCalendarEventId` and the event-ID-based sync semantics unless a separate architecture decision explicitly changes them.
 
