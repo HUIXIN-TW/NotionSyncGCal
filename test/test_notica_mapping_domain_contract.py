@@ -15,6 +15,11 @@ from contracts.notica_mapping_domain import (
     NOTION_SETTINGS_REQUIRED_FIELDS,
     NOTION_SETTINGS_SORT_KEY,
     PARTITION_KEY_ATTRIBUTE,
+    PUBLIC_CONTRACT_DISTRIBUTION_REPOSITORY,
+    PUBLIC_CONTRACT_PRODUCER_COMMIT,
+    PUBLIC_CONTRACT_PRODUCER_REPOSITORY,
+    PUBLIC_CONTRACT_RELEASE_TAG,
+    PUBLIC_CONTRACT_RELEASE_VERSION,
     PUBLIC_PROJECTION_SHA256,
     SORT_KEY_ATTRIBUTE,
     SOURCE_MAPPING_DOMAIN_SHA256,
@@ -34,7 +39,7 @@ from scripts.generate_notica_mapping_contract import build_output
 
 ROOT = Path(__file__).resolve().parents[1]
 ARTIFACT_PATH = ROOT / "contracts" / "notica-mapping-domain-v1.json"
-META_PATH = ROOT / "contracts" / "notica-mapping-domain-v1.meta.json"
+LOCK_PATH = ROOT / "contracts" / "notica-mapping-domain.lock.json"
 
 
 class NoticaMappingDomainContractTests(unittest.TestCase):
@@ -42,24 +47,63 @@ class NoticaMappingDomainContractTests(unittest.TestCase):
     def setUpClass(cls):
         cls.artifact_bytes = ARTIFACT_PATH.read_bytes()
         cls.artifact = json.loads(cls.artifact_bytes)
-        cls.meta = json.loads(META_PATH.read_text(encoding="utf-8"))
+        cls.lock = json.loads(LOCK_PATH.read_text(encoding="utf-8"))
 
-    def test_pins_public_projection_identity(self):
+    def test_pins_public_release_identity(self):
         digest = hashlib.sha256(self.artifact_bytes).hexdigest()
 
+        self.assertEqual(
+            self.lock["distributionRepository"],
+            "whatnow-studio/notica-public-contracts",
+        )
+        self.assertEqual(self.lock["releaseTag"], "mapping-domain-v1.0.0")
+        self.assertEqual(self.lock["releaseVersion"], "1.0.0")
+        self.assertEqual(self.lock["releaseAsset"], "mapping-domain-v1.json")
+        self.assertEqual(self.lock["manifestAsset"], "manifest.json")
+        self.assertEqual(
+            self.lock["artifactSetVersion"],
+            self.artifact["artifactSetVersion"],
+        )
         self.assertEqual(digest, PUBLIC_PROJECTION_SHA256)
-        self.assertEqual(digest, self.meta["publicProjectionSha256"])
+        self.assertEqual(digest, self.lock["sha256"])
         self.assertEqual(
             self.artifact["sourceArtifact"]["sha256"],
             SOURCE_MAPPING_DOMAIN_SHA256,
         )
         self.assertEqual(
             SOURCE_MAPPING_DOMAIN_SHA256,
-            self.meta["sourceMappingDomainSha256"],
+            self.lock["sourceMappingDomainSha256"],
         )
         self.assertEqual(
             self.artifact["schemaVersion"],
             MAPPING_DOMAIN_SCHEMA_VERSION,
+        )
+        self.assertEqual(
+            self.lock["schemaVersion"],
+            MAPPING_DOMAIN_SCHEMA_VERSION,
+        )
+
+    def test_generated_provenance_matches_release_lock(self):
+        self.assertEqual(
+            PUBLIC_CONTRACT_DISTRIBUTION_REPOSITORY,
+            self.lock["distributionRepository"],
+        )
+        self.assertEqual(PUBLIC_CONTRACT_RELEASE_TAG, self.lock["releaseTag"])
+        self.assertEqual(PUBLIC_CONTRACT_RELEASE_VERSION, self.lock["releaseVersion"])
+        self.assertEqual(
+            PUBLIC_CONTRACT_PRODUCER_REPOSITORY,
+            self.lock["producerRepository"],
+        )
+        self.assertEqual(
+            PUBLIC_CONTRACT_PRODUCER_COMMIT,
+            self.lock["producerCommit"],
+        )
+
+    def test_event_id_semantic_mapping_is_preserved(self):
+        self.assertIn("googleCalendarEventId", TASK_SOURCE_SEMANTIC_PROPERTY_SPECS)
+        self.assertEqual(
+            TASK_SOURCE_SEMANTIC_PROPERTY_SPECS["googleCalendarEventId"],
+            ("object", False),
         )
 
     def test_runtime_lifecycle_values_match_projection(self):
@@ -137,48 +181,62 @@ class NoticaMappingDomainContractTests(unittest.TestCase):
             NOTION_SETTINGS_REQUIRED_FIELDS,
         )
 
-    def test_metadata_excludes_backend_commit_provenance(self):
-        self.assertNotIn("producerHead", self.meta)
-
-    def test_generator_rejects_schema_drift_even_with_updated_public_digest(self):
-        artifact = copy.deepcopy(self.artifact)
-        artifact["schemaVersion"] = 2
-
+    def _build_with(self, artifact, lock):
         with tempfile.TemporaryDirectory() as tmp:
             artifact_path = Path(tmp) / "artifact.json"
-            meta_path = Path(tmp) / "meta.json"
+            lock_path = Path(tmp) / "lock.json"
             artifact_path.write_text(
                 json.dumps(artifact, separators=(",", ":")),
                 encoding="utf-8",
             )
-            meta = dict(self.meta)
-            meta["publicProjectionSha256"] = hashlib.sha256(
-                artifact_path.read_bytes()
-            ).hexdigest()
-            meta_path.write_text(json.dumps(meta), encoding="utf-8")
+            lock = dict(lock)
+            lock["sha256"] = hashlib.sha256(artifact_path.read_bytes()).hexdigest()
+            lock_path.write_text(json.dumps(lock), encoding="utf-8")
+            return build_output(artifact_path, lock_path)
 
-            with self.assertRaisesRegex(ValueError, "schema version"):
-                build_output(artifact_path, meta_path)
+    def test_generator_rejects_schema_drift_even_with_updated_public_digest(self):
+        artifact = copy.deepcopy(self.artifact)
+        artifact["schemaVersion"] = 2
+        lock = dict(self.lock)
+        lock["schemaVersion"] = 2
+
+        with self.assertRaisesRegex(ValueError, "unsupported"):
+            self._build_with(artifact, lock)
 
     def test_generator_rejects_source_contract_drift(self):
         artifact = copy.deepcopy(self.artifact)
         artifact["sourceArtifact"]["sha256"] = "0" * 64
 
-        with tempfile.TemporaryDirectory() as tmp:
-            artifact_path = Path(tmp) / "artifact.json"
-            meta_path = Path(tmp) / "meta.json"
-            artifact_path.write_text(
-                json.dumps(artifact, separators=(",", ":")),
-                encoding="utf-8",
-            )
-            meta = dict(self.meta)
-            meta["publicProjectionSha256"] = hashlib.sha256(
-                artifact_path.read_bytes()
-            ).hexdigest()
-            meta_path.write_text(json.dumps(meta), encoding="utf-8")
+        with self.assertRaisesRegex(ValueError, "source digest"):
+            self._build_with(artifact, self.lock)
 
-            with self.assertRaisesRegex(ValueError, "source digest"):
-                build_output(artifact_path, meta_path)
+    def test_generator_rejects_distribution_repository_drift(self):
+        lock = dict(self.lock)
+        lock["distributionRepository"] = "example/other-contracts"
+
+        with self.assertRaisesRegex(ValueError, "distribution repository"):
+            build_output(ARTIFACT_PATH, self._write_lock(lock))
+
+    def test_generator_rejects_release_tag_version_drift(self):
+        lock = dict(self.lock)
+        lock["releaseTag"] = "mapping-domain-v9.9.9"
+
+        with self.assertRaisesRegex(ValueError, "release tag"):
+            build_output(ARTIFACT_PATH, self._write_lock(lock))
+
+    def test_generator_rejects_invalid_producer_commit(self):
+        lock = dict(self.lock)
+        lock["producerCommit"] = "not-a-commit"
+
+        with self.assertRaisesRegex(ValueError, "producer commit"):
+            build_output(ARTIFACT_PATH, self._write_lock(lock))
+
+    def _write_lock(self, lock):
+        tmp = tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False)
+        self.addCleanup(lambda: Path(tmp.name).unlink(missing_ok=True))
+        json.dump(lock, tmp)
+        tmp.close()
+        return Path(tmp.name)
 
     def test_generator_rejects_storage_required_field_drift(self):
         artifact = copy.deepcopy(self.artifact)
@@ -186,24 +244,11 @@ class NoticaMappingDomainContractTests(unittest.TestCase):
             "defaults"
         )
 
-        with tempfile.TemporaryDirectory() as tmp:
-            artifact_path = Path(tmp) / "artifact.json"
-            meta_path = Path(tmp) / "meta.json"
-            artifact_path.write_text(
-                json.dumps(artifact, separators=(",", ":")),
-                encoding="utf-8",
-            )
-            meta = dict(self.meta)
-            meta["publicProjectionSha256"] = hashlib.sha256(
-                artifact_path.read_bytes()
-            ).hexdigest()
-            meta_path.write_text(json.dumps(meta), encoding="utf-8")
-
-            with self.assertRaisesRegex(
-                ValueError,
-                "storage-read required fields for taskSource",
-            ):
-                build_output(artifact_path, meta_path)
+        with self.assertRaisesRegex(
+            ValueError,
+            "storage-read required fields for taskSource",
+        ):
+            self._build_with(artifact, self.lock)
 
     def test_generated_key_builders_follow_backend_encoding_contract(self):
         self.assertEqual(owner_partition_key("user/1"), "USER#user%2F1")
