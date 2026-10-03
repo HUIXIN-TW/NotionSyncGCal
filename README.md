@@ -60,7 +60,7 @@ To explicitly adopt a published contract release:
 uv run python scripts/update_notica_contract.py mapping-domain-v1.0.0
 ```
 
-The updater downloads only the public release `manifest.json` and `mapping-domain-v1.json`, verifies the requested versioned tag, approved producer, schema version, artifact SHA-256, source SHA-256, and artifact-set identity before writing anything. It then vendors the exact artifact bytes, rewrites the lock, regenerates `src/contracts/notica_mapping_domain.py`, and runs the focused compatibility tests.
+The updater reads the public release assets and the same files from the protected version tag, requires the bytes to match, then verifies the requested versioned tag, approved producer, schema version, artifact SHA-256, source SHA-256, and artifact-set identity before writing anything. It then vendors the exact artifact bytes, rewrites the lock, regenerates `src/contracts/notica_mapping_domain.py`, and runs the focused compatibility tests.
 
 Do not pin `main`, `latest`, or another mutable identity. Contract upgrades are explicit code changes reviewed through the normal Worker PR flow.
 
