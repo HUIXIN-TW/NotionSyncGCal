@@ -1,0 +1,12 @@
+{
+  "distributionRepository": "whatnow-studio/notica-public-contracts",
+  "releaseTag": "mapping-domain-v1.0.0",
+  "releaseVersion": "1.0.0",
+  "releaseAsset": "mapping-domain-v1.json",
+  "manifestAsset": "manifest.json",
+  "schemaVersion": 1,
+  "sha256": "bb588dc6ec9343ed27941ebc62f138160f9d6d979f3c21633b7fef38d80a48a9",
+  "sourceMappingDomainSha256": "ea105b825b82459cdb5d411372238b8d1ea69546fae37c1a38c03e255798193f",
+  "producerRepository": "whatnow-studio/notica-backend",
+  "producerCommit": "07951b9746609868a7559d6a883337dd8513356c"
+}
