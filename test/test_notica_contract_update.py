@@ -164,6 +164,15 @@ class NoticaContractUpdateTests(unittest.TestCase):
                 requested_urls,
                 [
                     (
+                        "https://raw.githubusercontent.com/whatnow-studio/"
+                        "notica-public-contracts/mapping-domain-v1.0.0/manifest.json"
+                    ),
+                    (
+                        "https://raw.githubusercontent.com/whatnow-studio/"
+                        "notica-public-contracts/mapping-domain-v1.0.0/"
+                        "mapping-domain/v1.json"
+                    ),
+                    (
                         "https://github.com/whatnow-studio/notica-public-contracts/"
                         "releases/download/mapping-domain-v1.0.0/manifest.json"
                     ),
@@ -178,11 +187,11 @@ class NoticaContractUpdateTests(unittest.TestCase):
         bad_artifact = self.artifact_bytes + b"\n"
 
         def fetch_bytes(url):
-            return (
-                self.manifest_bytes()
-                if url.endswith("/manifest.json")
-                else bad_artifact
-            )
+            if url.endswith("/manifest.json"):
+                return self.manifest_bytes()
+            if "releases/download" in url:
+                return bad_artifact
+            return self.artifact_bytes
 
         with tempfile.TemporaryDirectory() as tmp:
             tmp_root = Path(tmp)
@@ -195,7 +204,7 @@ class NoticaContractUpdateTests(unittest.TestCase):
                 patch.object(update_notica_contract, "LOCK_PATH", lock_path),
                 patch.object(update_notica_contract, "OUTPUT_PATH", output_path),
             ):
-                with self.assertRaisesRegex(ValueError, "digest"):
+                with self.assertRaisesRegex(ValueError, "protected tag"):
                     update_notica_contract.update_contract(
                         "mapping-domain-v1.0.0",
                         fetch_bytes=fetch_bytes,
