@@ -1,8 +1,11 @@
 import hashlib
 import json
+import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
+from scripts import update_notica_contract
 from scripts.update_notica_contract import build_lock_from_release
 
 
@@ -117,6 +120,91 @@ class NoticaContractUpdateTests(unittest.TestCase):
                 json.dumps(manifest).encode("utf-8"),
                 artifact_bytes,
             )
+
+    def test_update_contract_writes_verified_release_without_network(self):
+        manifest_bytes = self.manifest_bytes()
+        requested_urls = []
+
+        def fetch_bytes(url):
+            requested_urls.append(url)
+            return (
+                manifest_bytes
+                if url.endswith("/manifest.json")
+                else self.artifact_bytes
+            )
+
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_root = Path(tmp)
+            artifact_path = tmp_root / "artifact.json"
+            lock_path = tmp_root / "lock.json"
+            output_path = tmp_root / "adapter.py"
+
+            with (
+                patch.object(update_notica_contract, "ARTIFACT_PATH", artifact_path),
+                patch.object(update_notica_contract, "LOCK_PATH", lock_path),
+                patch.object(update_notica_contract, "OUTPUT_PATH", output_path),
+            ):
+                lock = update_notica_contract.update_contract(
+                    "mapping-domain-v1.0.0",
+                    fetch_bytes=fetch_bytes,
+                    run_tests=False,
+                )
+
+            self.assertEqual(artifact_path.read_bytes(), self.artifact_bytes)
+            self.assertEqual(
+                json.loads(lock_path.read_text(encoding="utf-8")),
+                lock,
+            )
+            generated = output_path.read_text(encoding="utf-8")
+            self.assertIn(
+                'PUBLIC_CONTRACT_RELEASE_TAG = "mapping-domain-v1.0.0"',
+                generated,
+            )
+            self.assertEqual(
+                requested_urls,
+                [
+                    (
+                        "https://github.com/whatnow-studio/notica-public-contracts/"
+                        "releases/download/mapping-domain-v1.0.0/manifest.json"
+                    ),
+                    (
+                        "https://github.com/whatnow-studio/notica-public-contracts/"
+                        "releases/download/mapping-domain-v1.0.0/mapping-domain-v1.json"
+                    ),
+                ],
+            )
+
+    def test_update_contract_does_not_write_before_release_validation(self):
+        bad_artifact = self.artifact_bytes + b"\n"
+
+        def fetch_bytes(url):
+            return (
+                self.manifest_bytes()
+                if url.endswith("/manifest.json")
+                else bad_artifact
+            )
+
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_root = Path(tmp)
+            artifact_path = tmp_root / "artifact.json"
+            lock_path = tmp_root / "lock.json"
+            output_path = tmp_root / "adapter.py"
+
+            with (
+                patch.object(update_notica_contract, "ARTIFACT_PATH", artifact_path),
+                patch.object(update_notica_contract, "LOCK_PATH", lock_path),
+                patch.object(update_notica_contract, "OUTPUT_PATH", output_path),
+            ):
+                with self.assertRaisesRegex(ValueError, "digest"):
+                    update_notica_contract.update_contract(
+                        "mapping-domain-v1.0.0",
+                        fetch_bytes=fetch_bytes,
+                        run_tests=False,
+                    )
+
+            self.assertFalse(artifact_path.exists())
+            self.assertFalse(lock_path.exists())
+            self.assertFalse(output_path.exists())
 
 
 if __name__ == "__main__":
