@@ -47,6 +47,19 @@ Tokens may be plaintext or `enc:v1:` encrypted. Use `src/utils/token_crypto.py:d
 
 `MappingDomainConfig` is the only configuration boundary. It returns one current-contract runtime setting per active Task source, including the normalized Calendar-name mapping, explicit default Calendar, and worker-required stable Notion property IDs. It fails closed on missing, malformed, cross-owner, duplicate-Calendar-name, or incomplete configuration. Runtime property lookup must use `propertyId` only; do not add mutable-name fallbacks. `timeZone` is the temporal source of truth; `timeCode` remains current-contract metadata and must not drive date-specific runtime offsets.
 
+### Public mapping-domain contract distribution
+
+The Backend remains authoritative, but this public Worker consumes only the public distribution repository.
+
+- vendored artifact: `contracts/notica-mapping-domain-v1.json`
+- release lock: `contracts/notica-mapping-domain.lock.json`
+- generated adapter: `src/contracts/notica_mapping_domain.py`
+- explicit updater: `uv run python scripts/update_notica_contract.py <mapping-domain-vX.Y.Z>`
+
+Normal runtime and ordinary CI are offline with respect to contract distribution. They must validate the committed lock/artifact/adapter and must not fetch the Backend, GitHub Releases, mutable branches, or `latest`. Network access is allowed only for an explicit contract-update operation.
+
+The lock pins the public distribution repository, exact release tag/version and asset, schema/artifact-set identity, artifact SHA-256, source mapping-domain SHA-256, and Backend producer provenance. Preserve `googleCalendarEventId` and the event-ID-based sync semantics unless a separate architecture decision explicitly changes them.
+
 ### Request flow
 
 ```
