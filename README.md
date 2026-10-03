@@ -45,6 +45,25 @@ The worker requires the semantic bindings used by the existing synchronization i
 
 Configuration fails closed when owner identity, lifecycle, required property bindings, Calendar-name uniqueness, default Calendar, or normalized record shape is invalid. Runtime property lookup uses `propertyId` only; there is no property-name fallback. SQS and EventBridge require UUID-scoped payloads with a non-empty `uuid` and fail closed on unsupported payload shapes.
 
+## Pinned Public Contract Release
+
+The Worker vendors the public mapping-domain artifact and pins its distribution identity in:
+
+- `contracts/notica-mapping-domain.lock.json`
+- `contracts/notica-mapping-domain-v1.json`
+
+Normal runtime and ordinary CI use these committed files only. They do not fetch contracts from GitHub or from the private Backend repository.
+
+To explicitly adopt a published contract release:
+
+```bash
+uv run python scripts/update_notica_contract.py mapping-domain-v1.0.0
+```
+
+The updater downloads only the public release `manifest.json` and `mapping-domain-v1.json`, verifies the requested versioned tag, approved producer, schema version, artifact SHA-256, source SHA-256, and artifact-set identity before writing anything. It then vendors the exact artifact bytes, rewrites the lock, regenerates `src/contracts/notica_mapping_domain.py`, and runs the focused compatibility tests.
+
+Do not pin `main`, `latest`, or another mutable identity. Contract upgrades are explicit code changes reviewed through the normal Worker PR flow.
+
 ## Current Architecture
 
 The runtime uses an explicit mode switch via `APP_MODE`:
