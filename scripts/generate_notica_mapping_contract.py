@@ -1,13 +1,23 @@
 import argparse
 import hashlib
 import json
+import re
 from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
 ARTIFACT_PATH = ROOT / "contracts" / "notica-mapping-domain-v1.json"
-META_PATH = ROOT / "contracts" / "notica-mapping-domain-v1.meta.json"
+LOCK_PATH = ROOT / "contracts" / "notica-mapping-domain.lock.json"
 OUTPUT_PATH = ROOT / "src" / "contracts" / "notica_mapping_domain.py"
+
+EXPECTED_DISTRIBUTION_REPOSITORY = "whatnow-studio/notica-public-contracts"
+EXPECTED_PRODUCER_REPOSITORY = "whatnow-studio/notica-backend"
+EXPECTED_RELEASE_ASSET = "mapping-domain-v1.json"
+EXPECTED_MANIFEST_ASSET = "manifest.json"
+SUPPORTED_SCHEMA_VERSION = 1
+SHA256_PATTERN = re.compile(r"^[0-9a-f]{64}$")
+COMMIT_PATTERN = re.compile(r"^[0-9a-f]{40}$")
+RELEASE_VERSION_PATTERN = re.compile(r"^[0-9]+\.[0-9]+\.[0-9]+$")
 
 
 def _load_json(path):
@@ -46,21 +56,62 @@ def _field_specs_assignment(name, fields):
     return lines
 
 
-def build_output(artifact_path=ARTIFACT_PATH, meta_path=META_PATH):
-    artifact = _load_json(artifact_path)
-    meta = _load_json(meta_path)
-    digest = _artifact_sha256(artifact_path)
+def _require_string(lock, key):
+    value = lock.get(key)
+    if not isinstance(value, str) or not value:
+        raise ValueError(f"Invalid contract lock field: {key}.")
+    return value
 
-    if digest != meta["publicProjectionSha256"]:
-        raise ValueError(
-            "Pinned public mapping-domain artifact digest does not match metadata."
-        )
-    if artifact["schemaVersion"] != meta["schemaVersion"]:
-        raise ValueError("Pinned mapping-domain schema version does not match metadata.")
-    if artifact["sourceArtifact"]["sha256"] != meta["sourceMappingDomainSha256"]:
-        raise ValueError(
-            "Pinned public projection source digest does not match metadata."
-        )
+
+def _validate_lock(lock, artifact, digest):
+    distribution_repository = _require_string(lock, "distributionRepository")
+    release_tag = _require_string(lock, "releaseTag")
+    release_version = _require_string(lock, "releaseVersion")
+    release_asset = _require_string(lock, "releaseAsset")
+    manifest_asset = _require_string(lock, "manifestAsset")
+    artifact_set_version = _require_string(lock, "artifactSetVersion")
+    artifact_sha256 = _require_string(lock, "sha256")
+    source_sha256 = _require_string(lock, "sourceMappingDomainSha256")
+    producer_repository = _require_string(lock, "producerRepository")
+    producer_commit = _require_string(lock, "producerCommit")
+
+    if distribution_repository != EXPECTED_DISTRIBUTION_REPOSITORY:
+        raise ValueError("Pinned distribution repository is not approved.")
+    if producer_repository != EXPECTED_PRODUCER_REPOSITORY:
+        raise ValueError("Pinned producer repository is not approved.")
+    if release_asset != EXPECTED_RELEASE_ASSET:
+        raise ValueError("Pinned release asset is not approved.")
+    if manifest_asset != EXPECTED_MANIFEST_ASSET:
+        raise ValueError("Pinned manifest asset is not approved.")
+    if not RELEASE_VERSION_PATTERN.fullmatch(release_version):
+        raise ValueError("Pinned release version must use exact x.y.z form.")
+    if release_tag != f"mapping-domain-v{release_version}":
+        raise ValueError("Pinned release tag does not match release version.")
+    if artifact.get("artifactSetVersion") != artifact_set_version:
+        raise ValueError("Pinned artifact-set version does not match artifact.")
+    if not SHA256_PATTERN.fullmatch(artifact_sha256):
+        raise ValueError("Pinned public artifact SHA-256 is invalid.")
+    if not SHA256_PATTERN.fullmatch(source_sha256):
+        raise ValueError("Pinned source mapping-domain SHA-256 is invalid.")
+    if not COMMIT_PATTERN.fullmatch(producer_commit):
+        raise ValueError("Pinned producer commit must be an exact 40-character SHA.")
+
+    schema_version = lock.get("schemaVersion")
+    if schema_version != SUPPORTED_SCHEMA_VERSION:
+        raise ValueError("Pinned mapping-domain schema version is unsupported.")
+    if artifact.get("schemaVersion") != schema_version:
+        raise ValueError("Pinned mapping-domain schema version does not match artifact.")
+    if digest != artifact_sha256:
+        raise ValueError("Pinned public mapping-domain artifact digest does not match lock.")
+    if artifact.get("sourceArtifact", {}).get("sha256") != source_sha256:
+        raise ValueError("Pinned public projection source digest does not match lock.")
+
+
+def build_output(artifact_path=ARTIFACT_PATH, lock_path=LOCK_PATH):
+    artifact = _load_json(artifact_path)
+    lock = _load_json(lock_path)
+    digest = _artifact_sha256(artifact_path)
+    _validate_lock(lock, artifact, digest)
 
     storage = artifact["workerStorageRead"]
     domain = artifact["domain"]
@@ -116,6 +167,17 @@ def build_output(artifact_path=ARTIFACT_PATH, meta_path=META_PATH):
             "SOURCE_MAPPING_DOMAIN_SHA256 = "
             f"{_py_string(artifact['sourceArtifact']['sha256'])}"
         ),
+        (
+            "PUBLIC_CONTRACT_DISTRIBUTION_REPOSITORY = "
+            f"{_py_string(lock['distributionRepository'])}"
+        ),
+        f"PUBLIC_CONTRACT_RELEASE_TAG = {_py_string(lock['releaseTag'])}",
+        f"PUBLIC_CONTRACT_RELEASE_VERSION = {_py_string(lock['releaseVersion'])}",
+        (
+            "PUBLIC_CONTRACT_PRODUCER_REPOSITORY = "
+            f"{_py_string(lock['producerRepository'])}"
+        ),
+        f"PUBLIC_CONTRACT_PRODUCER_COMMIT = {_py_string(lock['producerCommit'])}",
     ]
     lines.extend(
         _frozenset_assignment("CONFIG_LIFECYCLES", domain["lifecycleValues"])
@@ -242,7 +304,7 @@ def main():
                 "Generated Notica mapping-domain adapter is stale. "
                 "Run python scripts/generate_notica_mapping_contract.py."
             )
-        print("Generated Notica mapping-domain adapter is current.")
+        print("Pinned Notica release and generated mapping-domain adapter are current.")
         return
 
     OUTPUT_PATH.parent.mkdir(parents=True, exist_ok=True)

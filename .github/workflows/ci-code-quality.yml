@@ -17,7 +17,7 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: Verify generated Notica contract adapter
+      - name: Verify pinned Notica release and generated adapter
         run: python scripts/generate_notica_mapping_contract.py --check
 
       - name: Install Python formatting and lint tools

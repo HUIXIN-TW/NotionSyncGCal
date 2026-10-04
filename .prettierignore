@@ -19,5 +19,5 @@ node_modules/
 # Ignore all Markdown files in a specific directory
 docs/**/*.md
 
-# Preserve the backend producer's exact public-contract bytes for SHA-256 pinning
+# Preserve the pinned public-release artifact's exact bytes for SHA-256 verification
 contracts/notica-mapping-domain-v1.json
