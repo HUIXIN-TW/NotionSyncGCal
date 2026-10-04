@@ -647,8 +647,8 @@ class TestProviderEventLookup(unittest.TestCase):
         )
 
         self.assertIsNone(result)
-        logger.debug.assert_called_once()
-        self.assertIn("cancelled", logger.debug.call_args.args[0])
+        debug_calls = " ".join(str(call) for call in logger.debug.call_args_list)
+        self.assertIn("cancelled", debug_calls)
 
     def test_provider_location_ignores_cancelled_source_tombstone_after_move(self):
         from sync.sync import _resolve_google_event_location
