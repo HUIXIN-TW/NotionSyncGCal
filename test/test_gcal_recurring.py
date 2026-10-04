@@ -633,6 +633,81 @@ class TestProviderEventLookup(unittest.TestCase):
             eventId="evt-lookup",
         )
 
+    def test_get_event_by_id_cancelled_tombstone_returns_none(self):
+        provider_event = {
+            "id": "evt-moved",
+            "status": "cancelled",
+        }
+        gs, mock_service, logger = self._make_service()
+        mock_service.events.return_value.get.return_value.execute.return_value = provider_event
+
+        result = gs.get_gcal_event_by_id(
+            "old@group.calendar.google.com",
+            "evt-moved",
+        )
+
+        self.assertIsNone(result)
+        logger.debug.assert_called_once()
+        self.assertIn("cancelled", logger.debug.call_args.args[0])
+
+    def test_provider_location_ignores_cancelled_source_tombstone_after_move(self):
+        from sync.sync import _resolve_google_event_location
+
+        old_calendar = "old@group.calendar.google.com"
+        new_calendar = "new@group.calendar.google.com"
+        provider_event_id = "evt-moved"
+        cancelled_tombstone = {
+            "id": provider_event_id,
+            "status": "cancelled",
+        }
+        confirmed_event = {
+            "id": provider_event_id,
+            "status": "confirmed",
+            "organizer": {"email": new_calendar},
+            "start": {
+                "dateTime": "2026-05-15T10:00:00+08:00",
+                "timeZone": "Australia/Perth",
+            },
+            "end": {
+                "dateTime": "2026-05-15T11:00:00+08:00",
+                "timeZone": "Australia/Perth",
+            },
+        }
+        user_setting = {
+            **MINIMAL_USER_SETTING,
+            "gcal_name_dict": {
+                "Old": old_calendar,
+                "New": new_calendar,
+            },
+        }
+        gs, mock_service, _ = self._make_service()
+
+        def get_event(*, calendarId, eventId):
+            self.assertEqual(eventId, provider_event_id)
+            response = MagicMock()
+            if calendarId == old_calendar:
+                response.execute.return_value = cancelled_tombstone
+            elif calendarId == new_calendar:
+                response.execute.return_value = confirmed_event
+            else:
+                self.fail(f"Unexpected Calendar lookup: {calendarId}")
+            return response
+
+        mock_service.events.return_value.get.side_effect = get_event
+
+        event, calendar_id = _resolve_google_event_location(
+            user_setting,
+            gs,
+            [],
+            provider_event_id,
+        )
+
+        self.assertEqual(event["id"], provider_event_id)
+        self.assertEqual(event["status"], "confirmed")
+        self.assertEqual(event["_notica_calendar_id"], new_calendar)
+        self.assertEqual(calendar_id, new_calendar)
+        self.assertEqual(mock_service.events.return_value.get.call_count, 2)
+
     def test_get_event_by_id_404_returns_none(self):
         gs, mock_service, _ = self._make_service()
 
