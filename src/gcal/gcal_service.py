@@ -143,6 +143,13 @@ class GoogleService:
             )
             if not event:
                 return None
+            if event.get("status") == "cancelled":
+                self.logger.debug(
+                    "Ignoring cancelled Google Calendar event tombstone: event_id=%s calendar_id=%s",
+                    gcal_event_id,
+                    gcal_calendar_id,
+                )
+                return None
             event = dict(event)
             event["_notica_calendar_id"] = gcal_calendar_id
             return event
