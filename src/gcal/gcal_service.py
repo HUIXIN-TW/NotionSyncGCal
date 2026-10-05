@@ -4,7 +4,6 @@ from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 from google.auth.exceptions import RefreshError
 from notion.notion_properties import get_property, get_rich_text, get_title
-from utils.timezone_utils import format_datetime_in_timezone
 
 
 class SettingError(Exception):
@@ -315,7 +314,10 @@ class GoogleService:
         return event
 
     def adjust_notion_dates(self, start_date_str, end_date_str=None):
-        """Normalize Notion dates into Google Calendar-compatible values."""
+        """
+        TODO: Consider Different Timezones
+        Adjust Notion date or datetime formats and convert them to UTC.
+        """
         start_date = isoparse(start_date_str)
         if end_date_str:
             end_date = isoparse(end_date_str)
@@ -328,9 +330,8 @@ class GoogleService:
             end_date = end_date + timedelta(days=1)
 
         if "T" in start_date_str:
-            timezone = self.notion_setting["timezone"]
-            start_date_str = format_datetime_in_timezone(start_date, timezone)
-            end_date_str = format_datetime_in_timezone(end_date, timezone)
+            start_date_str = start_date.strftime("%Y-%m-%dT%H:%M:%S%z")
+            end_date_str = end_date.strftime("%Y-%m-%dT%H:%M:%S%z")
         else:
             start_date_str = start_date.strftime("%Y-%m-%d")
             end_date_str = end_date.strftime("%Y-%m-%d")
