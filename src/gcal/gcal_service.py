@@ -167,6 +167,13 @@ class GoogleService:
 
     def update_gcal_event(self, notion_task, existing_gcal_cal_id, existing_gcal_event_id):
         event = self.make_event_body(notion_task)
+        self.logger.info(
+            "GCal update timing event_id=%s calendar_id=%s start=%s end=%s",
+            existing_gcal_event_id,
+            existing_gcal_cal_id,
+            event.get("start"),
+            event.get("end"),
+        )
         self.service.events().patch(
             calendarId=existing_gcal_cal_id, eventId=existing_gcal_event_id, body=event
         ).execute()
@@ -253,6 +260,13 @@ class GoogleService:
         event_start_date, event_end_date = self.adjust_notion_dates(
             notion_task_start_date,
             notion_task_end_date,
+        )
+        self.logger.info(
+            "GCal timing normalization raw_start=%s raw_end=%s normalized_start=%s normalized_end=%s",
+            notion_task_start_date,
+            notion_task_end_date,
+            event_start_date,
+            event_end_date,
         )
 
         try:
