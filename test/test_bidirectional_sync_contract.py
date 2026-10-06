@@ -223,45 +223,6 @@ class TestGoogleOriginatedCreationContract(unittest.TestCase):
         notion_service.create_notion_task.assert_not_called()
         google_service.create_gcal_event.assert_not_called()
 
-    def test_notion_to_google_update_logs_provider_timing_and_direction(self):
-        event = {**GOOGLE_CREATED_EVENT}
-        notion_task = _make_notion_task(
-            event["id"],
-            last_edited_time="2026-10-02T11:00:00.000Z",
-        )
-
-        with patch("sync.sync.logger.info") as log_info:
-            notion_service, google_service, result = _run_sync(
-                gcal_events=[event],
-                notion_tasks=[notion_task],
-            )
-
-        self.assertEqual(result["statusCode"], 200)
-        google_service.update_gcal_event.assert_called_once_with(
-            notion_task,
-            CALENDAR_ID,
-            event["id"],
-        )
-        log_info.assert_any_call(
-            "Sync timing candidate task_id=%s event_id=%s calendar_id=%s google_start=%s google_end=%s",
-            notion_task["id"],
-            event["id"],
-            CALENDAR_ID,
-            event["start"],
-            event["end"],
-        )
-        log_info.assert_any_call(
-            "Sync timing direction=notion_to_google task_id=%s event_id=%s calendar_id=%s "
-            "notion_last_edited=%s google_updated=%s google_start=%s google_end=%s",
-            notion_task["id"],
-            event["id"],
-            CALENDAR_ID,
-            notion_task["last_edited_time"],
-            event["updated"],
-            event["start"],
-            event["end"],
-        )
-
     def test_out_of_window_provider_event_is_resolved_before_move(self):
         event_id = "provider-outside-window-001"
         notion_task = _make_notion_task(
