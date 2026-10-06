@@ -61,6 +61,7 @@ def _timed_task():
         },
     }
 
+
 def _all_day_task():
     task = _timed_task()
     task["properties"]["Date"]["date"] = {
@@ -68,7 +69,6 @@ def _all_day_task():
         "end": None,
     }
     return task
-
 
 
 class TimingDiagnosticsTests(unittest.TestCase):
