@@ -273,15 +273,6 @@ def synchronize_notion_and_google_calendar(
                     gcal_event_list,
                     notion_gcal_event_id,
                 )
-                if gcal_event is not None:
-                    logger.info(
-                        "Sync timing candidate task_id=%s event_id=%s calendar_id=%s google_start=%s google_end=%s",
-                        notion_task_page_id,
-                        notion_gcal_event_id,
-                        gcal_event_calendar_id,
-                        gcal_event.get("start"),
-                        gcal_event.get("end"),
-                    )
 
                 # A resolved persisted association is never an unmatched Google event.
                 # Remove it before downstream mutations so a retryable update/move/delete
@@ -385,17 +376,6 @@ def synchronize_notion_and_google_calendar(
                         "Notion task is newer than Google event for task_id=%s event_id=%s",
                         notion_task_page_id,
                         notion_gcal_event_id,
-                    )
-                    logger.info(
-                        "Sync timing direction=notion_to_google task_id=%s event_id=%s calendar_id=%s "
-                        "notion_last_edited=%s google_updated=%s google_start=%s google_end=%s",
-                        notion_task_page_id,
-                        notion_gcal_event_id,
-                        gcal_cal_id,
-                        notion_task_last_edited_time,
-                        gcal_event_updated_time,
-                        gcal_event.get("start"),
-                        gcal_event.get("end"),
                     )
                     if notion_gcal_cal_id == gcal_cal_id:
                         assert_current_google_write_route(
