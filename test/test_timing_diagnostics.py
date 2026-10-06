@@ -61,6 +61,15 @@ def _timed_task():
         },
     }
 
+def _all_day_task():
+    task = _timed_task()
+    task["properties"]["Date"]["date"] = {
+        "start": "2026-10-09",
+        "end": None,
+    }
+    return task
+
+
 
 class TimingDiagnosticsTests(unittest.TestCase):
     def test_notion_query_logs_only_timing_fields_for_returned_task(self):
@@ -105,10 +114,12 @@ class TimingDiagnosticsTests(unittest.TestCase):
         expected_start = {
             "dateTime": "2026-10-09T22:00:00+0000",
             "timeZone": "Australia/Perth",
+            "date": None,
         }
         expected_end = {
             "dateTime": "2026-10-10T04:00:00+0000",
             "timeZone": "Australia/Perth",
+            "date": None,
         }
         logger.info.assert_any_call(
             "GCal timing normalization raw_start=%s raw_end=%s normalized_start=%s normalized_end=%s",
@@ -136,6 +147,54 @@ class TimingDiagnosticsTests(unittest.TestCase):
         self.assertNotIn("Sensitive notes", rendered_logs)
         self.assertNotIn("Sensitive location", rendered_logs)
         self.assertNotIn("https://notion.example/private-page", rendered_logs)
+
+    def test_timed_create_does_not_include_patch_only_date_clear_fields(self):
+        logger = MagicMock()
+        api = MagicMock()
+        api.events.return_value.insert.return_value.execute.return_value = {"id": "new-event-123"}
+
+        with patch("gcal.gcal_service.build", return_value=api):
+            service = GoogleService(SETTING, MagicMock(), logger)
+
+        event_id = service.create_gcal_event(_timed_task(), CALENDAR_ID)
+
+        self.assertEqual(event_id, "new-event-123")
+        insert_body = api.events.return_value.insert.call_args.kwargs["body"]
+        self.assertEqual(
+            insert_body["start"],
+            {
+                "dateTime": "2026-10-09T22:00:00+0000",
+                "timeZone": "Australia/Perth",
+            },
+        )
+        self.assertEqual(
+            insert_body["end"],
+            {
+                "dateTime": "2026-10-10T04:00:00+0000",
+                "timeZone": "Australia/Perth",
+            },
+        )
+        self.assertNotIn("date", insert_body["start"])
+        self.assertNotIn("date", insert_body["end"])
+
+    def test_all_day_update_remains_date_only(self):
+        logger = MagicMock()
+        api = MagicMock()
+
+        with patch("gcal.gcal_service.build", return_value=api):
+            service = GoogleService(SETTING, MagicMock(), logger)
+
+        service.update_gcal_event(
+            _all_day_task(),
+            CALENDAR_ID,
+            "event-all-day-123",
+        )
+
+        patch_body = api.events.return_value.patch.call_args.kwargs["body"]
+        self.assertEqual(patch_body["start"], {"date": "2026-10-09"})
+        self.assertEqual(patch_body["end"], {"date": "2026-10-10"})
+        self.assertNotIn("dateTime", patch_body["start"])
+        self.assertNotIn("dateTime", patch_body["end"])
 
 
 if __name__ == "__main__":
