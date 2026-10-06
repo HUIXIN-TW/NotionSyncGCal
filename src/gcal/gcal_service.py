@@ -177,13 +177,6 @@ class GoogleService:
             if "dateTime" in event_time:
                 event_time["date"] = None
 
-        self.logger.info(
-            "GCal update timing event_id=%s calendar_id=%s start=%s end=%s",
-            existing_gcal_event_id,
-            existing_gcal_cal_id,
-            event.get("start"),
-            event.get("end"),
-        )
         self.service.events().patch(
             calendarId=existing_gcal_cal_id, eventId=existing_gcal_event_id, body=event
         ).execute()
@@ -271,14 +264,6 @@ class GoogleService:
             notion_task_start_date,
             notion_task_end_date,
         )
-        self.logger.info(
-            "GCal timing normalization raw_start=%s raw_end=%s normalized_start=%s normalized_end=%s",
-            notion_task_start_date,
-            notion_task_end_date,
-            event_start_date,
-            event_end_date,
-        )
-
         try:
             location_property = get_property(
                 properties,
