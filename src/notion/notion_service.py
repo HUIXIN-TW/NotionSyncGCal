@@ -4,6 +4,7 @@ from datetime import datetime, timedelta, timezone
 
 import emoji
 
+from notion.notion_properties import get_property
 from utils.timezone_utils import format_datetime_in_timezone, format_local_midnight
 
 
@@ -103,24 +104,35 @@ class NotionService:
         self.logger.debug(notion_summary)
 
         try:
-            return (
-                notion_summary,
-                self._query_database_with_pagination(
-                    database_id=self.setting["database_id"],
-                    filter={
-                        "and": [
-                            {
-                                "property": self.page_property["Date_Notion_Name"],
-                                "date": {"before": before_date_with_time_zone},
-                            },
-                            {
-                                "property": self.page_property["GCal_End_Date_Notion_Name"],
-                                "formula": {"date": {"on_or_after": after_date_with_time_zone}},
-                            },
-                        ]
-                    },
-                ),
+            tasks = self._query_database_with_pagination(
+                database_id=self.setting["database_id"],
+                filter={
+                    "and": [
+                        {
+                            "property": self.page_property["Date_Notion_Name"],
+                            "date": {"before": before_date_with_time_zone},
+                        },
+                        {
+                            "property": self.page_property["GCal_End_Date_Notion_Name"],
+                            "formula": {"date": {"on_or_after": after_date_with_time_zone}},
+                        },
+                    ]
+                },
             )
+            for task in tasks:
+                date_property = get_property(
+                    task.get("properties", {}),
+                    self.page_property["Date_Notion_Name"],
+                )
+                date_value = date_property.get("date") or {}
+                self.logger.info(
+                    "Notion timing input task_id=%s start=%s end=%s last_edited=%s",
+                    task.get("id"),
+                    date_value.get("start"),
+                    date_value.get("end"),
+                    task.get("last_edited_time"),
+                )
+            return notion_summary, tasks
         except Exception as e:
             error_message = f"Error reading Notion table: {e}"
             self.logger.error(error_message)
