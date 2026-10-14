@@ -131,20 +131,45 @@ class GoogleCalendarTimedTransitionTests(unittest.TestCase):
         self.assertNotIn("date", body["start"])
         self.assertNotIn("date", body["end"])
 
-    def test_all_day_update_remains_date_only(self):
+    def test_all_day_update_clears_previous_timed_datetime_representation(self):
         service, api = self._service()
 
         service.update_gcal_event(
             _task("2026-10-09", None),
             CALENDAR_ID,
-            "existing-all-day-123",
+            "existing-event-123",
         )
 
-        body = api.events.return_value.patch.call_args.kwargs["body"]
+        patch_call = api.events.return_value.patch.call_args.kwargs
+        self.assertEqual(patch_call["calendarId"], CALENDAR_ID)
+        self.assertEqual(patch_call["eventId"], "existing-event-123")
+        self.assertEqual(
+            patch_call["body"]["start"],
+            {"date": "2026-10-09", "dateTime": None},
+        )
+        self.assertEqual(
+            patch_call["body"]["end"],
+            {"date": "2026-10-10", "dateTime": None},
+        )
+        api.events.return_value.update.assert_not_called()
+        api.events.return_value.insert.assert_not_called()
+
+    def test_all_day_create_remains_date_only(self):
+        service, api = self._service()
+        api.events.return_value.insert.return_value.execute.return_value = {
+            "id": "new-event-123",
+        }
+
+        event_id = service.create_gcal_event(
+            _task("2026-10-09", None),
+            CALENDAR_ID,
+        )
+
+        self.assertEqual(event_id, "new-event-123")
+        body = api.events.return_value.insert.call_args.kwargs["body"]
         self.assertEqual(body["start"], {"date": "2026-10-09"})
         self.assertEqual(body["end"], {"date": "2026-10-10"})
-        self.assertNotIn("dateTime", body["start"])
-        self.assertNotIn("dateTime", body["end"])
+        api.events.return_value.patch.assert_not_called()
 
 
 if __name__ == "__main__":
