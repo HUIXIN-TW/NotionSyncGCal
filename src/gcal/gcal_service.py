@@ -168,14 +168,14 @@ class GoogleService:
     def update_gcal_event(self, notion_task, existing_gcal_cal_id, existing_gcal_event_id):
         event = self.make_event_body(notion_task)
 
-        # Google Calendar PATCH merges nested EventDateTime objects. When an
-        # existing all-day event is converted to a timed event, explicitly
-        # clear the previous date representation so date and dateTime cannot
-        # coexist on the provider resource.
+        # Google Calendar PATCH preserves unspecified nested fields, so clear
+        # the opposite date representation for either transition direction.
         for boundary in ("start", "end"):
-            event_time = event.get(boundary, {})
+            event_time = event[boundary]
             if "dateTime" in event_time:
                 event_time["date"] = None
+            else:
+                event_time["dateTime"] = None
 
         self.service.events().patch(
             calendarId=existing_gcal_cal_id, eventId=existing_gcal_event_id, body=event
